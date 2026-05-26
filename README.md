@@ -219,3 +219,197 @@ An output is considered valid when:
 - 自動產生的卡榫與插槽在套用 kerf 與 clearance 後尺寸相符。
 - 零件編號存在於雕刻圖層，且不與切割線相交。
 - DXF 輸出保留切割、折線、雕刻、編號與卡榫相關圖層。
+
+## V1 Public Webapp Requirements
+
+V1 is the first public webapp version. It should stay small, testable, and focused on converting one OBJ file into laser-ready 2D output.
+
+### V1 Scope
+
+- Upload one `.obj` file.
+- Validate file type and file size before conversion.
+- Set core laser parameters:
+  - `materialThicknessMm`
+  - `kerfWidthMm`
+  - `kerfMode`
+  - `snappingToleranceMm`
+  - `generateJoinery`
+  - `tabWidthMm`
+  - `slotClearanceMm`
+  - `outputFormat`
+- Convert OBJ geometry into 2D laser paths.
+- Generate part numbers on an engrave layer.
+- Optionally generate tab-and-slot joinery when `generateJoinery` is enabled.
+- Preview the 2D output before download.
+- Export DXF for laser engraving and cutting.
+- Export SVG as a secondary preview or compatibility format.
+
+### V1 Non-Goals
+
+- No user accounts.
+- No permanent cloud storage.
+- No payment system.
+- No multi-file batch conversion.
+- No advanced 3D editor.
+- No guaranteed support for arbitrary organic curved meshes.
+- No automatic repair of severely broken OBJ geometry.
+
+### V1 Webapp Screens
+
+1. Upload Screen
+   - File picker for `.obj`.
+   - File size limit notice.
+   - Basic project name field.
+
+2. Parameter Screen
+   - Material thickness input.
+   - Kerf width input.
+   - Kerf mode selector: `none`, `stroke`, `offset`.
+   - Snapping tolerance input.
+   - Joinery toggle.
+   - Tab width and slot clearance inputs.
+   - Output format selector, defaulting to DXF.
+
+3. Preview Screen
+   - 2D layer preview.
+   - Distinct colors for cut, score, engrave, numbering, and joinery layers.
+   - Overall width and height in millimeters.
+   - Warning list for open paths, duplicate paths, or unsupported geometry.
+
+4. Download Screen
+   - Download DXF.
+   - Download SVG when enabled.
+   - Show conversion summary and warnings.
+
+### V1 Backend Requirements
+
+- Parse OBJ without executing or trusting file content.
+- Reject files above the configured size limit.
+- Run conversion with a timeout.
+- Keep uploaded and generated files temporary.
+- Produce deterministic output for the same OBJ and same parameters.
+- Separate generated output into named layers:
+  - `CUT`
+  - `SCORE`
+  - `ENGRAVE`
+  - `NUMBERING`
+  - `JOINERY`
+- Return structured warnings instead of silently dropping ambiguous geometry.
+
+### V1 Security Requirements
+
+- Accept only `.obj` uploads in V1.
+- Rate-limit public conversion requests.
+- Do not expose uploaded files through public directory listing.
+- Delete temporary files after the job expires.
+- Do not store original files permanently unless a later version adds explicit user accounts and consent.
+- Limit CPU time, memory use, file size, and output path count.
+
+### V1 Acceptance Criteria
+
+- A valid OBJ can be uploaded and converted into DXF.
+- DXF opens in common laser or CAD software.
+- Output units are millimeters.
+- Part numbers appear on the `NUMBERING` or `ENGRAVE` layer and are not cut paths.
+- Kerf stroke mode exports stroke width equal to `kerfWidthMm`.
+- Snapping removes exact duplicate paths without deleting ambiguous partial overlaps.
+- Joinery output creates matching tabs and slots when enabled.
+- The preview shows layer colors and final dimensions before download.
+- Invalid or unsupported OBJ files produce clear warnings or errors.
+
+## V1 Public Webapp 規格需求
+
+V1 是第一版公開網頁應用程式，目標是保持範圍小、可測試、可交付：讓使用者上傳一個 OBJ 檔，設定雷射加工參數，並輸出可用於雷射雕刻與切割的 2D 檔案。
+
+### V1 範圍
+
+- 上傳單一 `.obj` 檔案。
+- 轉換前檢查檔案格式與檔案大小。
+- 可設定核心雷射參數：
+  - `materialThicknessMm`
+  - `kerfWidthMm`
+  - `kerfMode`
+  - `snappingToleranceMm`
+  - `generateJoinery`
+  - `tabWidthMm`
+  - `slotClearanceMm`
+  - `outputFormat`
+- 將 OBJ 幾何轉換成 2D 雷射路徑。
+- 自動產生零件編號，並放在雕刻圖層。
+- 啟用 `generateJoinery` 時，自動產生卡榫與插槽。
+- 下載前提供 2D 預覽。
+- 主要輸出 DXF，供雷射雕刻與切割使用。
+- SVG 作為輔助預覽或相容格式。
+
+### V1 不做的項目
+
+- 不做使用者帳號。
+- 不做永久雲端儲存。
+- 不做付款系統。
+- 不做多檔批次轉換。
+- 不做進階 3D 編輯器。
+- 不保證支援任意有機曲面模型。
+- 不自動修復嚴重破損的 OBJ 幾何。
+
+### V1 網頁畫面
+
+1. 上傳畫面
+   - `.obj` 檔案選擇器。
+   - 顯示檔案大小限制。
+   - 簡單的專案名稱欄位。
+
+2. 參數畫面
+   - 材料厚度輸入。
+   - 切縫寬度輸入。
+   - 切縫模式選擇：`none`、`stroke`、`offset`。
+   - Snapping 容許值輸入。
+   - 卡榫功能開關。
+   - 卡榫寬度與插槽間隙輸入。
+   - 輸出格式選擇，預設為 DXF。
+
+3. 預覽畫面
+   - 2D 圖層預覽。
+   - 切割、折線、雕刻、編號、卡榫圖層使用不同顏色。
+   - 顯示整體寬度與高度，單位為毫米。
+   - 顯示未閉合路徑、重複路徑或不支援幾何的警告。
+
+4. 下載畫面
+   - 下載 DXF。
+   - 啟用時可下載 SVG。
+   - 顯示轉換摘要與警告。
+
+### V1 後端需求
+
+- 解析 OBJ 時不可執行或信任檔案內容。
+- 超過大小限制的檔案必須拒絕。
+- 轉換任務必須有 timeout。
+- 上傳檔與產生檔應為暫存。
+- 相同 OBJ 與相同參數應產生一致輸出。
+- 輸出需分成固定圖層：
+  - `CUT`
+  - `SCORE`
+  - `ENGRAVE`
+  - `NUMBERING`
+  - `JOINERY`
+- 對於無法安全判斷的幾何，回傳結構化警告，不可靜默刪除。
+
+### V1 安全需求
+
+- V1 僅接受 `.obj` 上傳。
+- 公開轉換請求必須做 rate limit。
+- 不可透過公開目錄列出上傳檔案。
+- 任務過期後刪除暫存檔。
+- 除非未來版本加入帳號與明確同意，否則不永久保存原始檔。
+- 限制 CPU 時間、記憶體、檔案大小與輸出路徑數量。
+
+### V1 驗收標準
+
+- 有效 OBJ 可以上傳並轉換為 DXF。
+- DXF 可被常見雷射或 CAD 軟體開啟。
+- 輸出單位為毫米。
+- 零件編號出現在 `NUMBERING` 或 `ENGRAVE` 圖層，且不是切割路徑。
+- `kerfMode: stroke` 時，輸出線寬等於 `kerfWidthMm`。
+- Snapping 可移除完全重複路徑，但不會誤刪模糊的部分重疊路徑。
+- 啟用卡榫時，會產生尺寸匹配的卡榫與插槽。
+- 下載前預覽會顯示圖層顏色與最終尺寸。
+- 無效或不支援的 OBJ 會產生清楚的警告或錯誤。
