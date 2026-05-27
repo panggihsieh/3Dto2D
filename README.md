@@ -2,6 +2,14 @@
 
 This project converts 3D OBJ geometry into 2D laser engraving or cutting files.
 
+## Current Version
+
+- Version: `v1.0.0-alpha`
+- Stage: V1 work in progress
+- Recorded: 2026-05-27
+
+See `VERSION.md` for the version record.
+
 ## Webapp
 
 The V1 static webapp is available in `index.html`.
