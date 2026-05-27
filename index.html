@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OBJ to Laser DXF</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="controls" aria-label="Conversion controls">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">V1 Webapp</p>
+            <h1>OBJ to Laser DXF</h1>
+          </div>
+          <span class="status-pill" id="statusPill">Ready</span>
+        </header>
+
+        <section class="panel upload-panel" aria-labelledby="uploadTitle">
+          <div class="section-head">
+            <h2 id="uploadTitle">上傳 OBJ</h2>
+            <span id="fileMeta">No file</span>
+          </div>
+          <label class="drop-zone" for="objFile" id="dropZone">
+            <input id="objFile" type="file" accept=".obj">
+            <span class="drop-icon" aria-hidden="true">+</span>
+            <span class="drop-title">選擇或拖放 OBJ 檔</span>
+            <span class="drop-note">V1 accepts one .obj file up to 20 MB</span>
+          </label>
+        </section>
+
+        <section class="panel" aria-labelledby="paramsTitle">
+          <div class="section-head">
+            <h2 id="paramsTitle">雷射參數</h2>
+            <button class="icon-button" type="button" id="resetButton" title="Reset parameters" aria-label="Reset parameters">↺</button>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span>材料厚度 mm</span>
+              <input id="materialThickness" type="number" min="0.1" step="0.1" value="3.0">
+            </label>
+            <label>
+              <span>Kerf mm</span>
+              <input id="kerfWidth" type="number" min="0" step="0.01" value="0.15">
+            </label>
+            <label>
+              <span>Snapping mm</span>
+              <input id="snappingTolerance" type="number" min="0" step="0.001" value="0.01">
+            </label>
+            <label>
+              <span>卡榫寬度 mm</span>
+              <input id="tabWidth" type="number" min="1" step="0.5" value="10.0">
+            </label>
+            <label>
+              <span>插槽間隙 mm</span>
+              <input id="slotClearance" type="number" min="0" step="0.01" value="0.10">
+            </label>
+            <label>
+              <span>專案名稱</span>
+              <input id="projectName" type="text" value="laser_parts" maxlength="40">
+            </label>
+          </div>
+
+          <div class="control-row">
+            <span>Kerf Mode</span>
+            <div class="segmented" role="radiogroup" aria-label="Kerf mode">
+              <label><input type="radio" name="kerfMode" value="none"><span>None</span></label>
+              <label><input type="radio" name="kerfMode" value="stroke" checked><span>Stroke</span></label>
+              <label><input type="radio" name="kerfMode" value="offset"><span>Offset</span></label>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <label><input id="joineryToggle" type="checkbox" checked><span>自動卡榫</span></label>
+            <label><input id="numberingToggle" type="checkbox" checked><span>零件編號</span></label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="downloadsTitle">
+          <div class="section-head">
+            <h2 id="downloadsTitle">輸出</h2>
+            <span id="summaryText">Waiting for OBJ</span>
+          </div>
+          <div class="actions">
+            <button id="downloadDxf" type="button" disabled title="Download DXF" aria-label="Download DXF">DXF</button>
+            <button id="downloadSvg" type="button" disabled title="Download SVG" aria-label="Download SVG">SVG</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="2D output preview">
+        <div class="toolbar">
+          <div class="metric-strip">
+            <span><strong id="widthMetric">0</strong> mm W</span>
+            <span><strong id="heightMetric">0</strong> mm H</span>
+            <span><strong id="pathMetric">0</strong> paths</span>
+          </div>
+          <div class="legend" aria-label="Layer legend">
+            <span class="cut">CUT</span>
+            <span class="score">SCORE</span>
+            <span class="engrave">ENGRAVE</span>
+            <span class="joinery">JOINERY</span>
+          </div>
+        </div>
+
+        <div class="preview-frame">
+          <svg id="previewSvg" role="img" aria-label="Generated 2D laser preview"></svg>
+          <div class="empty-state" id="emptyState">
+            <h2>OBJ 轉 2D 雷射路徑</h2>
+            <p>上傳 OBJ 後會在這裡顯示 DXF/SVG 預覽、圖層與尺寸。</p>
+          </div>
+        </div>
+
+        <div class="warnings" aria-live="polite">
+          <h2>Warnings</h2>
+          <ul id="warningList">
+            <li>No warnings yet.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

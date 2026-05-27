@@ -2,6 +2,35 @@
 
 This project converts 3D OBJ geometry into 2D laser engraving or cutting files.
 
+## Webapp
+
+The V1 static webapp is available in `index.html`.
+
+Run a local static server from the project folder:
+
+```powershell
+node -e "const http=require('http'),fs=require('fs'),path=require('path');const root=process.cwd();const types={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.js':'text/javascript;charset=utf-8'};http.createServer((req,res)=>{let u=decodeURIComponent(req.url.split('?')[0]);if(u==='/' )u='/index.html';const f=path.join(root,u);if(!f.startsWith(root)){res.writeHead(403);return res.end('Forbidden')}fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('Not found')}else{res.writeHead(200,{'Content-Type':types[path.extname(f)]||'application/octet-stream'});res.end(d)}})}).listen(4173,'127.0.0.1',()=>console.log('http://127.0.0.1:4173/'))"
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4173/
+```
+
+V1 currently supports:
+
+- OBJ upload in the browser.
+- XY projection into 2D laser paths.
+- Snapping and duplicate edge removal.
+- Kerf mode parameters.
+- Basic tab and slot preview marks.
+- Part numbering on an engraving layer.
+- SVG preview.
+- DXF and SVG download.
+
+The current webapp is a frontend V1 prototype. Production-quality surface unfolding, polygon offsetting, and robust joinery generation should move into a backend geometry engine.
+
 ## Pipeline
 
 1. Import OBJ
