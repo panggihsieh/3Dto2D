@@ -42,7 +42,7 @@ function getParams() {
     slotClearanceMm: readNumber(els.slotClearance, 0.1),
     kerfMode: document.querySelector("input[name='kerfMode']:checked").value,
     generateJoinery: els.joineryToggle.checked,
-    numberParts: els.numberingToggle.checked,
+    numberParts: false,
     outputFormat: "dxf"
   };
 }
@@ -269,15 +269,7 @@ function createJoineryMarks(segments, params) {
 }
 
 function createLabels(segments) {
-  const bounds = getGeometryBounds(segments);
-  if (!bounds.width && !bounds.height) return [];
-  return [{
-    layer: "NUMBERING",
-    text: "P-001",
-    x: bounds.minX + bounds.width * 0.08,
-    y: bounds.minY + bounds.height * 0.12,
-    height: Math.max(3, Math.min(bounds.width, bounds.height) * 0.05)
-  }];
+  return [];
 }
 
 function render(result) {
@@ -481,7 +473,7 @@ function resetParams() {
   els.slotClearance.value = "0.10";
   document.querySelector("input[name='kerfMode'][value='stroke']").checked = true;
   els.joineryToggle.checked = true;
-  els.numberingToggle.checked = true;
+  els.numberingToggle.checked = false;
   runConversion();
 }
 
