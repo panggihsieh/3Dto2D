@@ -20,7 +20,6 @@ const els = {
   slotClearance: document.querySelector("#slotClearance"),
   projectName: document.querySelector("#projectName"),
   joineryToggle: document.querySelector("#joineryToggle"),
-  numberingToggle: document.querySelector("#numberingToggle"),
   resetButton: document.querySelector("#resetButton"),
   summaryText: document.querySelector("#summaryText"),
   downloadDxf: document.querySelector("#downloadDxf"),
@@ -42,7 +41,6 @@ function getParams() {
     slotClearanceMm: readNumber(els.slotClearance, 0.1),
     kerfMode: document.querySelector("input[name='kerfMode']:checked").value,
     generateJoinery: els.joineryToggle.checked,
-    numberParts: false,
     outputFormat: "dxf"
   };
 }
@@ -121,8 +119,7 @@ function convertObj(text, params) {
 
   const cutSegments = applyKerf(segments, params);
   const joinery = params.generateJoinery ? createJoineryMarks(cutSegments, params) : [];
-  const labels = params.numberParts ? createLabels(cutSegments) : [];
-  const allGeometry = [...cutSegments, ...joinery, ...labels];
+  const allGeometry = [...cutSegments, ...joinery];
   const bounds = getGeometryBounds(allGeometry);
 
   if (scale !== 1) {
@@ -136,7 +133,6 @@ function convertObj(text, params) {
   return {
     segments: cutSegments,
     joinery,
-    labels,
     bounds,
     warnings,
     params
@@ -268,10 +264,6 @@ function createJoineryMarks(segments, params) {
   return marks;
 }
 
-function createLabels(segments) {
-  return [];
-}
-
 function render(result) {
   clearSvg();
   const padding = 10;
@@ -290,8 +282,7 @@ function render(result) {
   const groups = {
     CUT: createSvgElement("g", { class: "svg-cut" }),
     SCORE: createSvgElement("g", { class: "svg-score" }),
-    JOINERY: createSvgElement("g", { class: "svg-joinery" }),
-    NUMBERING: createSvgElement("g", { class: "svg-engrave" })
+    JOINERY: createSvgElement("g", { class: "svg-joinery" })
   };
 
   for (const group of Object.values(groups)) {
@@ -308,17 +299,6 @@ function render(result) {
       "stroke-width": segment.strokeWidth || 0.35
     });
     groups[segment.layer]?.appendChild(line);
-  }
-
-  for (const label of result.labels) {
-    const text = createSvgElement("text", {
-      x: label.x,
-      y: -label.y,
-      "font-size": label.height,
-      "dominant-baseline": "middle"
-    });
-    text.textContent = label.text;
-    groups.NUMBERING.appendChild(text);
   }
 
   addSvgStyles();
@@ -385,17 +365,6 @@ function exportDxf(result) {
       "11", dxfNum(segment.b.x),
       "21", dxfNum(segment.b.y),
       "31", "0"
-    );
-  }
-  for (const label of result.labels) {
-    lines.push(
-      "0", "TEXT",
-      "8", label.layer,
-      "10", dxfNum(label.x),
-      "20", dxfNum(label.y),
-      "30", "0",
-      "40", dxfNum(label.height),
-      "1", label.text
     );
   }
   lines.push("0", "ENDSEC", "0", "EOF");
@@ -473,7 +442,6 @@ function resetParams() {
   els.slotClearance.value = "0.10";
   document.querySelector("input[name='kerfMode'][value='stroke']").checked = true;
   els.joineryToggle.checked = true;
-  els.numberingToggle.checked = false;
   runConversion();
 }
 
