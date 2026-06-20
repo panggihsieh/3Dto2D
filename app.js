@@ -184,15 +184,16 @@ function buildConePieces(params) {
 function buildHousePieces(params) {
   const roofSlopeLength = Math.hypot(params.width / 2, params.roofHeight);
   const floorEdges = params.generateJoinery ? "ffff" : "eeee";
-  const wallEdges = params.generateJoinery ? "Fefe" : "eeee";
+  const wallEdges = params.generateJoinery ? "FFFF" : "eeee";
+  const roofEdges = params.generateJoinery ? "ffff" : "eeee";
   return [
     rectPiece("floor", params.length, params.width, params, floorEdges),
     rectPiece("left_wall", params.length, params.wallHeight, params, wallEdges),
     rectPiece("right_wall", params.length, params.wallHeight, params, wallEdges),
     gablePiece("front_gable", params.width, params.wallHeight, params.roofHeight, params),
     gablePiece("back_gable", params.width, params.wallHeight, params.roofHeight, params),
-    rectPiece("roof_left", params.length, roofSlopeLength, params, "eeee"),
-    rectPiece("roof_right", params.length, roofSlopeLength, params, "eeee")
+    rectPiece("roof_left", params.length, roofSlopeLength, params, roofEdges),
+    rectPiece("roof_right", params.length, roofSlopeLength, params, roofEdges)
   ];
 }
 
@@ -252,19 +253,23 @@ function gablePiece(name, width, wallHeight, roofHeight, params) {
   const margin = params.generateJoinery ? params.tabDepth : 0;
   const x = margin;
   const y = margin;
+  const totalHeight = wallHeight + roofHeight;
   const points = [
-    { x, y },
-    { x: x + width, y },
-    { x: x + width, y: y + wallHeight },
-    { x: x + width / 2, y: y + wallHeight + roofHeight },
-    { x, y: y + wallHeight }
+    { x, y: y + totalHeight },
+    { x: x + width, y: y + totalHeight },
+    { x: x + width, y: y + roofHeight },
+    { x: x + width / 2, y },
+    { x, y: y + roofHeight }
   ];
+  const path = params.generateJoinery
+    ? fingerJointPolygonPath(points, "FFFFF", params)
+    : points;
   return {
     name,
     layer: "CUT",
-    paths: [points],
+    paths: [path],
     width: width + margin * 2,
-    height: wallHeight + roofHeight + margin * 2
+    height: totalHeight + margin * 2
   };
 }
 
@@ -285,6 +290,40 @@ function fingerJointRectPath(x, y, width, height, edges, params) {
   addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params);
   addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params);
   return points;
+}
+
+function fingerJointPolygonPath(vertices, edgeTypes, params) {
+  const points = [];
+  const area = signedPolygonArea(vertices);
+
+  for (let i = 0; i < vertices.length; i += 1) {
+    const start = vertices[i];
+    const end = vertices[(i + 1) % vertices.length];
+    const outward = edgeOutwardNormal(start, end, area);
+    addFingerEdge(points, start, end, outward, edgeTypes[i] || "e", params);
+  }
+
+  return points;
+}
+
+function signedPolygonArea(vertices) {
+  let area = 0;
+  for (let i = 0; i < vertices.length; i += 1) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % vertices.length];
+    area += a.x * b.y - b.x * a.y;
+  }
+  return area / 2;
+}
+
+function edgeOutwardNormal(start, end, polygonArea) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const normal = polygonArea >= 0
+    ? { x: dy / length, y: -dx / length }
+    : { x: -dy / length, y: dx / length };
+  return normal;
 }
 
 function addFingerEdge(points, start, end, outward, type, params) {
@@ -446,7 +485,7 @@ function addSvgStyles() {
   style.textContent = `
     .svg-cut path {
       fill: none;
-      stroke: #d42929;
+      stroke: #ff0000;
       stroke-linejoin: miter;
       stroke-linecap: square;
     }
