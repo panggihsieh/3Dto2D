@@ -41,6 +41,7 @@ const defaults = {
   cuboid: { length: 120, width: 80, height: 60, radius: 40, wallHeight: 50, roofHeight: 28 },
   cylinder: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 50, roofHeight: 28 },
   cone: { length: 120, width: 80, height: 90, radius: 35, wallHeight: 50, roofHeight: 28 },
+  flex_box_5: { length: 120, width: 80, height: 45, radius: 18, wallHeight: 50, roofHeight: 28 },
   gable_house: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 55, roofHeight: 35 }
 };
 
@@ -92,6 +93,10 @@ function buildResult(params) {
     pieces.push(...buildConePieces(params));
   }
 
+  if (params.modelType === "flex_box_5") {
+    pieces.push(...buildFlexBox5Pieces(params));
+  }
+
   if (params.modelType === "gable_house") {
     pieces.push(...buildHousePieces(params));
   }
@@ -114,7 +119,7 @@ function validateParams(params) {
     ["tab depth", params.tabDepth]
   ];
 
-  if (["cylinder", "cone"].includes(params.modelType)) {
+  if (["cylinder", "cone", "flex_box_5"].includes(params.modelType)) {
     positives.push(["radius", params.radius]);
   }
 
@@ -137,11 +142,17 @@ function modelWarnings(params) {
   const warnings = [];
   if (params.modelType === "cone") {
     warnings.push("圓錐側面以扇形近似輸出，弧線依 segments 分段。");
-    if (params.generateJoinery) warnings.push("圓錐目前不套用矩形 f/F 卡榫，需另做弧線插片邏輯。");
+    if (params.generateJoinery) warnings.push("圓錐使用扇形外弧放射卡榫，底圓使用圓周插槽。");
   }
   if (params.modelType === "cylinder") {
     warnings.push("圓柱側面寬度等於圓周長，上下圓以 segments 分段。");
-    if (params.generateJoinery) warnings.push("圓柱目前不套用矩形 f/F 卡榫，需另做圓周插片與插槽。");
+    if (params.generateJoinery) warnings.push("圓柱使用展開側板直線卡榫，頂/底圓使用圓周插槽。");
+  }
+  if (params.modelType === "flex_box_5") {
+    warnings.push("柔性盒子5為 Boxes.py FlexBox5-inspired 範例：圓角盒、活動鉸鏈切縫與簡化直線卡榫。");
+    if (params.radius > Math.min(params.length, params.width) / 2) {
+      warnings.push("圓角半徑已在輸出時限制為長寬的一半以內。");
+    }
   }
   if (params.modelType === "gable_house") {
     warnings.push("雙斜屋頂第一版採外蓋式屋頂與簡化卡榫定位。");
@@ -165,10 +176,11 @@ function buildBoxPieces(length, width, height, params) {
 
 function buildCylinderPieces(params) {
   const circumference = TAU * params.radius;
+  const sideEdges = params.generateJoinery ? "fefe" : "eeee";
   return [
-    rectPiece("side", circumference, params.height, params, "eeee"),
-    circlePiece("top", params.radius, params),
-    circlePiece("bottom", params.radius, params)
+    rectPiece("side", circumference, params.height, params, sideEdges),
+    circlePiece("top", params.radius, params, params.generateJoinery),
+    circlePiece("bottom", params.radius, params, params.generateJoinery)
   ];
 }
 
@@ -176,8 +188,22 @@ function buildConePieces(params) {
   const slantHeight = Math.hypot(params.radius, params.height);
   const angle = TAU * params.radius / slantHeight;
   return [
-    sectorPiece("cone_side", slantHeight, angle, params),
-    circlePiece("base", params.radius, params)
+    sectorPiece("cone_side", slantHeight, angle, params, params.generateJoinery),
+    circlePiece("base", params.radius, params, params.generateJoinery)
+  ];
+}
+
+function buildFlexBox5Pieces(params) {
+  const radius = Math.max(
+    params.materialThickness * 2,
+    Math.min(params.radius, params.length / 2, params.width / 2)
+  );
+  const perimeter = 2 * (params.length + params.width - 4 * radius) + TAU * radius;
+  return [
+    roundedRectPiece("top_rounded_panel", params.length, params.width, radius, params),
+    roundedRectPiece("bottom_rounded_panel", params.length, params.width, radius, params),
+    flexSidePiece("flex_living_hinge_side", perimeter, params.height, radius, params),
+    latchPiece("front_latch", params)
   ];
 }
 
@@ -212,7 +238,7 @@ function rectPiece(name, width, height, params, edges = "eeee") {
   };
 }
 
-function circlePiece(name, radius, params) {
+function circlePiece(name, radius, params, withSlots = false) {
   const points = [];
   for (let i = 0; i < params.segments; i += 1) {
     const angle = -Math.PI / 2 + (i / params.segments) * TAU;
@@ -221,31 +247,89 @@ function circlePiece(name, radius, params) {
       y: radius + Math.sin(angle) * radius
     });
   }
+  const slots = withSlots ? circularSlotPaths(radius, params) : [];
   return {
     name,
     layer: "CUT",
-    paths: [points],
+    paths: [points, ...slots],
     width: radius * 2,
     height: radius * 2
   };
 }
 
-function sectorPiece(name, radius, angle, params) {
-  const points = [{ x: radius, y: radius }];
+function roundedRectPiece(name, width, height, radius, params) {
+  const outline = roundedRectPath(0, 0, width, height, radius, params.segments);
+  const slots = params.generateJoinery
+    ? roundedPanelSlotPaths(width, height, radius, params)
+    : [];
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...slots],
+    width,
+    height
+  };
+}
+
+function sectorPiece(name, radius, angle, params, withTabs = false) {
+  const points = withTabs
+    ? sectorArcTabPath(radius, angle, params)
+    : [{ x: radius, y: radius }];
   const start = -Math.PI / 2 - angle / 2;
-  for (let i = 0; i <= params.segments; i += 1) {
-    const theta = start + (i / params.segments) * angle;
-    points.push({
-      x: radius + Math.cos(theta) * radius,
-      y: radius + Math.sin(theta) * radius
-    });
+  if (!withTabs) {
+    for (let i = 0; i <= params.segments; i += 1) {
+      const theta = start + (i / params.segments) * angle;
+      points.push({
+        x: radius + Math.cos(theta) * radius,
+        y: radius + Math.sin(theta) * radius
+      });
+    }
   }
+  const margin = withTabs ? params.tabDepth : 0;
   return {
     name,
     layer: "CUT",
     paths: [points],
-    width: radius * 2,
-    height: radius * 2
+    width: radius * 2 + margin * 2,
+    height: radius * 2 + margin * 2
+  };
+}
+
+function flexSidePiece(name, width, height, cornerRadius, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const outline = params.generateJoinery
+    ? fingerJointRectPath(margin, margin, width, height, "fefe", params)
+    : rectPath(0, 0, width, height);
+  const hingeSlots = livingHingeSlots(margin, margin, width, height, cornerRadius, params);
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...hingeSlots],
+    width: width + margin * 2,
+    height: height + margin * 2
+  };
+}
+
+function latchPiece(name, params) {
+  const width = Math.max(params.tabWidth * 2.5, params.materialThickness * 8);
+  const height = Math.max(params.materialThickness * 4, params.tabDepth * 3);
+  const notchWidth = Math.min(width * 0.36, params.tabWidth);
+  const points = [
+    { x: 0, y: height },
+    { x: 0, y: params.materialThickness },
+    { x: width / 2 - notchWidth / 2, y: params.materialThickness },
+    { x: width / 2 - notchWidth / 2, y: 0 },
+    { x: width / 2 + notchWidth / 2, y: 0 },
+    { x: width / 2 + notchWidth / 2, y: params.materialThickness },
+    { x: width, y: params.materialThickness },
+    { x: width, y: height }
+  ];
+  return {
+    name,
+    layer: "CUT",
+    paths: [points],
+    width,
+    height
   };
 }
 
@@ -280,6 +364,235 @@ function rectPath(x, y, width, height) {
     { x: x + width, y: y + height },
     { x, y: y + height }
   ];
+}
+
+function circularSlotPaths(radius, params) {
+  const runs = fingerRuns(TAU * radius, params, params.tabWidth + params.kerfWidth);
+  const slotLength = params.tabWidth + params.kerfWidth;
+  const slotDepth = params.tabDepth + params.kerfWidth;
+  return runs.map(run => {
+    const centerDistance = (run.start + run.end) / 2;
+    const theta = -Math.PI / 2 + (centerDistance / (TAU * radius)) * TAU;
+    return orientedSlotPath(radius, radius, radius - slotDepth / 2, theta, slotLength, slotDepth);
+  });
+}
+
+function orientedSlotPath(cx, cy, centerRadius, theta, tangentLength, radialDepth) {
+  const radial = { x: Math.cos(theta), y: Math.sin(theta) };
+  const tangent = { x: -Math.sin(theta), y: Math.cos(theta) };
+  const center = {
+    x: cx + radial.x * centerRadius,
+    y: cy + radial.y * centerRadius
+  };
+  const halfTangent = tangentLength / 2;
+  const halfRadial = radialDepth / 2;
+  return [
+    offset2(center, tangent, -halfTangent, radial, -halfRadial),
+    offset2(center, tangent, halfTangent, radial, -halfRadial),
+    offset2(center, tangent, halfTangent, radial, halfRadial),
+    offset2(center, tangent, -halfTangent, radial, halfRadial)
+  ];
+}
+
+function sectorArcTabPath(radius, angle, params) {
+  const margin = params.tabDepth;
+  const center = { x: radius + margin, y: radius + margin };
+  const startAngle = -Math.PI / 2 - angle / 2;
+  const arcLength = radius * angle;
+  const runs = fingerRuns(arcLength, params, params.tabWidth);
+  const points = [center];
+  let cursor = 0;
+
+  for (const run of runs) {
+    appendArc(points, center, radius, startAngle + cursor / radius, startAngle + run.start / radius, params);
+    appendArcTab(points, center, radius, startAngle + run.start / radius, startAngle + run.end / radius, params);
+    cursor = run.end;
+  }
+
+  appendArc(points, center, radius, startAngle + cursor / radius, startAngle + angle, params);
+  return points;
+}
+
+function appendArc(points, center, radius, startAngle, endAngle, params) {
+  const delta = endAngle - startAngle;
+  const steps = Math.max(1, Math.ceil(Math.abs(delta) / TAU * params.segments));
+  for (let i = 0; i <= steps; i += 1) {
+    const theta = startAngle + (i / steps) * delta;
+    pushPoint(points, {
+      x: center.x + Math.cos(theta) * radius,
+      y: center.y + Math.sin(theta) * radius
+    });
+  }
+}
+
+function appendArcTab(points, center, radius, startAngle, endAngle, params) {
+  const outerRadius = radius + params.tabDepth;
+  const steps = Math.max(1, Math.ceil(Math.abs(endAngle - startAngle) / TAU * params.segments));
+  const startInner = polarPoint(center, radius, startAngle);
+  const startOuter = polarPoint(center, outerRadius, startAngle);
+  const endOuter = polarPoint(center, outerRadius, endAngle);
+  const endInner = polarPoint(center, radius, endAngle);
+
+  pushPoint(points, startInner);
+  pushPoint(points, startOuter);
+  for (let i = 1; i < steps; i += 1) {
+    const theta = startAngle + (i / steps) * (endAngle - startAngle);
+    pushPoint(points, polarPoint(center, outerRadius, theta));
+  }
+  pushPoint(points, endOuter);
+  pushPoint(points, endInner);
+}
+
+function polarPoint(center, radius, theta) {
+  return {
+    x: center.x + Math.cos(theta) * radius,
+    y: center.y + Math.sin(theta) * radius
+  };
+}
+
+function offset2(center, axisA, distanceA, axisB, distanceB) {
+  return {
+    x: center.x + axisA.x * distanceA + axisB.x * distanceB,
+    y: center.y + axisA.y * distanceA + axisB.y * distanceB
+  };
+}
+
+function fingerRuns(length, params, fingerWidth) {
+  const count = calcFingerCount(length, params);
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const inset = Math.max(params.materialThickness, (length - occupied) / 2);
+  const runs = [];
+  for (let i = 0; i < count; i += 1) {
+    const start = inset + i * (params.tabWidth + params.tabSpacing);
+    const end = Math.min(start + fingerWidth, length - params.materialThickness);
+    if (end > start && start < length) runs.push({ start, end });
+  }
+  return runs;
+}
+
+function roundedRectPath(x, y, width, height, radius, segments) {
+  const r = Math.min(radius, width / 2, height / 2);
+  const cornerSteps = Math.max(4, Math.ceil(segments / 12));
+  const points = [];
+  addArcPoints(points, x + width - r, y + r, r, -Math.PI / 2, 0, cornerSteps);
+  addArcPoints(points, x + width - r, y + height - r, r, 0, Math.PI / 2, cornerSteps);
+  addArcPoints(points, x + r, y + height - r, r, Math.PI / 2, Math.PI, cornerSteps);
+  addArcPoints(points, x + r, y + r, r, Math.PI, Math.PI * 1.5, cornerSteps);
+  return points;
+}
+
+function addArcPoints(points, cx, cy, radius, start, end, steps) {
+  for (let i = 0; i <= steps; i += 1) {
+    if (points.length && i === 0) continue;
+    const theta = start + (i / steps) * (end - start);
+    points.push({
+      x: cx + Math.cos(theta) * radius,
+      y: cy + Math.sin(theta) * radius
+    });
+  }
+}
+
+function roundedPanelSlotPaths(width, height, radius, params) {
+  const slotLength = params.tabWidth + params.kerfWidth;
+  const slotDepth = params.materialThickness + params.kerfWidth;
+  const inset = params.materialThickness * 1.5;
+  const slots = [];
+  addStraightSlots(slots, radius, width - radius, inset, slotLength, slotDepth, "horizontal", params);
+  addStraightSlots(slots, radius, width - radius, height - inset, slotLength, slotDepth, "horizontal", params);
+  addStraightSlots(slots, radius, height - radius, inset, slotLength, slotDepth, "vertical", params);
+  addStraightSlots(slots, radius, height - radius, width - inset, slotLength, slotDepth, "vertical", params);
+  return slots;
+}
+
+function addStraightSlots(slots, start, end, fixed, slotLength, slotDepth, orientation, params) {
+  const usable = end - start;
+  const count = calcFingerCount(usable, params);
+  if (count <= 0) return;
+  const pitch = params.tabWidth + params.tabSpacing;
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const cursor = start + Math.max(params.materialThickness, (usable - occupied) / 2);
+
+  for (let i = 0; i < count; i += 1) {
+    const center = cursor + i * pitch + params.tabWidth / 2;
+    if (orientation === "horizontal") {
+      slots.push(rectPath(center - slotLength / 2, fixed - slotDepth / 2, slotLength, slotDepth));
+    } else {
+      slots.push(rectPath(fixed - slotDepth / 2, center - slotLength / 2, slotDepth, slotLength));
+    }
+  }
+}
+
+function livingHingeSlots(x, y, width, height, cornerRadius, params) {
+  const flexLength = Math.PI * cornerRadius;
+  const straightLength = Math.max(0, (width - flexLength * 2) / 2);
+  const zones = [
+    { start: straightLength, length: flexLength },
+    { start: straightLength * 2 + flexLength, length: flexLength }
+  ];
+
+  const slots = [];
+  for (const zone of zones) {
+    slots.push(...flexCutPatternPaths(x + zone.start, y, zone.length, height, params));
+  }
+  return slots;
+}
+
+function flexCutPatternPaths(x, y, length, height, params) {
+  const distance = Math.max(0.01, params.materialThickness * 0.5);
+  const connection = Math.max(0.01, params.materialThickness);
+  const patternWidth = Math.max(0.1, params.materialThickness * 5);
+  const lines = Math.floor(length / distance);
+  const leftover = length - lines * distance;
+  const sections = Math.max(Math.floor((height - connection) / patternWidth), 1);
+  const sectionHeight = ((height - connection) / sections) - connection;
+  const paths = [];
+
+  for (let i = 1; i < lines; i += 1) {
+    const px = x + i * distance + leftover / 2;
+    if (i % 2) {
+      addFlexCutSegment(paths, px, y, y + connection + sectionHeight);
+      for (let j = 0; j < Math.floor((sections - 1) / 2); j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + (2 * j + 1) * sectionHeight + (2 * j + 2) * connection,
+          y + (2 * j + 3) * (sectionHeight + connection)
+        );
+      }
+      if (sections % 2 === 0) {
+        addFlexCutSegment(paths, px, y + height - sectionHeight - connection, y + height);
+      }
+    } else if (sections % 2) {
+      addFlexCutSegment(paths, px, y + height, y + height - connection - sectionHeight);
+      for (let j = 0; j < Math.floor((sections - 1) / 2); j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + height - ((2 * j + 1) * sectionHeight + (2 * j + 2) * connection),
+          y + height - (2 * j + 3) * (sectionHeight + connection)
+        );
+      }
+    } else {
+      for (let j = 0; j < sections / 2; j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + height - connection - 2 * j * (sectionHeight + connection),
+          y + height - 2 * (j + 1) * (sectionHeight + connection)
+        );
+      }
+    }
+  }
+
+  return paths;
+}
+
+function addFlexCutSegment(paths, x, y1, y2) {
+  if (Math.abs(y2 - y1) < 0.0001) return;
+  paths.push([
+    { x, y: y1 },
+    { x, y: y2 }
+  ]);
 }
 
 function fingerJointRectPath(x, y, width, height, edges, params) {
@@ -555,7 +868,7 @@ function download(name, content, type) {
 
 function updateFieldVisibility() {
   const type = els.modelType.value;
-  const circular = ["cylinder", "cone"].includes(type);
+  const circular = ["cylinder", "cone", "flex_box_5"].includes(type);
   const house = type === "gable_house";
   els.circularFields.forEach(field => field.hidden = !circular);
   els.houseFields.forEach(field => field.hidden = !house);
@@ -596,6 +909,7 @@ function modelLabel(type) {
     cuboid: "長方體",
     cylinder: "圓柱體",
     cone: "圓錐體",
+    flex_box_5: "柔性盒子5",
     gable_house: "雙斜屋頂房子"
   };
   return labels[type] || type;
