@@ -1,6 +1,19 @@
-# OBJ to 2D Laser Workflow
+# 3D to 2D Laser SVG Workflow
 
-This project converts 3D OBJ geometry into 2D laser engraving or cutting files.
+This project generates 2D laser cutting layouts from supported 3D parametric geometry.
+
+The current webapp supports:
+
+- Cubes
+- Cuboids
+- Cylinders
+- Cones
+- Simple gable-roof houses
+- Adjustable 3mm material thickness defaults
+- Adjustable tab width, tab depth, tab spacing, kerf, part spacing, and arc segments
+- SVG and DXF export
+
+STL import and geometry classification are planned in `PLAN.md`. Arbitrary organic STL mesh unfolding is intentionally out of scope for the first version.
 
 ## Current Version
 
@@ -12,7 +25,7 @@ See `VERSION.md` for the version record.
 
 ## Webapp
 
-The V1 static webapp is available in `index.html`.
+The static webapp is available in `index.html`.
 
 Run a local static server from the project folder:
 

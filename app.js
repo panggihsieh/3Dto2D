@@ -1,23 +1,25 @@
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const NS = "http://www.w3.org/2000/svg";
+const TAU = Math.PI * 2;
 
 const state = {
-  fileName: "",
-  rawObj: "",
-  result: null,
-  warnings: []
+  result: null
 };
 
 const els = {
-  objFile: document.querySelector("#objFile"),
-  dropZone: document.querySelector("#dropZone"),
-  fileMeta: document.querySelector("#fileMeta"),
-  statusPill: document.querySelector("#statusPill"),
+  modelType: document.querySelector("#modelType"),
+  length: document.querySelector("#length"),
+  width: document.querySelector("#width"),
+  height: document.querySelector("#height"),
+  radius: document.querySelector("#radius"),
+  wallHeight: document.querySelector("#wallHeight"),
+  roofHeight: document.querySelector("#roofHeight"),
   materialThickness: document.querySelector("#materialThickness"),
   kerfWidth: document.querySelector("#kerfWidth"),
-  snappingTolerance: document.querySelector("#snappingTolerance"),
   tabWidth: document.querySelector("#tabWidth"),
-  slotClearance: document.querySelector("#slotClearance"),
+  tabDepth: document.querySelector("#tabDepth"),
+  tabSpacing: document.querySelector("#tabSpacing"),
+  partGap: document.querySelector("#partGap"),
+  segments: document.querySelector("#segments"),
   projectName: document.querySelector("#projectName"),
   joineryToggle: document.querySelector("#joineryToggle"),
   resetButton: document.querySelector("#resetButton"),
@@ -25,291 +27,404 @@ const els = {
   downloadDxf: document.querySelector("#downloadDxf"),
   downloadSvg: document.querySelector("#downloadSvg"),
   previewSvg: document.querySelector("#previewSvg"),
-  emptyState: document.querySelector("#emptyState"),
   widthMetric: document.querySelector("#widthMetric"),
   heightMetric: document.querySelector("#heightMetric"),
   pathMetric: document.querySelector("#pathMetric"),
-  warningList: document.querySelector("#warningList")
+  warningList: document.querySelector("#warningList"),
+  statusPill: document.querySelector("#statusPill"),
+  circularFields: document.querySelectorAll("[data-field='circular']"),
+  houseFields: document.querySelectorAll("[data-field='house']")
 };
 
-function getParams() {
-  return {
-    materialThicknessMm: readNumber(els.materialThickness, 3),
-    kerfWidthMm: readNumber(els.kerfWidth, 0.15),
-    snappingToleranceMm: readNumber(els.snappingTolerance, 0.01),
-    tabWidthMm: readNumber(els.tabWidth, 10),
-    slotClearanceMm: readNumber(els.slotClearance, 0.1),
-    kerfMode: document.querySelector("input[name='kerfMode']:checked").value,
-    generateJoinery: els.joineryToggle.checked,
-    outputFormat: "dxf"
-  };
-}
+const defaults = {
+  cube: { length: 60, width: 60, height: 60, radius: 30, wallHeight: 50, roofHeight: 28 },
+  cuboid: { length: 120, width: 80, height: 60, radius: 40, wallHeight: 50, roofHeight: 28 },
+  cylinder: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 50, roofHeight: 28 },
+  cone: { length: 120, width: 80, height: 90, radius: 35, wallHeight: 50, roofHeight: 28 },
+  gable_house: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 55, roofHeight: 35 }
+};
 
 function readNumber(input, fallback) {
   const value = Number(input.value);
   return Number.isFinite(value) ? value : fallback;
 }
 
-function parseObj(text) {
-  const vertices = [];
-  const faces = [];
+function getParams() {
+  const materialThickness = readNumber(els.materialThickness, 3);
+  const tabDepthValue = readNumber(els.tabDepth, materialThickness);
+  return {
+    modelType: els.modelType.value,
+    length: readNumber(els.length, 120),
+    width: readNumber(els.width, 80),
+    height: readNumber(els.height, 60),
+    radius: readNumber(els.radius, 35),
+    wallHeight: readNumber(els.wallHeight, 55),
+    roofHeight: readNumber(els.roofHeight, 35),
+    materialThickness,
+    kerfWidth: readNumber(els.kerfWidth, 0.15),
+    tabWidth: readNumber(els.tabWidth, 10),
+    tabDepth: tabDepthValue > 0 ? tabDepthValue : materialThickness,
+    tabSpacing: readNumber(els.tabSpacing, 8),
+    partGap: readNumber(els.partGap, 8),
+    segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
+    generateJoinery: els.joineryToggle.checked
+  };
+}
+
+function buildResult(params) {
+  const warnings = validateParams(params);
+  const pieces = [];
+
+  if (params.modelType === "cube") {
+    const side = params.length;
+    pieces.push(...buildBoxPieces(side, side, side, params));
+  }
+
+  if (params.modelType === "cuboid") {
+    pieces.push(...buildBoxPieces(params.length, params.width, params.height, params));
+  }
+
+  if (params.modelType === "cylinder") {
+    pieces.push(...buildCylinderPieces(params));
+  }
+
+  if (params.modelType === "cone") {
+    pieces.push(...buildConePieces(params));
+  }
+
+  if (params.modelType === "gable_house") {
+    pieces.push(...buildHousePieces(params));
+  }
+
+  const laidOut = layoutPieces(pieces, params.partGap);
+  const bounds = getBoundsFromPieces(laidOut);
+  warnings.push(...modelWarnings(params));
+
+  return { pieces: laidOut, bounds, warnings, params };
+}
+
+function validateParams(params) {
   const warnings = [];
-  const lines = text.split(/\r?\n/);
+  const positives = [
+    ["length", params.length],
+    ["width", params.width],
+    ["height", params.height],
+    ["material thickness", params.materialThickness],
+    ["tab width", params.tabWidth],
+    ["tab depth", params.tabDepth]
+  ];
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i].trim();
-    if (!line || line.startsWith("#")) continue;
-    const parts = line.split(/\s+/);
-
-    if (parts[0] === "v") {
-      const x = Number(parts[1]);
-      const y = Number(parts[2]);
-      const z = Number(parts[3] || 0);
-      if ([x, y, z].every(Number.isFinite)) {
-        vertices.push({ x, y, z });
-      } else {
-        warnings.push(`Line ${i + 1}: invalid vertex skipped.`);
-      }
-    }
-
-    if (parts[0] === "f") {
-      const face = parts.slice(1).map(token => {
-        const value = Number(token.split("/")[0]);
-        return value < 0 ? vertices.length + value : value - 1;
-      });
-      if (face.length >= 3 && face.every(index => index >= 0 && index < vertices.length)) {
-        faces.push(face);
-      } else {
-        warnings.push(`Line ${i + 1}: invalid face skipped.`);
-      }
-    }
+  if (["cylinder", "cone"].includes(params.modelType)) {
+    positives.push(["radius", params.radius]);
   }
 
-  if (!vertices.length) warnings.push("No OBJ vertices found.");
-  if (!faces.length) warnings.push("No OBJ faces found; preview will use vertex bounds only.");
-
-  return { vertices, faces, warnings };
-}
-
-function convertObj(text, params) {
-  const parsed = parseObj(text);
-  const warnings = [...parsed.warnings];
-  const scale = inferUnitScale(parsed.vertices);
-  const points = parsed.vertices.map(v => ({ x: v.x * scale, y: v.y * scale }));
-  const segments = [];
-  const seen = new Set();
-
-  for (const face of parsed.faces) {
-    for (let i = 0; i < face.length; i += 1) {
-      const a = snapPoint(points[face[i]], params.snappingToleranceMm);
-      const b = snapPoint(points[face[(i + 1) % face.length]], params.snappingToleranceMm);
-      const key = segmentKey(a, b);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (distance(a, b) > params.snappingToleranceMm) {
-        segments.push({ layer: "CUT", a, b });
-      }
-    }
+  if (params.modelType === "gable_house") {
+    positives.push(["wall height", params.wallHeight], ["roof height", params.roofHeight]);
   }
 
-  if (!segments.length && points.length > 1) {
-    warnings.push("No faces available; using vertex bounding box as fallback preview.");
-    segments.push(...boundsToSegments(getBounds(points)));
+  for (const [label, value] of positives) {
+    if (!(value > 0)) warnings.push(`${label} must be greater than 0.`);
   }
 
-  const cutSegments = applyKerf(segments, params);
-  const joinery = params.generateJoinery ? createJoineryMarks(cutSegments, params) : [];
-  const allGeometry = [...cutSegments, ...joinery];
-  const bounds = getGeometryBounds(allGeometry);
-
-  if (scale !== 1) {
-    warnings.push("OBJ appears unitless and small; coordinates were treated as centimeters and converted to millimeters.");
+  if (params.tabDepth < params.materialThickness) {
+    warnings.push("卡榫深度小於材料厚度，實際組裝可能偏鬆。");
   }
 
-  if (params.kerfMode === "offset") {
-    warnings.push("Kerf offset in this V1 prototype applies a simple center-based preview offset; production offset should use robust polygon geometry.");
+  return warnings;
+}
+
+function modelWarnings(params) {
+  const warnings = [];
+  if (params.modelType === "cone") {
+    warnings.push("圓錐側面以扇形近似輸出，弧線依 segments 分段。");
+    if (params.generateJoinery) warnings.push("圓錐目前不套用矩形 f/F 卡榫，需另做弧線插片邏輯。");
   }
-
-  return {
-    segments: cutSegments,
-    joinery,
-    bounds,
-    warnings,
-    params
-  };
-}
-
-function inferUnitScale(vertices) {
-  const bounds = getBounds(vertices.map(v => ({ x: v.x, y: v.y })));
-  const size = Math.max(bounds.width, bounds.height);
-  return size > 0 && size < 10 ? 10 : 1;
-}
-
-function snapPoint(point, tolerance) {
-  if (!tolerance) return { x: point.x, y: point.y };
-  return {
-    x: Math.round(point.x / tolerance) * tolerance,
-    y: Math.round(point.y / tolerance) * tolerance
-  };
-}
-
-function segmentKey(a, b) {
-  const first = `${roundKey(a.x)},${roundKey(a.y)}`;
-  const second = `${roundKey(b.x)},${roundKey(b.y)}`;
-  return first < second ? `${first}|${second}` : `${second}|${first}`;
-}
-
-function roundKey(value) {
-  return Number(value).toFixed(4);
-}
-
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function getBounds(points) {
-  if (!points.length) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
-  const xs = points.map(p => p.x);
-  const ys = points.map(p => p.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
-}
-
-function getGeometryBounds(items) {
-  const points = [];
-  for (const item of items) {
-    if (item.a) points.push(item.a, item.b);
-    if (item.x !== undefined) points.push({ x: item.x, y: item.y });
+  if (params.modelType === "cylinder") {
+    warnings.push("圓柱側面寬度等於圓周長，上下圓以 segments 分段。");
+    if (params.generateJoinery) warnings.push("圓柱目前不套用矩形 f/F 卡榫，需另做圓周插片與插槽。");
   }
-  return getBounds(points);
+  if (params.modelType === "gable_house") {
+    warnings.push("雙斜屋頂第一版採外蓋式屋頂與簡化卡榫定位。");
+  }
+  return warnings;
 }
 
-function boundsToSegments(bounds) {
-  const a = { x: bounds.minX, y: bounds.minY };
-  const b = { x: bounds.maxX, y: bounds.minY };
-  const c = { x: bounds.maxX, y: bounds.maxY };
-  const d = { x: bounds.minX, y: bounds.maxY };
+function buildBoxPieces(length, width, height, params) {
+  const topEdges = params.generateJoinery ? "ffff" : "eeee";
+  const longWallEdges = params.generateJoinery ? "FFFF" : "eeee";
+  const shortWallEdges = params.generateJoinery ? "FfFf" : "eeee";
   return [
-    { layer: "CUT", a, b },
-    { layer: "CUT", a: b, b: c },
-    { layer: "CUT", a: c, b: d },
-    { layer: "CUT", a: d, b: a }
+    rectPiece("top", length, width, params, topEdges),
+    rectPiece("bottom", length, width, params, topEdges),
+    rectPiece("front", length, height, params, longWallEdges),
+    rectPiece("back", length, height, params, longWallEdges),
+    rectPiece("left", width, height, params, shortWallEdges),
+    rectPiece("right", width, height, params, shortWallEdges)
   ];
 }
 
-function applyKerf(segments, params) {
-  if (params.kerfMode !== "offset" || params.kerfWidthMm <= 0) {
-    return segments.map(segment => ({
-      ...segment,
-      strokeWidth: params.kerfMode === "stroke" ? params.kerfWidthMm : 0.1
-    }));
-  }
-
-  const bounds = getGeometryBounds(segments);
-  const cx = bounds.minX + bounds.width / 2;
-  const cy = bounds.minY + bounds.height / 2;
-  const offset = params.kerfWidthMm / 2;
-  return segments.map(segment => ({
-    ...segment,
-    a: offsetPoint(segment.a, cx, cy, offset),
-    b: offsetPoint(segment.b, cx, cy, offset),
-    strokeWidth: 0.1
-  }));
+function buildCylinderPieces(params) {
+  const circumference = TAU * params.radius;
+  return [
+    rectPiece("side", circumference, params.height, params, "eeee"),
+    circlePiece("top", params.radius, params),
+    circlePiece("bottom", params.radius, params)
+  ];
 }
 
-function offsetPoint(point, cx, cy, offset) {
-  const dx = point.x - cx;
-  const dy = point.y - cy;
-  const length = Math.hypot(dx, dy) || 1;
+function buildConePieces(params) {
+  const slantHeight = Math.hypot(params.radius, params.height);
+  const angle = TAU * params.radius / slantHeight;
+  return [
+    sectorPiece("cone_side", slantHeight, angle, params),
+    circlePiece("base", params.radius, params)
+  ];
+}
+
+function buildHousePieces(params) {
+  const roofSlopeLength = Math.hypot(params.width / 2, params.roofHeight);
+  const floorEdges = params.generateJoinery ? "ffff" : "eeee";
+  const wallEdges = params.generateJoinery ? "Fefe" : "eeee";
+  return [
+    rectPiece("floor", params.length, params.width, params, floorEdges),
+    rectPiece("left_wall", params.length, params.wallHeight, params, wallEdges),
+    rectPiece("right_wall", params.length, params.wallHeight, params, wallEdges),
+    gablePiece("front_gable", params.width, params.wallHeight, params.roofHeight, params),
+    gablePiece("back_gable", params.width, params.wallHeight, params.roofHeight, params),
+    rectPiece("roof_left", params.length, roofSlopeLength, params, "eeee"),
+    rectPiece("roof_right", params.length, roofSlopeLength, params, "eeee")
+  ];
+}
+
+function rectPiece(name, width, height, params, edges = "eeee") {
+  const hasJoinery = /[fF]/.test(edges);
+  const margin = hasJoinery ? params.tabDepth : 0;
+  const path = hasJoinery
+    ? fingerJointRectPath(margin, margin, width, height, edges, params)
+    : rectPath(0, 0, width, height);
   return {
-    x: point.x + (dx / length) * offset,
-    y: point.y + (dy / length) * offset
+    name,
+    layer: "CUT",
+    paths: [path],
+    width: width + margin * 2,
+    height: height + margin * 2
   };
 }
 
-function createJoineryMarks(segments, params) {
-  const marks = [];
-  const sorted = [...segments].sort((one, two) => distance(two.a, two.b) - distance(one.a, one.b));
-  const candidates = sorted.slice(0, Math.min(12, sorted.length));
+function circlePiece(name, radius, params) {
+  const points = [];
+  for (let i = 0; i < params.segments; i += 1) {
+    const angle = -Math.PI / 2 + (i / params.segments) * TAU;
+    points.push({
+      x: radius + Math.cos(angle) * radius,
+      y: radius + Math.sin(angle) * radius
+    });
+  }
+  return {
+    name,
+    layer: "CUT",
+    paths: [points],
+    width: radius * 2,
+    height: radius * 2
+  };
+}
 
-  candidates.forEach((segment, index) => {
-    const length = distance(segment.a, segment.b);
-    if (length < params.tabWidthMm * 1.8) return;
-    const mid = {
-      x: (segment.a.x + segment.b.x) / 2,
-      y: (segment.a.y + segment.b.y) / 2
-    };
-    const dx = (segment.b.x - segment.a.x) / length;
-    const dy = (segment.b.y - segment.a.y) / length;
-    const half = params.tabWidthMm / 2;
-    const depth = params.materialThicknessMm + params.slotClearanceMm;
-    const normal = { x: -dy, y: dx };
-    const start = { x: mid.x - dx * half, y: mid.y - dy * half };
-    const end = { x: mid.x + dx * half, y: mid.y + dy * half };
-    const outerStart = { x: start.x + normal.x * depth, y: start.y + normal.y * depth };
-    const outerEnd = { x: end.x + normal.x * depth, y: end.y + normal.y * depth };
+function sectorPiece(name, radius, angle, params) {
+  const points = [{ x: radius, y: radius }];
+  const start = -Math.PI / 2 - angle / 2;
+  for (let i = 0; i <= params.segments; i += 1) {
+    const theta = start + (i / params.segments) * angle;
+    points.push({
+      x: radius + Math.cos(theta) * radius,
+      y: radius + Math.sin(theta) * radius
+    });
+  }
+  return {
+    name,
+    layer: "CUT",
+    paths: [points],
+    width: radius * 2,
+    height: radius * 2
+  };
+}
 
-    marks.push({ layer: "JOINERY", a: start, b: outerStart });
-    marks.push({ layer: "JOINERY", a: outerStart, b: outerEnd });
-    marks.push({ layer: "JOINERY", a: outerEnd, b: end });
+function gablePiece(name, width, wallHeight, roofHeight, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const x = margin;
+  const y = margin;
+  const points = [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + wallHeight },
+    { x: x + width / 2, y: y + wallHeight + roofHeight },
+    { x, y: y + wallHeight }
+  ];
+  return {
+    name,
+    layer: "CUT",
+    paths: [points],
+    width: width + margin * 2,
+    height: wallHeight + roofHeight + margin * 2
+  };
+}
 
-    if (index < 6) {
-      marks.push({ layer: "SCORE", a: start, b: end });
+function rectPath(x, y, width, height) {
+  return [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height }
+  ];
+}
+
+function fingerJointRectPath(x, y, width, height, edges, params) {
+  const points = [];
+  const [top = "e", right = "e", bottom = "e", left = "e"] = edges;
+  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params);
+  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params);
+  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params);
+  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params);
+  return points;
+}
+
+function addFingerEdge(points, start, end, outward, type, params) {
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const dx = (end.x - start.x) / length;
+  const dy = (end.y - start.y) / length;
+  const count = calcFingerCount(length, params);
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const inset = Math.max(params.materialThickness, (length - occupied) / 2);
+  const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
+  const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
+
+  pushPoint(points, start);
+
+  if (!direction || count <= 0) {
+    pushPoint(points, end);
+    return;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const tabStart = inset + i * (params.tabWidth + params.tabSpacing);
+    const tabEnd = Math.min(tabStart + fingerWidth, length - params.materialThickness);
+    if (tabEnd <= tabStart || tabStart >= length) continue;
+
+    const a = along(start, dx, dy, tabStart);
+    const b = along(start, dx, dy, tabEnd);
+    const ao = offsetBy(a, outward, params.tabDepth * direction);
+    const bo = offsetBy(b, outward, params.tabDepth * direction);
+    pushPoint(points, a);
+    pushPoint(points, ao);
+    pushPoint(points, bo);
+    pushPoint(points, b);
+  }
+
+  pushPoint(points, end);
+}
+
+function calcFingerCount(length, params) {
+  const pitch = params.tabWidth + params.tabSpacing;
+  if (pitch <= 0 || length < params.tabWidth + params.materialThickness * 2) return 0;
+  return Math.max(1, Math.floor((length - params.tabSpacing) / pitch));
+}
+
+function along(start, dx, dy, distanceMm) {
+  return {
+    x: start.x + dx * distanceMm,
+    y: start.y + dy * distanceMm
+  };
+}
+
+function offsetBy(point, direction, distanceMm) {
+  return {
+    x: point.x + direction.x * distanceMm,
+    y: point.y + direction.y * distanceMm
+  };
+}
+
+function pushPoint(points, point) {
+  const last = points[points.length - 1];
+  if (last && Math.abs(last.x - point.x) < 0.0001 && Math.abs(last.y - point.y) < 0.0001) return;
+  points.push(point);
+}
+
+function layoutPieces(pieces, gap) {
+  const laidOut = [];
+  const maxRowWidth = 520;
+  let cursorX = 0;
+  let cursorY = 0;
+  let rowHeight = 0;
+
+  for (const piece of pieces) {
+    if (cursorX > 0 && cursorX + piece.width > maxRowWidth) {
+      cursorX = 0;
+      cursorY += rowHeight + gap;
+      rowHeight = 0;
     }
-  });
 
-  return marks;
+    laidOut.push({
+      ...piece,
+      x: cursorX,
+      y: cursorY
+    });
+
+    cursorX += piece.width + gap;
+    rowHeight = Math.max(rowHeight, piece.height);
+  }
+
+  return laidOut;
+}
+
+function getBoundsFromPieces(pieces) {
+  if (!pieces.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+  const maxX = Math.max(...pieces.map(piece => piece.x + piece.width));
+  const maxY = Math.max(...pieces.map(piece => piece.y + piece.height));
+  return { minX: 0, minY: 0, maxX, maxY, width: maxX, height: maxY };
 }
 
 function render(result) {
   clearSvg();
-  const padding = 10;
-  const width = Math.max(result.bounds.width, 1);
-  const height = Math.max(result.bounds.height, 1);
-  const viewBox = [
-    result.bounds.minX - padding,
-    -result.bounds.maxY - padding,
-    width + padding * 2,
-    height + padding * 2
-  ];
-
-  els.previewSvg.setAttribute("viewBox", viewBox.join(" "));
+  const padding = 8;
+  els.previewSvg.setAttribute("viewBox", [
+    -padding,
+    -padding,
+    Math.max(result.bounds.width + padding * 2, 1),
+    Math.max(result.bounds.height + padding * 2, 1)
+  ].join(" "));
   els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-  const groups = {
-    CUT: createSvgElement("g", { class: "svg-cut" }),
-    SCORE: createSvgElement("g", { class: "svg-score" }),
-    JOINERY: createSvgElement("g", { class: "svg-joinery" })
-  };
-
-  for (const group of Object.values(groups)) {
-    els.previewSvg.appendChild(group);
-  }
-
-  for (const segment of [...result.segments, ...result.joinery]) {
-    const line = createSvgElement("line", {
-      x1: segment.a.x,
-      y1: -segment.a.y,
-      x2: segment.b.x,
-      y2: -segment.b.y,
-      "vector-effect": "non-scaling-stroke",
-      "stroke-width": segment.strokeWidth || 0.35
-    });
-    groups[segment.layer]?.appendChild(line);
-  }
-
   addSvgStyles();
-  els.emptyState.style.display = "none";
-  els.widthMetric.textContent = formatNumber(width);
-  els.heightMetric.textContent = formatNumber(height);
-  els.pathMetric.textContent = String(result.segments.length + result.joinery.length);
-  els.summaryText.textContent = `${result.segments.length} cut paths`;
+  const cutGroup = createSvgElement("g", { class: "svg-cut" });
+  els.previewSvg.appendChild(cutGroup);
+
+  for (const piece of result.pieces) {
+    for (const path of piece.paths) {
+      cutGroup.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y),
+        "vector-effect": "non-scaling-stroke",
+        "stroke-width": result.params.kerfWidth || 0.1
+      }));
+    }
+  }
+
+  els.widthMetric.textContent = formatNumber(result.bounds.width);
+  els.heightMetric.textContent = formatNumber(result.bounds.height);
+  els.pathMetric.textContent = String(result.pieces.length);
+  els.summaryText.textContent = `${modelLabel(result.params.modelType)} · ${result.pieces.length} parts`;
   els.downloadDxf.disabled = false;
   els.downloadSvg.disabled = false;
   renderWarnings(result.warnings);
+}
+
+function pathToD(points, offsetX = 0, offsetY = 0) {
+  if (!points.length) return "";
+  const [first, ...rest] = points;
+  const commands = [`M ${svgNum(first.x + offsetX)} ${svgNum(first.y + offsetY)}`];
+  for (const point of rest) {
+    commands.push(`L ${svgNum(point.x + offsetX)} ${svgNum(point.y + offsetY)}`);
+  }
+  commands.push("Z");
+  return commands.join(" ");
 }
 
 function createSvgElement(name, attributes) {
@@ -329,12 +444,14 @@ function clearSvg() {
 function addSvgStyles() {
   const style = createSvgElement("style", {});
   style.textContent = `
-    .svg-cut line { stroke: #d42929; }
-    .svg-score line { stroke: #2468d8; stroke-dasharray: 3 2; }
-    .svg-joinery line { stroke: #16855e; }
-    .svg-engrave text { fill: #2f343a; font-family: Arial, sans-serif; }
+    .svg-cut path {
+      fill: none;
+      stroke: #d42929;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+    }
   `;
-  els.previewSvg.insertBefore(style, els.previewSvg.firstChild);
+  els.previewSvg.appendChild(style);
 }
 
 function renderWarnings(warnings) {
@@ -350,33 +467,39 @@ function renderWarnings(warnings) {
 function exportSvg(result) {
   const clone = els.previewSvg.cloneNode(true);
   clone.setAttribute("xmlns", NS);
+  clone.setAttribute("width", `${svgNum(result.bounds.width)}mm`);
+  clone.setAttribute("height", `${svgNum(result.bounds.height)}mm`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n${clone.outerHTML}\n`;
 }
 
 function exportDxf(result) {
   const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
-  for (const segment of [...result.segments, ...result.joinery]) {
-    lines.push(
-      "0", "LINE",
-      "8", segment.layer,
-      "10", dxfNum(segment.a.x),
-      "20", dxfNum(segment.a.y),
-      "30", "0",
-      "11", dxfNum(segment.b.x),
-      "21", dxfNum(segment.b.y),
-      "31", "0"
-    );
+  for (const piece of result.pieces) {
+    for (const path of piece.paths) {
+      for (let i = 0; i < path.length; i += 1) {
+        const a = path[i];
+        const b = path[(i + 1) % path.length];
+        lines.push(
+          "0", "LINE",
+          "8", piece.layer,
+          "10", dxfNum(a.x + piece.x),
+          "20", dxfNum(-(a.y + piece.y)),
+          "30", "0",
+          "11", dxfNum(b.x + piece.x),
+          "21", dxfNum(-(b.y + piece.y)),
+          "31", "0"
+        );
+      }
+    }
   }
   lines.push("0", "ENDSEC", "0", "EOF");
   return `${lines.join("\n")}\n`;
 }
 
-function dxfNum(value) {
-  return Number(value).toFixed(4);
-}
-
-function formatNumber(value) {
-  return Number(value).toFixed(value >= 100 ? 0 : 1);
+function safeBaseName() {
+  return (els.projectName.value || "laser_parts")
+    .replace(/[^a-z0-9_-]+/gi, "_")
+    .replace(/^_+|_+$/g, "") || "laser_parts";
 }
 
 function download(name, content, type) {
@@ -391,71 +514,75 @@ function download(name, content, type) {
   URL.revokeObjectURL(url);
 }
 
-function safeBaseName() {
-  return (els.projectName.value || state.fileName || "laser_parts")
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^a-z0-9_-]+/gi, "_")
-    .replace(/^_+|_+$/g, "") || "laser_parts";
+function updateFieldVisibility() {
+  const type = els.modelType.value;
+  const circular = ["cylinder", "cone"].includes(type);
+  const house = type === "gable_house";
+  els.circularFields.forEach(field => field.hidden = !circular);
+  els.houseFields.forEach(field => field.hidden = !house);
+}
+
+function updateDefaultsForModel() {
+  const modelDefaults = defaults[els.modelType.value];
+  for (const [key, value] of Object.entries(modelDefaults)) {
+    if (els[key]) els[key].value = String(value);
+  }
+  updateFieldVisibility();
+  runConversion();
+}
+
+function resetParams() {
+  els.materialThickness.value = "3";
+  els.kerfWidth.value = "0.15";
+  els.tabWidth.value = "10";
+  els.tabDepth.value = "3";
+  els.tabSpacing.value = "8";
+  els.partGap.value = "8";
+  els.segments.value = "48";
+  els.joineryToggle.checked = true;
+  updateDefaultsForModel();
 }
 
 function runConversion() {
-  if (!state.rawObj) return;
-  els.statusPill.textContent = "Converting";
-  state.result = convertObj(state.rawObj, getParams());
+  els.statusPill.textContent = "Generating";
+  updateFieldVisibility();
+  state.result = buildResult(getParams());
   render(state.result);
   els.statusPill.textContent = "Ready";
 }
 
-async function handleFile(file) {
-  if (!file) return;
-  state.warnings = [];
-  if (!file.name.toLowerCase().endsWith(".obj")) {
-    setError("Only .obj files are accepted in V1.");
-    return;
-  }
-  if (file.size > MAX_FILE_BYTES) {
-    setError("File is larger than the V1 20 MB limit.");
-    return;
-  }
-  state.fileName = file.name;
-  state.rawObj = await file.text();
-  els.fileMeta.textContent = `${file.name} · ${formatBytes(file.size)}`;
-  els.projectName.value = file.name.replace(/\.[^.]+$/, "") || els.projectName.value;
-  runConversion();
+function modelLabel(type) {
+  const labels = {
+    cube: "正立方體",
+    cuboid: "長方體",
+    cylinder: "圓柱體",
+    cone: "圓錐體",
+    gable_house: "雙斜屋頂房子"
+  };
+  return labels[type] || type;
 }
 
-function setError(message) {
-  els.statusPill.textContent = "Error";
-  renderWarnings([message]);
+function formatNumber(value) {
+  return Number(value).toFixed(value >= 100 ? 0 : 1);
 }
 
-function formatBytes(bytes) {
-  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function svgNum(value) {
+  return Number(value).toFixed(3).replace(/\.?0+$/, "");
 }
 
-function resetParams() {
-  els.materialThickness.value = "3.0";
-  els.kerfWidth.value = "0.15";
-  els.snappingTolerance.value = "0.01";
-  els.tabWidth.value = "10.0";
-  els.slotClearance.value = "0.10";
-  document.querySelector("input[name='kerfMode'][value='stroke']").checked = true;
-  els.joineryToggle.checked = true;
-  runConversion();
+function dxfNum(value) {
+  return Number(value).toFixed(4);
 }
 
-els.objFile.addEventListener("change", event => handleFile(event.target.files[0]));
+els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
 
-for (const input of document.querySelectorAll("input")) {
-  if (input.type !== "file" && input.type !== "text") {
+for (const input of document.querySelectorAll("input, select")) {
+  if (input.id !== "modelType") {
     input.addEventListener("input", runConversion);
     input.addEventListener("change", runConversion);
   }
 }
-
-els.projectName.addEventListener("input", () => {});
 
 els.downloadDxf.addEventListener("click", () => {
   if (!state.result) return;
@@ -467,20 +594,5 @@ els.downloadSvg.addEventListener("click", () => {
   download(`${safeBaseName()}.svg`, exportSvg(state.result), "image/svg+xml");
 });
 
-for (const eventName of ["dragenter", "dragover"]) {
-  els.dropZone.addEventListener(eventName, event => {
-    event.preventDefault();
-    els.dropZone.classList.add("dragging");
-  });
-}
-
-for (const eventName of ["dragleave", "drop"]) {
-  els.dropZone.addEventListener(eventName, event => {
-    event.preventDefault();
-    els.dropZone.classList.remove("dragging");
-  });
-}
-
-els.dropZone.addEventListener("drop", event => {
-  handleFile(event.dataTransfer.files[0]);
-});
+updateFieldVisibility();
+runConversion();

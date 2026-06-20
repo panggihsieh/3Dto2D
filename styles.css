@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -109,54 +110,6 @@ h2 {
   padding: 14px;
 }
 
-.drop-zone {
-  margin-top: 12px;
-  min-height: 136px;
-  display: grid;
-  place-items: center;
-  gap: 6px;
-  border: 1px dashed #aeb8c3;
-  border-radius: 8px;
-  background: #f7fafc;
-  color: var(--muted);
-  cursor: pointer;
-  text-align: center;
-  padding: 18px;
-}
-
-.drop-zone.dragging {
-  border-color: var(--focus);
-  background: var(--soft);
-}
-
-.drop-zone input {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  opacity: 0;
-}
-
-.drop-icon {
-  inline-size: 36px;
-  block-size: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #ffffff;
-  background: var(--focus);
-  font-size: 1.4rem;
-  line-height: 1;
-}
-
-.drop-title {
-  color: var(--ink);
-  font-weight: 650;
-}
-
-.drop-note {
-  font-size: 0.82rem;
-}
-
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -173,7 +126,8 @@ label span,
 }
 
 input[type="number"],
-input[type="text"] {
+input[type="text"],
+select {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--line);
@@ -183,8 +137,33 @@ input[type="text"] {
   background: #ffffff;
 }
 
+select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%),
+    #ffffff;
+  background-position:
+    calc(100% - 16px) 16px,
+    calc(100% - 11px) 16px,
+    100% 0;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px, 2.5rem 100%;
+  padding-right: 42px;
+}
+
+.full-field {
+  display: block;
+  margin-top: 12px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
 input:focus-visible,
-button:focus-visible {
+button:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -344,11 +323,7 @@ button:disabled {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background:
-    linear-gradient(#eef1f4 1px, transparent 1px),
-    linear-gradient(90deg, #eef1f4 1px, transparent 1px),
-    #ffffff;
-  background-size: 24px 24px;
+  background: #ffffff;
 }
 
 #previewSvg {
@@ -356,23 +331,6 @@ button:disabled {
   height: 100%;
   min-height: 420px;
   display: block;
-}
-
-.empty-state {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  gap: 8px;
-  padding: 24px;
-  text-align: center;
-  color: var(--muted);
-  pointer-events: none;
-}
-
-.empty-state h2 {
-  color: var(--ink);
-  font-size: 1.05rem;
 }
 
 .warnings {
