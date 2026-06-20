@@ -40,7 +40,6 @@ const defaults = {
   cube: { length: 60, width: 60, height: 60, radius: 30, wallHeight: 50, roofHeight: 28 },
   cuboid: { length: 120, width: 80, height: 60, radius: 40, wallHeight: 50, roofHeight: 28 },
   cylinder: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 50, roofHeight: 28 },
-  cone: { length: 120, width: 80, height: 90, radius: 35, wallHeight: 50, roofHeight: 28 },
   flex_box_5: { length: 120, width: 80, height: 45, radius: 18, wallHeight: 50, roofHeight: 28 },
   gable_house: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 55, roofHeight: 35 }
 };
@@ -89,10 +88,6 @@ function buildResult(params) {
     pieces.push(...buildCylinderPieces(params));
   }
 
-  if (params.modelType === "cone") {
-    pieces.push(...buildConePieces(params));
-  }
-
   if (params.modelType === "flex_box_5") {
     pieces.push(...buildFlexBox5Pieces(params));
   }
@@ -119,7 +114,7 @@ function validateParams(params) {
     ["tab depth", params.tabDepth]
   ];
 
-  if (["cylinder", "cone", "flex_box_5"].includes(params.modelType)) {
+  if (["cylinder", "flex_box_5"].includes(params.modelType)) {
     positives.push(["radius", params.radius]);
   }
 
@@ -140,10 +135,6 @@ function validateParams(params) {
 
 function modelWarnings(params) {
   const warnings = [];
-  if (params.modelType === "cone") {
-    warnings.push("圓錐側面以扇形近似輸出，弧線依 segments 分段。");
-    if (params.generateJoinery) warnings.push("圓錐使用扇形外弧放射卡榫，底圓使用圓周插槽。");
-  }
   if (params.modelType === "cylinder") {
     warnings.push("圓柱側面寬度等於圓周長，上下圓以 segments 分段。");
     if (params.generateJoinery) warnings.push("圓柱使用展開側板直線卡榫，頂/底圓使用圓周插槽。");
@@ -176,20 +167,10 @@ function buildBoxPieces(length, width, height, params) {
 
 function buildCylinderPieces(params) {
   const circumference = TAU * params.radius;
-  const sideEdges = params.generateJoinery ? "fefe" : "eeee";
   return [
-    rectPiece("side", circumference, params.height, params, sideEdges),
+    circularFlexSidePiece("side_living_hinge", circumference, params.height, params),
     circlePiece("top", params.radius, params, params.generateJoinery),
     circlePiece("bottom", params.radius, params, params.generateJoinery)
-  ];
-}
-
-function buildConePieces(params) {
-  const slantHeight = Math.hypot(params.radius, params.height);
-  const angle = TAU * params.radius / slantHeight;
-  return [
-    sectorPiece("cone_side", slantHeight, angle, params, params.generateJoinery),
-    circlePiece("base", params.radius, params, params.generateJoinery)
   ];
 }
 
@@ -257,6 +238,21 @@ function circlePiece(name, radius, params, withSlots = false) {
   };
 }
 
+function circularFlexSidePiece(name, width, height, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const outline = params.generateJoinery
+    ? fingerJointRectPath(margin, margin, width, height, "fefe", params)
+    : rectPath(0, 0, width, height);
+  const hingeSlots = flexCutPatternPaths(margin, margin, width, height, params);
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...hingeSlots],
+    width: width + margin * 2,
+    height: height + margin * 2
+  };
+}
+
 function roundedRectPiece(name, width, height, radius, params) {
   const outline = roundedRectPath(0, 0, width, height, radius, params.segments);
   const slots = params.generateJoinery
@@ -268,30 +264,6 @@ function roundedRectPiece(name, width, height, radius, params) {
     paths: [outline, ...slots],
     width,
     height
-  };
-}
-
-function sectorPiece(name, radius, angle, params, withTabs = false) {
-  const points = withTabs
-    ? sectorArcTabPath(radius, angle, params)
-    : [{ x: radius, y: radius }];
-  const start = -Math.PI / 2 - angle / 2;
-  if (!withTabs) {
-    for (let i = 0; i <= params.segments; i += 1) {
-      const theta = start + (i / params.segments) * angle;
-      points.push({
-        x: radius + Math.cos(theta) * radius,
-        y: radius + Math.sin(theta) * radius
-      });
-    }
-  }
-  const margin = withTabs ? params.tabDepth : 0;
-  return {
-    name,
-    layer: "CUT",
-    paths: [points],
-    width: radius * 2 + margin * 2,
-    height: radius * 2 + margin * 2
   };
 }
 
@@ -392,62 +364,6 @@ function orientedSlotPath(cx, cy, centerRadius, theta, tangentLength, radialDept
     offset2(center, tangent, halfTangent, radial, halfRadial),
     offset2(center, tangent, -halfTangent, radial, halfRadial)
   ];
-}
-
-function sectorArcTabPath(radius, angle, params) {
-  const margin = params.tabDepth;
-  const center = { x: radius + margin, y: radius + margin };
-  const startAngle = -Math.PI / 2 - angle / 2;
-  const arcLength = radius * angle;
-  const runs = fingerRuns(arcLength, params, params.tabWidth);
-  const points = [center];
-  let cursor = 0;
-
-  for (const run of runs) {
-    appendArc(points, center, radius, startAngle + cursor / radius, startAngle + run.start / radius, params);
-    appendArcTab(points, center, radius, startAngle + run.start / radius, startAngle + run.end / radius, params);
-    cursor = run.end;
-  }
-
-  appendArc(points, center, radius, startAngle + cursor / radius, startAngle + angle, params);
-  return points;
-}
-
-function appendArc(points, center, radius, startAngle, endAngle, params) {
-  const delta = endAngle - startAngle;
-  const steps = Math.max(1, Math.ceil(Math.abs(delta) / TAU * params.segments));
-  for (let i = 0; i <= steps; i += 1) {
-    const theta = startAngle + (i / steps) * delta;
-    pushPoint(points, {
-      x: center.x + Math.cos(theta) * radius,
-      y: center.y + Math.sin(theta) * radius
-    });
-  }
-}
-
-function appendArcTab(points, center, radius, startAngle, endAngle, params) {
-  const outerRadius = radius + params.tabDepth;
-  const steps = Math.max(1, Math.ceil(Math.abs(endAngle - startAngle) / TAU * params.segments));
-  const startInner = polarPoint(center, radius, startAngle);
-  const startOuter = polarPoint(center, outerRadius, startAngle);
-  const endOuter = polarPoint(center, outerRadius, endAngle);
-  const endInner = polarPoint(center, radius, endAngle);
-
-  pushPoint(points, startInner);
-  pushPoint(points, startOuter);
-  for (let i = 1; i < steps; i += 1) {
-    const theta = startAngle + (i / steps) * (endAngle - startAngle);
-    pushPoint(points, polarPoint(center, outerRadius, theta));
-  }
-  pushPoint(points, endOuter);
-  pushPoint(points, endInner);
-}
-
-function polarPoint(center, radius, theta) {
-  return {
-    x: center.x + Math.cos(theta) * radius,
-    y: center.y + Math.sin(theta) * radius
-  };
 }
 
 function offset2(center, axisA, distanceA, axisB, distanceB) {
@@ -589,10 +505,12 @@ function flexCutPatternPaths(x, y, length, height, params) {
 
 function addFlexCutSegment(paths, x, y1, y2) {
   if (Math.abs(y2 - y1) < 0.0001) return;
-  paths.push([
+  const path = [
     { x, y: y1 },
     { x, y: y2 }
-  ]);
+  ];
+  path.closed = false;
+  paths.push(path);
 }
 
 function fingerJointRectPath(x, y, width, height, edges, params) {
@@ -753,6 +671,10 @@ function render(result) {
     for (const path of piece.paths) {
       cutGroup.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
+        fill: "none",
+        stroke: "#ff0000",
+        "stroke-linejoin": "miter",
+        "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
         "stroke-width": result.params.kerfWidth || 0.1
       }));
@@ -775,7 +697,7 @@ function pathToD(points, offsetX = 0, offsetY = 0) {
   for (const point of rest) {
     commands.push(`L ${svgNum(point.x + offsetX)} ${svgNum(point.y + offsetY)}`);
   }
-  commands.push("Z");
+  if (points.closed !== false) commands.push("Z");
   return commands.join(" ");
 }
 
@@ -828,7 +750,8 @@ function exportDxf(result) {
   const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
   for (const piece of result.pieces) {
     for (const path of piece.paths) {
-      for (let i = 0; i < path.length; i += 1) {
+      const segmentCount = path.closed === false ? path.length - 1 : path.length;
+      for (let i = 0; i < segmentCount; i += 1) {
         const a = path[i];
         const b = path[(i + 1) % path.length];
         lines.push(
@@ -868,7 +791,7 @@ function download(name, content, type) {
 
 function updateFieldVisibility() {
   const type = els.modelType.value;
-  const circular = ["cylinder", "cone", "flex_box_5"].includes(type);
+  const circular = ["cylinder", "flex_box_5"].includes(type);
   const house = type === "gable_house";
   els.circularFields.forEach(field => field.hidden = !circular);
   els.houseFields.forEach(field => field.hidden = !house);
@@ -908,7 +831,6 @@ function modelLabel(type) {
     cube: "正立方體",
     cuboid: "長方體",
     cylinder: "圓柱體",
-    cone: "圓錐體",
     flex_box_5: "柔性盒子5",
     gable_house: "雙斜屋頂房子"
   };
