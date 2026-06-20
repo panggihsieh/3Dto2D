@@ -1,0 +1,4 @@
+interface:
+  display_name: "Boxes Finger Joints"
+  short_description: "Design laser-cut finger joints."
+  default_prompt: "Use the Boxes finger joints skill to calculate a laser-cut finger joint layout."
