@@ -23,6 +23,16 @@ Arbitrary organic STL mesh unfolding is intentionally out of scope for the first
 
 See `VERSION.md` for the version record.
 
+## V2 SVG Joinery Preview
+
+The uploaded SVG edge-pair joinery workflow is versioned under:
+
+```text
+/v2/
+```
+
+Use `v2/index.html` for the V2 prototype. It supports simple SVG polygon import, selecting paired polygon edges, generating complementary finger-joint boundaries with a 3mm default material thickness, previewing the result, and downloading SVG output.
+
 ## Webapp
 
 The static webapp is available in `index.html`.

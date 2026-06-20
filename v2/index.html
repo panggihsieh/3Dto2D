@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>3D to 2D Laser SVG V2</title>
+    <link rel="stylesheet" href="styles.css?v=20260621-v2-edge-sounds">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="controls" aria-label="Model controls">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">V2 SVG edge joinery</p>
+            <h1>3D to 2D SVG V2</h1>
+          </div>
+          <span class="status-pill" id="statusPill">Ready</span>
+        </header>
+
+        <section class="panel" aria-labelledby="modelTitle">
+          <div class="section-head">
+            <h2 id="modelTitle">模型</h2>
+            <button class="icon-button" type="button" id="resetButton" title="Reset parameters" aria-label="Reset parameters">R</button>
+          </div>
+
+          <label class="full-field">
+            <span>模型類型</span>
+            <select id="modelType">
+              <option value="cuboid">長方體</option>
+              <option value="cube">正立方體</option>
+              <option value="cylinder">圓柱</option>
+              <option value="flex_box_5">柔性盒子5</option>
+              <option value="gable_house">雙斜屋頂小屋</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel" aria-labelledby="svgImportTitle">
+          <div class="section-head">
+            <h2 id="svgImportTitle">SVG 接榫選邊</h2>
+          </div>
+
+          <label class="full-field">
+            <span>匯入 SVG</span>
+            <input id="svgUpload" type="file" accept=".svg,image/svg+xml">
+          </label>
+
+          <div class="actions stacked-actions">
+            <button id="useCubeNet" type="button">使用正立方體展開圖</button>
+            <button id="toggleEdgeSelect" type="button" aria-pressed="false">選取接榫邊</button>
+            <button id="applyEdgePairs" type="button">確認產生接榫</button>
+            <button id="clearEdgePairs" type="button">清除配對</button>
+          </div>
+
+          <ol class="pair-list" id="pairList" aria-live="polite"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="sizeTitle">
+          <div class="section-head">
+            <h2 id="sizeTitle">尺寸 mm</h2>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span>長度</span>
+              <input id="length" type="number" min="1" step="1" value="120">
+            </label>
+            <label>
+              <span>寬度</span>
+              <input id="width" type="number" min="1" step="1" value="80">
+            </label>
+            <label>
+              <span>高度</span>
+              <input id="height" type="number" min="1" step="1" value="60">
+            </label>
+            <label data-field="circular" hidden>
+              <span>半徑</span>
+              <input id="radius" type="number" min="1" step="1" value="35">
+            </label>
+            <label data-field="house" hidden>
+              <span>牆高</span>
+              <input id="wallHeight" type="number" min="1" step="1" value="55">
+            </label>
+            <label data-field="house" hidden>
+              <span>屋頂高</span>
+              <input id="roofHeight" type="number" min="1" step="1" value="35">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="joineryTitle">
+          <div class="section-head">
+            <h2 id="joineryTitle">材料與接榫</h2>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span>材料厚度</span>
+              <input id="materialThickness" type="number" min="0.1" step="0.1" value="3">
+            </label>
+            <label>
+              <span>Kerf</span>
+              <input id="kerfWidth" type="number" min="0" step="0.01" value="0.15">
+            </label>
+            <label>
+              <span>接榫寬度</span>
+              <input id="tabWidth" type="number" min="1" step="0.5" value="10">
+            </label>
+            <label>
+              <span>接榫深度</span>
+              <input id="tabDepth" type="number" min="0.1" step="0.1" value="3">
+            </label>
+            <label>
+              <span>接榫間距</span>
+              <input id="tabSpacing" type="number" min="0" step="0.5" value="8">
+            </label>
+            <label>
+              <span>零件間距</span>
+              <input id="partGap" type="number" min="0" step="1" value="8">
+            </label>
+            <label>
+              <span>圓弧段數</span>
+              <input id="segments" type="number" min="8" step="1" value="48">
+            </label>
+            <label>
+              <span>專案名稱</span>
+              <input id="projectName" type="text" value="laser_parts" maxlength="40">
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <label><input id="joineryToggle" type="checkbox" checked><span>產生 f/F 互補接榫</span></label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="downloadsTitle">
+          <div class="section-head">
+            <h2 id="downloadsTitle">輸出</h2>
+            <span id="summaryText">Ready</span>
+          </div>
+          <div class="actions">
+            <button id="downloadSvg" type="button" title="Download SVG" aria-label="Download SVG">SVG</button>
+            <button id="downloadDxf" type="button" title="Download DXF" aria-label="Download DXF">DXF</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="2D output preview">
+        <div class="toolbar">
+          <div class="metric-strip">
+            <span><strong id="widthMetric">0</strong> mm W</span>
+            <span><strong id="heightMetric">0</strong> mm H</span>
+            <span><strong id="pathMetric">0</strong> parts</span>
+          </div>
+          <div class="legend" aria-label="Layer legend">
+            <span class="cut">CUT</span>
+            <span class="joinery">SELECTED</span>
+          </div>
+        </div>
+
+        <div class="preview-frame">
+          <svg id="previewSvg" role="img" aria-label="Generated 2D laser preview"></svg>
+        </div>
+
+        <div class="warnings" aria-live="polite">
+          <h2>提示</h2>
+          <ul id="warningList">
+            <li>No warnings.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js?v=20260621-v2-edge-sounds"></script>
+  </body>
+</html>
