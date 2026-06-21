@@ -3,37 +3,22 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>3D to 2D Laser SVG V2</title>
-    <link rel="stylesheet" href="styles.css?v=20260621-v2-edge-sounds">
+    <title>SVG Joinery V2</title>
+    <link rel="stylesheet" href="styles.css?v=20260621-v2-standalone">
   </head>
   <body>
     <main class="shell">
-      <aside class="controls" aria-label="Model controls">
+      <aside class="controls" aria-label="SVG joinery controls">
         <header class="brand">
           <div>
-            <p class="eyebrow">V2 SVG edge joinery</p>
-            <h1>3D to 2D SVG V2</h1>
+            <p class="eyebrow">V2 standalone tool</p>
+            <h1>SVG 接榫選邊</h1>
           </div>
           <span class="status-pill" id="statusPill">Ready</span>
         </header>
 
-        <section class="panel" aria-labelledby="modelTitle">
-          <div class="section-head">
-            <h2 id="modelTitle">模型</h2>
-            <button class="icon-button" type="button" id="resetButton" title="Reset parameters" aria-label="Reset parameters">R</button>
-          </div>
-
-          <label class="full-field">
-            <span>模型類型</span>
-            <select id="modelType">
-              <option value="cuboid">長方體</option>
-              <option value="cube">正立方體</option>
-              <option value="cylinder">圓柱</option>
-              <option value="flex_box_5">柔性盒子5</option>
-              <option value="gable_house">雙斜屋頂小屋</option>
-            </select>
-          </label>
-        </section>
+        <input id="modelType" type="hidden" value="cube">
+        <button class="hidden-reset" type="button" id="resetButton" aria-hidden="true" tabindex="-1">R</button>
 
         <section class="panel" aria-labelledby="svgImportTitle">
           <div class="section-head">
@@ -63,11 +48,11 @@
           <div class="field-grid">
             <label>
               <span>長度</span>
-              <input id="length" type="number" min="1" step="1" value="120">
+              <input id="length" type="number" min="1" step="1" value="60">
             </label>
             <label>
               <span>寬度</span>
-              <input id="width" type="number" min="1" step="1" value="80">
+              <input id="width" type="number" min="1" step="1" value="60">
             </label>
             <label>
               <span>高度</span>
@@ -171,6 +156,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260621-v2-edge-sounds"></script>
+    <script src="app.js?v=20260621-v2-standalone"></script>
   </body>
 </html>

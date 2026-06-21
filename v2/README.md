@@ -1,6 +1,6 @@
 # 3D to 2D SVG V2
 
-V2 adds uploaded SVG edge-pair selection for finger-joint cutting.
+V2 is a standalone uploaded SVG edge-pair selection page for finger-joint cutting.
 
 ## Entry Point
 
@@ -14,6 +14,7 @@ Open `v2/index.html` from GitHub Pages or a local static server:
 
 - Import simple SVG polygons.
 - Use a default cube net for edge-pair testing.
+- Keep the V1 model selector out of the V2 interface.
 - Preserve unfolded shape positions while inserting small gaps for reliable edge picking.
 - Use the 3D bottom face as the center of the default cube net.
 - Select one pair of polygon edges for complementary `f/F` joinery.
