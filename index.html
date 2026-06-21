@@ -3,153 +3,138 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>3D to 2D Laser SVG</title>
-    <link rel="stylesheet" href="styles.css?v=20260620-redcut">
+    <title>3D to 2D SVG Tools</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1d2329;
+        --muted: #687380;
+        --line: #d9dee5;
+        --panel: #ffffff;
+        --canvas: #f4f6f8;
+        --accent: #0b6bcb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      main {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .home {
+        width: min(920px, 100%);
+      }
+
+      header {
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        line-height: 1;
+      }
+
+      .subtitle {
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 1rem;
+      }
+
+      .options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .option {
+        display: grid;
+        min-height: 230px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: inherit;
+        background: var(--panel);
+        text-decoration: none;
+      }
+
+      .option:hover,
+      .option:focus-visible {
+        border-color: var(--accent);
+        outline: none;
+      }
+
+      .option h2 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .option p {
+        margin: 10px 0 0;
+        color: var(--muted);
+      }
+
+      .launch {
+        align-self: end;
+        margin-top: 28px;
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      @media (max-width: 720px) {
+        .options {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="shell">
-      <aside class="controls" aria-label="Model controls">
-        <header class="brand">
-          <div>
-            <p class="eyebrow">Parametric laser layout</p>
-            <h1>3D to 2D SVG</h1>
-          </div>
-          <span class="status-pill" id="statusPill">Ready</span>
+    <main>
+      <section class="home" aria-labelledby="homeTitle">
+        <header>
+          <p class="eyebrow">3D to 2D SVG tools</p>
+          <h1 id="homeTitle">選擇工作模式</h1>
+          <p class="subtitle">依照是否需要接榫，進入不同工具頁。</p>
         </header>
 
-        <section class="panel" aria-labelledby="modelTitle">
-          <div class="section-head">
-            <h2 id="modelTitle">模型</h2>
-            <button class="icon-button" type="button" id="resetButton" title="Reset parameters" aria-label="Reset parameters">↺</button>
-          </div>
+        <div class="options">
+          <a class="option" href="basic/">
+            <div>
+              <h2>基本切割展開</h2>
+              <p>沒有接榫功能。適合只需要把內建幾何展開成 SVG/DXF 切割輪廓。</p>
+            </div>
+            <span class="launch">開啟基本模式</span>
+          </a>
 
-          <label class="full-field">
-            <span>幾何類型</span>
-            <select id="modelType">
-              <option value="cuboid">長方體</option>
-              <option value="cube">正立方體</option>
-              <option value="cylinder">圓柱體</option>
-              <option value="flex_box_5">柔性盒子5</option>
-              <option value="gable_house">雙斜屋頂房子</option>
-            </select>
-          </label>
-        </section>
-
-        <section class="panel" aria-labelledby="sizeTitle">
-          <div class="section-head">
-            <h2 id="sizeTitle">尺寸 mm</h2>
-          </div>
-
-          <div class="field-grid">
-            <label>
-              <span>長度</span>
-              <input id="length" type="number" min="1" step="1" value="120">
-            </label>
-            <label>
-              <span>寬度</span>
-              <input id="width" type="number" min="1" step="1" value="80">
-            </label>
-            <label>
-              <span>高度</span>
-              <input id="height" type="number" min="1" step="1" value="60">
-            </label>
-            <label data-field="circular" hidden>
-              <span>半徑</span>
-              <input id="radius" type="number" min="1" step="1" value="35">
-            </label>
-            <label data-field="house" hidden>
-              <span>牆高</span>
-              <input id="wallHeight" type="number" min="1" step="1" value="55">
-            </label>
-            <label data-field="house" hidden>
-              <span>屋頂高</span>
-              <input id="roofHeight" type="number" min="1" step="1" value="35">
-            </label>
-          </div>
-        </section>
-
-        <section class="panel" aria-labelledby="joineryTitle">
-          <div class="section-head">
-            <h2 id="joineryTitle">材料與卡榫</h2>
-          </div>
-
-          <div class="field-grid">
-            <label>
-              <span>材料厚度</span>
-              <input id="materialThickness" type="number" min="0.1" step="0.1" value="3">
-            </label>
-            <label>
-              <span>Kerf</span>
-              <input id="kerfWidth" type="number" min="0" step="0.01" value="0.15">
-            </label>
-            <label>
-              <span>卡榫寬度</span>
-              <input id="tabWidth" type="number" min="1" step="0.5" value="10">
-            </label>
-            <label>
-              <span>卡榫深度</span>
-              <input id="tabDepth" type="number" min="0.1" step="0.1" value="3">
-            </label>
-            <label>
-              <span>卡榫間距</span>
-              <input id="tabSpacing" type="number" min="0" step="0.5" value="8">
-            </label>
-            <label>
-              <span>零件間距</span>
-              <input id="partGap" type="number" min="0" step="1" value="8">
-            </label>
-            <label>
-              <span>圓弧分段</span>
-              <input id="segments" type="number" min="8" step="1" value="48">
-            </label>
-            <label>
-              <span>專案名稱</span>
-              <input id="projectName" type="text" value="laser_parts" maxlength="40">
-            </label>
-          </div>
-
-          <div class="toggle-row">
-            <label><input id="joineryToggle" type="checkbox" checked><span>產生 f/F 互補卡榫</span></label>
-          </div>
-        </section>
-
-        <section class="panel" aria-labelledby="downloadsTitle">
-          <div class="section-head">
-            <h2 id="downloadsTitle">輸出</h2>
-            <span id="summaryText">Ready</span>
-          </div>
-          <div class="actions">
-            <button id="downloadSvg" type="button" title="Download SVG" aria-label="Download SVG">SVG</button>
-            <button id="downloadDxf" type="button" title="Download DXF" aria-label="Download DXF">DXF</button>
-          </div>
-        </section>
-      </aside>
-
-      <section class="workspace" aria-label="2D output preview">
-        <div class="toolbar">
-          <div class="metric-strip">
-            <span><strong id="widthMetric">0</strong> mm W</span>
-            <span><strong id="heightMetric">0</strong> mm H</span>
-            <span><strong id="pathMetric">0</strong> parts</span>
-          </div>
-          <div class="legend" aria-label="Layer legend">
-            <span class="cut">CUT</span>
-          </div>
-        </div>
-
-        <div class="preview-frame">
-          <svg id="previewSvg" role="img" aria-label="Generated 2D laser preview"></svg>
-        </div>
-
-        <div class="warnings" aria-live="polite">
-          <h2>狀態</h2>
-          <ul id="warningList">
-            <li>No warnings.</li>
-          </ul>
+          <a class="option" href="v2/">
+            <div>
+              <h2>SVG 接榫選邊</h2>
+              <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
+            </div>
+            <span class="launch">開啟接榫模式</span>
+          </a>
         </div>
       </section>
     </main>
-
-    <script src="app.js?v=20260620-redcut"></script>
   </body>
 </html>

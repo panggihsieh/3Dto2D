@@ -35,7 +35,10 @@ Use `v2/index.html` for the V2 prototype. It supports simple SVG polygon import,
 
 ## Webapp
 
-The static webapp is available in `index.html`.
+The static webapp root is a mode selector in `index.html`.
+
+- `basic/`: basic SVG/DXF layout without joinery.
+- `v2/`: standalone uploaded SVG edge-pair joinery tool.
 
 Run a local static server from the project folder:
 
