@@ -326,6 +326,10 @@ button:disabled {
   color: var(--joinery);
 }
 
+.legend .source {
+  color: var(--focus);
+}
+
 .pair-list {
   display: grid;
   gap: 8px;
@@ -369,6 +373,10 @@ button:disabled {
 
 .edge-overlay {
   pointer-events: all;
+}
+
+.source-overlay {
+  pointer-events: none;
 }
 
 .edge-visible {

@@ -1022,6 +1022,7 @@ function render(result) {
   els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
   addSvgStyles();
+  renderSourceOverlay();
   const cutGroup = createSvgElement("g", { class: "svg-cut" });
   els.previewSvg.appendChild(cutGroup);
 
@@ -1096,6 +1097,31 @@ function renderEdgeOverlay(result) {
 
     if (isPendingEdge(edge)) {
       group.appendChild(createEdgeBadge(edge, "1 凸 f", "#111827"));
+    }
+  }
+}
+
+function renderSourceOverlay() {
+  if (
+    state.sourceMode !== "svg"
+    || !state.appliedJoinery
+    || state.importedPreset === "cube_net"
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "source-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const piece of state.importedPieces) {
+    for (const path of piece.paths) {
+      group.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y),
+        fill: "none",
+        stroke: "#0b6bcb",
+        "stroke-width": 0.45,
+        "stroke-dasharray": "3 2",
+        "vector-effect": "non-scaling-stroke"
+      }));
     }
   }
 }
@@ -1311,6 +1337,7 @@ function edgeLabel(ref) {
 function exportSvg(result) {
   const clone = els.previewSvg.cloneNode(true);
   clone.querySelectorAll(".edge-overlay").forEach(node => node.remove());
+  clone.querySelectorAll(".source-overlay").forEach(node => node.remove());
   clone.setAttribute("xmlns", NS);
   clone.setAttribute("width", `${svgNum(result.bounds.width)}mm`);
   clone.setAttribute("height", `${svgNum(result.bounds.height)}mm`);

@@ -20,6 +20,7 @@ Open `v2/index.html` from GitHub Pages or a local static server:
 - Select one pair of polygon edges for complementary `f/F` joinery.
 - Show selected edge pairs with distinct colors, up to 48 pairs.
 - Play distinct tones for convex `f` and concave `F` edge selection.
+- Show the original uploaded SVG arrangement as a dashed source overlay after joinery is generated.
 - Generate a preview with finger-jointed polygon boundaries.
 - Download the generated SVG.
 
