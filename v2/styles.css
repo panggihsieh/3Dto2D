@@ -371,6 +371,29 @@ button:disabled {
   font-weight: 650;
 }
 
+.pair-list .pair-ok {
+  color: #166534;
+  background: #f7fff8;
+}
+
+.pair-list .pair-warning {
+  color: #92400e;
+  background: #fffaf0;
+}
+
+.pair-list .pair-fail {
+  color: #b91c1c;
+  background: #fff5f5;
+}
+
+.pair-list .pair-empty {
+  grid-template-columns: 1fr;
+}
+
+.pair-status {
+  font-weight: 750;
+}
+
 .edge-overlay {
   pointer-events: all;
 }

@@ -7,6 +7,7 @@ const state = {
   importedPieces: null,
   importedPreset: null,
   importedWarnings: [],
+  uiWarnings: [],
   edgeSelectEnabled: false,
   edgeSelection: {
     pending: null,
@@ -129,7 +130,7 @@ function buildResult(params) {
 }
 
 function buildImportedResult(params) {
-  const warnings = validateParams(params).concat(state.importedWarnings);
+  const warnings = validateParams(params).concat(state.importedWarnings, state.uiWarnings);
 
   if (state.appliedJoinery && state.importedPreset === "cube_net") {
     const side = params.length || 60;
@@ -140,9 +141,7 @@ function buildImportedResult(params) {
   }
 
   const sourcePieces = clonePieces(state.importedPieces || []);
-  const pieces = state.appliedJoinery
-    ? applySelectedJoinery(sourcePieces, params, warnings)
-    : sourcePieces;
+  const pieces = applySelectedJoinery(sourcePieces, params, warnings);
   const bounds = getBoundsFromPaths(pieces);
 
   if (!pieces.length) {
@@ -171,12 +170,19 @@ function applySelectedJoinery(pieces, params, warnings) {
   const edgeTypesByPath = new Map();
 
   for (const [pairIndex, pair] of state.edgeSelection.pairs.entries()) {
+    const validation = validateEdgePair(pair.first, pair.second, params, pairIndex);
+    pair.validation = validation;
+    warnings.push(...validation.messages);
+    if (validation.status === "fail") continue;
     markEdgeType(edgeTypesByPath, pair.first, "f");
     markEdgeType(edgeTypesByPath, pair.second, "F");
-    const firstLength = getEdgeLength(pieces, pair.first);
-    const secondLength = getEdgeLength(pieces, pair.second);
-    if (firstLength && secondLength && Math.abs(firstLength - secondLength) > params.materialThickness) {
-      warnings.push(`第 ${pairIndex + 1} 組配對邊長差超過材料厚度，接榫可能無法準確對接。`);
+  }
+
+  if (state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(state.edgeSelection.pending, params);
+    warnings.push(...validation.messages);
+    if (validation.status !== "fail") {
+      markEdgeType(edgeTypesByPath, state.edgeSelection.pending, "f");
     }
   }
 
@@ -215,12 +221,115 @@ function getEdgeLength(pieces, ref) {
   return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
 }
 
+function findPairIndexForEdge(ref) {
+  return state.edgeSelection.pairs.findIndex(pair => sameEdge(pair.first, ref) || sameEdge(pair.second, ref));
+}
+
+function fingerLayoutForEdge(ref, params) {
+  const length = getEdgeLength(state.importedPieces || [], ref);
+  const count = calcFingerCount(length, params);
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const endMargin = count > 0 ? Math.max(params.materialThickness, (length - occupied) / 2) : 0;
+  return { length, count, endMargin };
+}
+
+function validateJoineryParams(params, label = "接榫參數") {
+  const messages = [];
+  let status = "ok";
+  const pitch = params.tabWidth + params.tabSpacing;
+
+  if (pitch <= 0) {
+    status = "fail";
+    messages.push(`${label} 失敗：接榫寬度 + 間距必須大於 0。`);
+  }
+
+  if (params.tabDepth <= 0) {
+    status = "fail";
+    messages.push(`${label} 失敗：接榫深度必須大於 0。`);
+  } else if (params.tabDepth < params.materialThickness) {
+    status = "warning";
+    messages.push(`${label} 警告：接榫深度 ${formatNumber(params.tabDepth)} mm 小於材料厚度 ${formatNumber(params.materialThickness)} mm。`);
+  }
+
+  return { status, messages };
+}
+
+function mergeValidationStatus(a, b) {
+  if (a === "fail" || b === "fail") return "fail";
+  if (a === "warning" || b === "warning") return "warning";
+  return "ok";
+}
+
+function validatePreviewEdge(ref, params) {
+  const paramCheck = validateJoineryParams(params, `邊 ${edgeLabel(ref)}`);
+  const layout = fingerLayoutForEdge(ref, params);
+  const messages = [...paramCheck.messages];
+  let status = paramCheck.status;
+
+  if (layout.count <= 0) {
+    status = "fail";
+    messages.push(`邊 ${edgeLabel(ref)} 失敗：長度 ${formatNumber(layout.length)} mm 不足以產生 1 個接榫。`);
+  }
+
+  return { status, messages, fingerCount: layout.count, length: layout.length, endMargin: layout.endMargin };
+}
+
+function validateEdgePair(first, second, params, pairIndex = -1) {
+  const title = pairIndex >= 0 ? `第 ${pairIndex + 1} 組` : "新配對";
+  const paramCheck = validateJoineryParams(params, title);
+  const firstLayout = fingerLayoutForEdge(first, params);
+  const secondLayout = fingerLayoutForEdge(second, params);
+  const messages = [...paramCheck.messages];
+  let status = paramCheck.status;
+
+  if (sameEdge(first, second)) {
+    status = "fail";
+    messages.push(`${title} 失敗：同一條邊不能配對自己。`);
+  }
+
+  const duplicate = state.edgeSelection.pairs.find((pair, index) => (
+    index !== pairIndex
+    && [pair.first, pair.second].some(edge => sameEdge(edge, first) || sameEdge(edge, second))
+  ));
+  if (duplicate) {
+    status = "fail";
+    messages.push(`${title} 失敗：${edgeLabel(first)} 或 ${edgeLabel(second)} 已經在其他配對中。`);
+  }
+
+  if (firstLayout.count <= 0 || secondLayout.count <= 0) {
+    status = "fail";
+    messages.push(`${title} 失敗：至少有一條邊太短，無法產生 1 個接榫。`);
+  }
+
+  const lengthTolerance = Math.max(params.materialThickness, 0.5);
+  const lengthDiff = Math.abs(firstLayout.length - secondLayout.length);
+  if (lengthDiff > lengthTolerance) {
+    status = mergeValidationStatus(status, "warning");
+    messages.push(`${title} 警告：兩邊長度差 ${formatNumber(lengthDiff)} mm，大於容許值 ${formatNumber(lengthTolerance)} mm。`);
+  }
+
+  if (firstLayout.count > 0 && secondLayout.count > 0 && firstLayout.count !== secondLayout.count) {
+    status = mergeValidationStatus(status, "warning");
+    messages.push(`${title} 警告：兩邊接榫數不同（${firstLayout.count} / ${secondLayout.count}），請目視確認。`);
+  }
+
+  return {
+    status,
+    messages,
+    fingerCount: Math.min(firstLayout.count, secondLayout.count),
+    firstLength: firstLayout.length,
+    secondLength: secondLayout.length,
+    endMargin: Math.min(firstLayout.endMargin, secondLayout.endMargin)
+  };
+}
+
 function loadImportedPieces(pieces, warnings = [], options = {}) {
   const params = getParams();
   state.sourceMode = "svg";
   state.importedPieces = prepareImportedPiecesForSelection(pieces, params.partGap);
   state.importedPreset = options.preset || null;
   state.importedWarnings = warnings;
+  state.uiWarnings = [];
   state.edgeSelection.pending = null;
   state.edgeSelection.pairs = [];
   state.appliedJoinery = false;
@@ -1060,6 +1169,7 @@ function renderEdgeOverlay(result) {
 
   for (const edge of listSelectableEdges()) {
     const color = colorForEdge(edge) || "#2468d8";
+    const edgeRole = roleForEdge(edge);
     const className = [
       "edge-visible",
       isPendingEdge(edge) ? "edge-pending-first" : "",
@@ -1094,6 +1204,13 @@ function renderEdgeOverlay(result) {
     hit.addEventListener("click", handleEdgeClick);
     group.appendChild(visible);
     group.appendChild(hit);
+
+    if (!isPendingEdge(edge) && edgeRole === "convex") {
+      group.appendChild(createEdgeBadge(edge, "凸 f", color));
+    }
+    if (!isPendingEdge(edge) && edgeRole === "concave") {
+      group.appendChild(createEdgeBadge(edge, "凹 F", color));
+    }
 
     if (isPendingEdge(edge)) {
       group.appendChild(createEdgeBadge(edge, "1 凸 f", "#111827"));
@@ -1168,25 +1285,53 @@ function handleEdgeClick(event) {
     edgeIndex: Number(event.target.dataset.edge)
   };
 
+  state.uiWarnings = [];
+
+  const existingPairIndex = findPairIndexForEdge(ref);
+  if (existingPairIndex >= 0) {
+    state.edgeSelection.pairs.splice(existingPairIndex, 1);
+    state.edgeSelection.pending = null;
+    state.appliedJoinery = state.edgeSelection.pairs.length > 0;
+    runConversion();
+    return;
+  }
+
   if (!state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(ref, getParams());
+    if (validation.status === "fail") {
+      state.uiWarnings = validation.messages;
+      runConversion();
+      renderPairList();
+      return;
+    }
     state.edgeSelection.pending = ref;
+    state.appliedJoinery = false;
     playJoineryTone("convex");
-    render(state.result);
+    runConversion();
     renderPairList();
     return;
   }
 
   if (sameEdge(state.edgeSelection.pending, ref)) {
     state.edgeSelection.pending = null;
-    render(state.result);
+    state.appliedJoinery = state.edgeSelection.pairs.length > 0;
+    runConversion();
     renderPairList();
     return;
   }
 
   if (state.edgeSelection.pairs.length >= 48) {
-    state.importedWarnings = uniqueWarnings(state.importedWarnings.concat("最多只能建立 48 組接榫配對。"));
+    state.uiWarnings = ["最多只能建立 48 組接榫配對。"];
     state.edgeSelection.pending = null;
     runConversion();
+    return;
+  }
+
+  const validation = validateEdgePair(state.edgeSelection.pending, ref, getParams(), -1);
+  if (validation.status === "fail") {
+    state.uiWarnings = validation.messages;
+    runConversion();
+    renderPairList();
     return;
   }
 
@@ -1194,11 +1339,12 @@ function handleEdgeClick(event) {
     id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     color: pairColors[state.edgeSelection.pairs.length],
     first: state.edgeSelection.pending,
-    second: ref
+    second: ref,
+    validation
   });
   playJoineryTone("concave");
   state.edgeSelection.pending = null;
-  state.appliedJoinery = false;
+  state.appliedJoinery = true;
   runConversion();
 }
 
@@ -1236,6 +1382,13 @@ function colorForEdge(edge) {
   if (isPendingEdge(edge)) return "#111827";
   const pair = state.edgeSelection.pairs.find(item => sameEdge(item.first, edge) || sameEdge(item.second, edge));
   return pair?.color || "";
+}
+
+function roleForEdge(edge) {
+  if (isPendingEdge(edge)) return "pending";
+  const pair = state.edgeSelection.pairs.find(item => sameEdge(item.first, edge) || sameEdge(item.second, edge));
+  if (!pair) return "";
+  return sameEdge(pair.first, edge) ? "convex" : "concave";
 }
 
 function isPendingEdge(edge) {
@@ -1297,6 +1450,46 @@ function renderWarnings(warnings) {
 function renderPairList() {
   if (!els.pairList) return;
   els.pairList.innerHTML = "";
+
+  const params = getParams();
+
+  if (state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(state.edgeSelection.pending, params);
+    const li = document.createElement("li");
+    li.className = `selection-hint pair-${validation.status}`;
+    li.innerHTML = `<span style="background:#111827"></span><div>已選凸榫 f：${edgeLabel(state.edgeSelection.pending)}｜榫數 ${validation.fingerCount}</div>`;
+    els.pairList.appendChild(li);
+  }
+
+  if (!state.edgeSelection.pairs.length) {
+    const li = document.createElement("li");
+    li.className = "pair-empty";
+    li.textContent = state.edgeSelection.pending ? "請再點選第二條邊建立凹槽 F。" : "尚未建立接榫配對。";
+    els.pairList.appendChild(li);
+    return;
+  }
+
+  state.edgeSelection.pairs.forEach((pair, index) => {
+    const validation = validateEdgePair(pair.first, pair.second, params, index);
+    pair.validation = validation;
+    const li = document.createElement("li");
+    li.className = `pair-${validation.status}`;
+    li.style.borderColor = pair.color;
+    const statusLabel = validation.status === "ok" ? "OK" : validation.status === "warning" ? "警告" : "失敗";
+    li.innerHTML = `<span style="background:${pair.color}"></span><div><strong class="pair-status">${statusLabel}</strong>｜第 ${index + 1} 組：凸 f ${edgeLabel(pair.first)} → 凹 F ${edgeLabel(pair.second)}｜榫數 ${validation.fingerCount}</div>`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "刪除";
+    button.addEventListener("click", () => {
+      state.edgeSelection.pairs.splice(index, 1);
+      state.uiWarnings = [];
+      state.appliedJoinery = state.edgeSelection.pairs.length > 0;
+      runConversion();
+    });
+    li.appendChild(button);
+    els.pairList.appendChild(li);
+  });
+  return;
 
   if (state.edgeSelection.pending) {
     const li = document.createElement("li");
