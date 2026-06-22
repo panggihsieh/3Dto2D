@@ -40,6 +40,8 @@ const els = {
   previewSvg: document.querySelector("#previewSvg"),
   svgUpload: document.querySelector("#svgUpload"),
   useCubeNet: document.querySelector("#useCubeNet"),
+  downloadCuboidSample: document.querySelector("#downloadCuboidSample"),
+  downloadHouseSample: document.querySelector("#downloadHouseSample"),
   toggleEdgeSelect: document.querySelector("#toggleEdgeSelect"),
   applyEdgePairs: document.querySelector("#applyEdgePairs"),
   clearEdgePairs: document.querySelector("#clearEdgePairs"),
@@ -1540,6 +1542,55 @@ function exportSvg(result) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n${clone.outerHTML}\n`;
 }
 
+function exportSampleSvg(pieces, name) {
+  const bounds = getBoundsFromPieces(pieces);
+  const paths = [];
+  for (const piece of pieces) {
+    for (const path of piece.paths) {
+      paths.push(`  <path id="${escapeXml(piece.name)}" d="${pathToD(path, piece.x, piece.y)}" fill="none" stroke="#000000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>`);
+    }
+  }
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="${NS}" width="${svgNum(bounds.width)}mm" height="${svgNum(bounds.height)}mm" viewBox="0 0 ${svgNum(bounds.width)} ${svgNum(bounds.height)}">`,
+    `  <title>${escapeXml(name)}</title>`,
+    `  <g id="CUT">`,
+    ...paths,
+    `  </g>`,
+    `</svg>`,
+    ``
+  ].join("\n");
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function sampleParams(overrides = {}) {
+  return {
+    ...getParams(),
+    generateJoinery: false,
+    ...overrides
+  };
+}
+
+async function downloadPracticeSample(type) {
+  if (type === "cuboid") {
+    const params = sampleParams({ length: 120, width: 80, height: 60, partGap: 12 });
+    const pieces = layoutPieces(buildBoxPieces(params.length, params.width, params.height, params), params.partGap);
+    await download("cuboid_practice.svg", exportSampleSvg(pieces, "Cuboid practice SVG"), "image/svg+xml");
+    return;
+  }
+
+  const params = sampleParams({ length: 120, width: 80, wallHeight: 55, roofHeight: 35, partGap: 12 });
+  const pieces = layoutPieces(buildHousePieces(params), params.partGap);
+  await download("gable_house_practice.svg", exportSampleSvg(pieces, "Gable house practice SVG"), "image/svg+xml");
+}
+
 function exportDxf(result) {
   const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
   for (const piece of result.pieces) {
@@ -1738,6 +1789,14 @@ els.useCubeNet.addEventListener("click", () => {
     ["已載入正立方體展開圖；確認後會使用內建正確接榫拓撲輸出。"],
     { preset: "cube_net" }
   );
+});
+
+els.downloadCuboidSample?.addEventListener("click", async () => {
+  await downloadPracticeSample("cuboid");
+});
+
+els.downloadHouseSample?.addEventListener("click", async () => {
+  await downloadPracticeSample("house");
 });
 
 els.toggleEdgeSelect.addEventListener("click", () => {

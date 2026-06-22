@@ -338,6 +338,17 @@ button:disabled {
   list-style: none;
 }
 
+.sample-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sample-actions button {
+  color: var(--ink);
+  background: #ffffff;
+}
+
 .pair-list li {
   display: grid;
   grid-template-columns: auto 1fr auto;
