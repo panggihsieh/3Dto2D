@@ -460,7 +460,7 @@ function parseImportedSvg(text) {
 
     const bounds = getPathBounds(path);
     pieces.push({
-      name: `svg_${index + 1}`,
+      name: shapeName(shape, index),
       width: bounds.width,
       height: bounds.height,
       x: 0,
@@ -475,6 +475,13 @@ function parseImportedSvg(text) {
   }
 
   return { pieces, warnings: uniqueWarnings(warnings) };
+}
+
+function shapeName(shape, index) {
+  return (shape.getAttribute("id") || shape.getAttribute("data-name") || `svg_${index + 1}`)
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, "_")
+    .replace(/^_+|_+$/g, "") || `svg_${index + 1}`;
 }
 
 function parsePointsAttribute(pointsText, closed) {
@@ -1154,6 +1161,7 @@ function render(result) {
     }
   }
 
+  renderPieceLabels(result);
   renderEdgeOverlay(result);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
@@ -1163,6 +1171,55 @@ function render(result) {
   els.downloadDxf.disabled = false;
   els.downloadSvg.disabled = false;
   renderWarnings(result.warnings);
+}
+
+function renderPieceLabels(result) {
+  if (state.sourceMode !== "svg") return;
+
+  const group = createSvgElement("g", { class: "piece-label-overlay" });
+  let labelCount = 0;
+
+  for (const piece of result.pieces) {
+    const label = pieceLabel(piece.name);
+    if (!label) continue;
+    group.appendChild(createSvgElement("text", {
+      x: svgNum(piece.x + piece.width / 2),
+      y: svgNum(piece.y + piece.height / 2),
+      fill: "#ef0000",
+      "font-family": "Arial, sans-serif",
+      "font-size": "6",
+      "font-weight": "700",
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      "paint-order": "stroke",
+      stroke: "#ffffff",
+      "stroke-width": "1.2",
+      "vector-effect": "non-scaling-stroke"
+    })).textContent = label;
+    labelCount += 1;
+  }
+
+  if (labelCount) els.previewSvg.appendChild(group);
+}
+
+function pieceLabel(name) {
+  const labels = {
+    floor: "bottom",
+    bottom: "bottom",
+    bottom_3d: "bottom",
+    left_wall: "left",
+    left: "left",
+    right_wall: "right",
+    right: "right",
+    front_gable: "front",
+    front: "front",
+    back_gable: "back",
+    back: "back",
+    roof_left: "roof left",
+    roof_right: "roof right",
+    top: "top"
+  };
+  return labels[name] || "";
 }
 
 function renderEdgeOverlay(result) {
@@ -1536,6 +1593,7 @@ function exportSvg(result) {
   const clone = els.previewSvg.cloneNode(true);
   clone.querySelectorAll(".edge-overlay").forEach(node => node.remove());
   clone.querySelectorAll(".source-overlay").forEach(node => node.remove());
+  clone.querySelectorAll(".piece-label-overlay").forEach(node => node.remove());
   clone.setAttribute("xmlns", NS);
   clone.setAttribute("width", `${svgNum(result.bounds.width)}mm`);
   clone.setAttribute("height", `${svgNum(result.bounds.height)}mm`);
