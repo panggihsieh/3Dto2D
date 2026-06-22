@@ -13,6 +13,8 @@
         --panel: #ffffff;
         --canvas: #f4f6f8;
         --accent: #0b6bcb;
+        --highlight: #fff86a;
+        --highlight-text: #ff0000;
       }
 
       * {
@@ -35,42 +37,39 @@
       }
 
       .home {
-        width: min(920px, 100%);
+        width: min(1180px, 100%);
       }
 
       header {
-        margin-bottom: 20px;
+        margin-bottom: 22px;
       }
 
-      .eyebrow {
-        margin: 0 0 6px;
-        color: var(--muted);
-        font-size: 0.78rem;
-        text-transform: uppercase;
+      .highlight-title,
+      .highlight-heading {
+        display: inline-block;
+        color: var(--highlight-text);
+        background: var(--highlight);
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
+        font-weight: 800;
+        line-height: 1.05;
+        letter-spacing: 0;
       }
 
-      h1 {
-        margin: 0;
-        font-size: clamp(2rem, 5vw, 3.5rem);
-        line-height: 1;
-      }
-
-      .subtitle {
-        margin: 12px 0 0;
-        color: var(--muted);
-        font-size: 1rem;
+      .highlight-title {
+        padding: 12px 22px;
+        font-size: clamp(2.2rem, 6vw, 4.4rem);
       }
 
       .options {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
+        gap: 18px;
       }
 
       .option {
         display: grid;
-        min-height: 230px;
-        padding: 22px;
+        min-height: 260px;
+        padding: 24px;
         border: 1px solid var(--line);
         border-radius: 8px;
         color: inherit;
@@ -84,26 +83,37 @@
         outline: none;
       }
 
-      .option h2 {
-        margin: 0;
-        font-size: 1.25rem;
+      .highlight-heading {
+        padding: 8px 12px;
+        font-size: clamp(1.5rem, 3.2vw, 2.35rem);
       }
 
       .option p {
-        margin: 10px 0 0;
+        margin: 22px 0 0;
         color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
       }
 
       .launch {
         align-self: end;
-        margin-top: 28px;
+        margin-top: 30px;
         color: var(--accent);
+        font-size: 1.05rem;
         font-weight: 700;
       }
 
-      @media (max-width: 720px) {
+      @media (max-width: 760px) {
+        main {
+          padding: 16px;
+        }
+
         .options {
           grid-template-columns: 1fr;
+        }
+
+        .highlight-title {
+          font-size: clamp(2rem, 12vw, 3.2rem);
         }
       }
     </style>
@@ -112,15 +122,13 @@
     <main>
       <section class="home" aria-labelledby="homeTitle">
         <header>
-          <p class="eyebrow">3D to 2D SVG tools</p>
-          <h1 id="homeTitle">選擇工作模式</h1>
-          <p class="subtitle">依照是否需要接榫，進入不同工具頁。</p>
+          <h1 id="homeTitle" class="highlight-title">3D幾何圖 轉 2D展開圖 操作練習</h1>
         </header>
 
         <div class="options">
           <a class="option" href="basic/">
             <div>
-              <h2>基本切割展開</h2>
+              <h2 class="highlight-heading">基本幾何形狀切割展開練習</h2>
               <p>沒有接榫功能。適合只需要把內建幾何展開成 SVG/DXF 切割輪廓。</p>
             </div>
             <span class="launch">開啟基本模式</span>
@@ -128,7 +136,7 @@
 
           <a class="option" href="v2/">
             <div>
-              <h2>SVG 接榫選邊</h2>
+              <h2 class="highlight-heading">3D展開平面圖 接榫練習</h2>
               <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
             </div>
             <span class="launch">開啟接榫模式</span>
