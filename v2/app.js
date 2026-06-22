@@ -1571,8 +1571,10 @@ function safeBaseName() {
     .replace(/^_+|_+$/g, "") || "laser_parts";
 }
 
-function download(name, content, type) {
+async function download(name, content, type) {
   const blob = new Blob([content], { type });
+  if (await saveWithFilePicker(name, blob, type)) return;
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -1594,12 +1596,43 @@ function download(name, content, type) {
     const link = document.createElement("a");
     link.href = url;
     link.download = name;
+    link.target = "_blank";
+    link.rel = "noopener";
     link.textContent = `下載 ${name}`;
     link.className = "export-link";
     els.exportLinks.prepend(link);
     while (els.exportLinks.children.length > 4) {
       els.exportLinks.lastChild.remove();
     }
+  }
+}
+
+async function saveWithFilePicker(name, blob, type) {
+  if (!window.showSaveFilePicker) return false;
+
+  try {
+    const extension = name.endsWith(".dxf") ? ".dxf" : ".svg";
+    const handle = await window.showSaveFilePicker({
+      suggestedName: name,
+      types: [
+        {
+          description: extension === ".dxf" ? "DXF file" : "SVG file",
+          accept: { [type]: [extension] }
+        }
+      ]
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    if (els.exportStatus) els.exportStatus.textContent = `已儲存 ${name}。`;
+    return true;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      if (els.exportStatus) els.exportStatus.textContent = "已取消儲存。";
+      return true;
+    }
+    console.warn("File picker save failed; falling back to download link.", error);
+    return false;
   }
 }
 
@@ -1740,14 +1773,14 @@ els.clearEdgePairs.addEventListener("click", () => {
   runConversion();
 });
 
-els.downloadDxf.addEventListener("click", () => {
+els.downloadDxf.addEventListener("click", async () => {
   if (!state.result) return;
-  download(`${safeBaseName()}.dxf`, exportDxf(state.result), "application/dxf");
+  await download(`${safeBaseName()}.dxf`, exportDxf(state.result), "application/dxf");
 });
 
-els.downloadSvg.addEventListener("click", () => {
+els.downloadSvg.addEventListener("click", async () => {
   if (!state.result) return;
-  download(`${safeBaseName()}.svg`, exportSvg(state.result), "image/svg+xml");
+  await download(`${safeBaseName()}.svg`, exportSvg(state.result), "image/svg+xml");
 });
 
 updateFieldVisibility();
