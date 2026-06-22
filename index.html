@@ -7,14 +7,17 @@
     <style>
       :root {
         color-scheme: light;
-        --ink: #1d2329;
-        --muted: #687380;
-        --line: #d9dee5;
-        --panel: #ffffff;
-        --canvas: #f4f6f8;
-        --accent: #0b6bcb;
-        --highlight: #050505;
-        --highlight-text: #ff8a00;
+        --ink: #ecf3f8;
+        --muted: #9fb0bd;
+        --line: #263642;
+        --panel: #101820;
+        --panel-strong: #0b1116;
+        --canvas: #151d25;
+        --steam-blue: #66c0f4;
+        --steam-glow: 0 0 8px rgba(102, 192, 244, 0.3);
+        --orange: #ff8a00;
+        --orange-soft: #ffb24a;
+        --black: #050505;
       }
 
       * {
@@ -25,15 +28,17 @@
         margin: 0;
         min-height: 100vh;
         color: var(--ink);
-        background: var(--canvas);
-        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(102, 192, 244, 0.14), transparent 28rem),
+          linear-gradient(135deg, #101820 0%, #172531 46%, #0b1116 100%);
+        font-family: "Trebuchet MS", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       }
 
       main {
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 24px;
+        padding: 28px;
       }
 
       .home {
@@ -44,12 +49,14 @@
         margin-bottom: 22px;
       }
 
+      /* High-contrast workshop labels requested for the landing page. */
       .highlight-title,
       .highlight-heading {
         display: inline-block;
-        color: var(--highlight-text);
-        background: var(--highlight);
-        box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
+        color: var(--orange);
+        background: var(--black);
+        border: 1px solid rgba(255, 138, 0, 0.55);
+        box-shadow: 0 0 16px rgba(255, 138, 0, 0.24);
         font-weight: 800;
         line-height: 1.05;
         letter-spacing: 0;
@@ -60,60 +67,202 @@
         font-size: clamp(2.2rem, 6vw, 4.4rem);
       }
 
+      .workbench {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+        gap: 18px;
+      }
+
       .options {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 18px;
       }
 
-      .option {
-        display: grid;
-        min-height: 260px;
-        padding: 24px;
+      .option,
+      .control-panel,
+      .terminal-panel {
         border: 1px solid var(--line);
         border-radius: 8px;
+        background: rgba(16, 24, 32, 0.94);
+        transition:
+          border-color 180ms ease,
+          box-shadow 180ms ease,
+          transform 180ms ease;
+      }
+
+      .option {
+        display: grid;
+        min-height: 280px;
+        padding: 24px;
         color: inherit;
-        background: var(--panel);
         text-decoration: none;
+      }
+
+      /* Steam-blue micro-interaction for cards. */
+      .option:hover,
+      .option:focus-visible,
+      .control-panel:hover,
+      .terminal-panel:hover {
+        border-color: var(--steam-blue);
+        box-shadow: var(--steam-glow);
       }
 
       .option:hover,
       .option:focus-visible {
-        border-color: var(--accent);
+        transform: translateY(-2px);
         outline: none;
       }
 
       .highlight-heading {
         padding: 8px 12px;
-        font-size: clamp(1.5rem, 3.2vw, 2.35rem);
+        font-size: clamp(1.45rem, 3vw, 2.2rem);
       }
 
-      .option p {
+      .option p,
+      .control-panel p {
         margin: 22px 0 0;
         color: var(--muted);
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         line-height: 1.6;
       }
 
-      .launch {
+      .btn-steam {
         align-self: end;
+        justify-self: start;
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
         margin-top: 30px;
-        color: var(--accent);
-        font-size: 1.05rem;
-        font-weight: 700;
+        padding: 9px 14px;
+        border: 1px solid rgba(102, 192, 244, 0.55);
+        border-radius: 6px;
+        color: #dff4ff;
+        background: linear-gradient(180deg, #244b63, #183040);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        font-weight: 800;
+        transition:
+          transform 90ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
       }
 
-      @media (max-width: 760px) {
+      .btn-steam:hover,
+      .btn-steam:focus-visible {
+        border-color: var(--steam-blue);
+        box-shadow: var(--steam-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      }
+
+      /* Active-state click feedback requested for launch buttons. */
+      .btn-steam:active {
+        transform: scale(0.98);
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 18px;
+      }
+
+      .control-panel,
+      .terminal-panel {
+        padding: 18px;
+      }
+
+      .panel-title {
+        margin: 0;
+        color: var(--orange-soft);
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      input {
+        width: 100%;
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px 9px;
+        color: var(--ink);
+        background: #0d141b;
+        transition:
+          border-color 180ms ease,
+          box-shadow 180ms ease,
+          background-color 180ms ease;
+      }
+
+      /* Steam-blue micro-interaction for input boxes. */
+      input:hover,
+      input:focus {
+        border-color: var(--steam-blue);
+        box-shadow: var(--steam-glow);
+        background: #0f1a23;
+        outline: none;
+      }
+
+      .terminal-panel {
+        background: var(--panel-strong);
+      }
+
+      /* Code Injection Block: reserved area for future JSON streams. */
+      .code-stream {
+        min-height: 188px;
+        margin: 14px 0 0;
+        overflow: auto;
+        border: 1px solid #1f3645;
+        border-radius: 6px;
+        padding: 14px;
+        color: #8fffd2;
+        background:
+          linear-gradient(rgba(102, 192, 244, 0.04) 50%, transparent 50%),
+          #0b1116;
+        background-size: 100% 2.1rem;
+        font: 0.88rem/1.55 Consolas, "Courier New", monospace;
+        white-space: pre-wrap;
+      }
+
+      .code-stream .key {
+        color: #66c0f4;
+      }
+
+      .code-stream .value {
+        color: #8fffd2;
+      }
+
+      .code-stream .number {
+        color: #ffb24a;
+      }
+
+      @media (max-width: 980px) {
+        .workbench,
+        .options {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
         main {
           padding: 16px;
         }
 
-        .options {
-          grid-template-columns: 1fr;
+        .highlight-title {
+          font-size: clamp(1.9rem, 11vw, 3.1rem);
         }
 
-        .highlight-title {
-          font-size: clamp(2rem, 12vw, 3.2rem);
+        .field-grid {
+          grid-template-columns: 1fr;
         }
       }
     </style>
@@ -125,22 +274,60 @@
           <h1 id="homeTitle" class="highlight-title">3D幾何圖 轉 2D展開圖 操作練習</h1>
         </header>
 
-        <div class="options">
-          <a class="option" href="basic/">
-            <div>
-              <h2 class="highlight-heading">基本幾何形狀切割展開練習</h2>
-              <p>沒有接榫功能。適合只需要把內建幾何展開成 SVG/DXF 切割輪廓。</p>
-            </div>
-            <span class="launch">開啟基本模式</span>
-          </a>
+        <div class="workbench">
+          <div class="options">
+            <a class="option" href="basic/">
+              <div>
+                <h2 class="highlight-heading">基本幾何形狀切割展開練習</h2>
+                <p>沒有接榫功能。適合只需要把內建幾何展開成 SVG/DXF 切割輪廓。</p>
+              </div>
+              <span class="btn-steam">開啟基本模式</span>
+            </a>
 
-          <a class="option" href="v2/">
-            <div>
-              <h2 class="highlight-heading">3D展開平面圖 接榫練習</h2>
-              <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
-            </div>
-            <span class="launch">開啟接榫模式</span>
-          </a>
+            <a class="option" href="v2/">
+              <div>
+                <h2 class="highlight-heading">3D展開平面圖 接榫練習</h2>
+                <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
+              </div>
+              <span class="btn-steam">開啟接榫模式</span>
+            </a>
+          </div>
+
+          <aside class="side-stack" aria-label="工程資料預覽">
+            <section class="control-panel">
+              <h2 class="panel-title">練習參數快照</h2>
+              <p>預留給後續物件導向 JavaScript 控制器綁定。</p>
+              <div class="field-grid">
+                <label>
+                  材料厚度 mm
+                  <input type="text" value="3.0" aria-label="材料厚度 mm">
+                </label>
+                <label>
+                  Kerf mm
+                  <input type="text" value="0.15" aria-label="Kerf mm">
+                </label>
+                <label>
+                  接榫寬度 mm
+                  <input type="text" value="10" aria-label="接榫寬度 mm">
+                </label>
+                <label>
+                  接榫深度 mm
+                  <input type="text" value="3" aria-label="接榫深度 mm">
+                </label>
+              </div>
+            </section>
+
+            <section class="terminal-panel">
+              <h2 class="panel-title">JSON 資料流預覽</h2>
+              <pre class="code-stream" aria-label="JSON data stream"><code>{
+  <span class="key">"workflow"</span>: <span class="value">"3d-to-2d-practice"</span>,
+  <span class="key">"materialThickness"</span>: <span class="number">3.0</span>,
+  <span class="key">"kerf"</span>: <span class="number">0.15</span>,
+  <span class="key">"joineryMode"</span>: <span class="value">"manual-fF-pairing"</span>,
+  <span class="key">"export"</span>: [<span class="value">"svg"</span>, <span class="value">"dxf"</span>]
+}</code></pre>
+            </section>
+          </aside>
         </div>
       </section>
     </main>
