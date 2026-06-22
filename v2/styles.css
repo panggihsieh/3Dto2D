@@ -394,6 +394,32 @@ button:disabled {
   font-weight: 750;
 }
 
+.export-status {
+  min-height: 20px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.export-links {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.export-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--focus);
+  background: #ffffff;
+  text-decoration: none;
+  font-size: 0.82rem;
+}
+
 .edge-overlay {
   pointer-events: all;
 }

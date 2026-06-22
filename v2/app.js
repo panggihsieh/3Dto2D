@@ -48,6 +48,8 @@ const els = {
   heightMetric: document.querySelector("#heightMetric"),
   pathMetric: document.querySelector("#pathMetric"),
   warningList: document.querySelector("#warningList"),
+  exportStatus: document.querySelector("#exportStatus"),
+  exportLinks: document.querySelector("#exportLinks"),
   statusPill: document.querySelector("#statusPill"),
   circularFields: document.querySelectorAll("[data-field='circular']"),
   houseFields: document.querySelectorAll("[data-field='house']")
@@ -69,6 +71,7 @@ const pairColors = Array.from({ length: 48 }, (_, i) => {
 });
 
 let audioContext = null;
+const exportUrls = [];
 
 function readNumber(input, fallback) {
   const value = Number(input.value);
@@ -132,7 +135,7 @@ function buildResult(params) {
 function buildImportedResult(params) {
   const warnings = validateParams(params).concat(state.importedWarnings, state.uiWarnings);
 
-  if (state.appliedJoinery && state.importedPreset === "cube_net") {
+  if (state.appliedJoinery && state.importedPreset === "cube_net" && state.edgeSelection.pairs.length === 0) {
     const side = params.length || 60;
     const pieces = layoutPieces(buildBoxPieces(side, side, side, params), params.partGap);
     const bounds = getBoundsFromPieces(pieces);
@@ -1162,7 +1165,7 @@ function render(result) {
 
 function renderEdgeOverlay(result) {
   if (state.sourceMode !== "svg" || !state.edgeSelectEnabled || !state.importedPieces?.length) return;
-  if (state.appliedJoinery && state.importedPreset === "cube_net") return;
+  if (state.appliedJoinery && state.importedPreset === "cube_net" && state.edgeSelection.pairs.length === 0) return;
 
   const group = createSvgElement("g", { class: "edge-overlay" });
   els.previewSvg.appendChild(group);
@@ -1574,10 +1577,30 @@ function download(name, content, type) {
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
+  a.textContent = name;
+  a.className = "export-link";
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+
+  exportUrls.push(url);
+  while (exportUrls.length > 6) URL.revokeObjectURL(exportUrls.shift());
+
+  if (els.exportStatus) {
+    els.exportStatus.textContent = `已產生 ${name}。若瀏覽器未自動下載，請點下方連結。`;
+  }
+
+  if (els.exportLinks) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.textContent = `下載 ${name}`;
+    link.className = "export-link";
+    els.exportLinks.prepend(link);
+    while (els.exportLinks.children.length > 4) {
+      els.exportLinks.lastChild.remove();
+    }
+  }
 }
 
 function updateFieldVisibility() {

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SVG Joinery V2</title>
-    <link rel="stylesheet" href="styles.css?v=20260622-v2-live-joint-checks">
+    <link rel="stylesheet" href="styles.css?v=20260622-v2-export-links">
   </head>
   <body>
     <main class="shell">
@@ -127,6 +127,8 @@
             <button id="downloadSvg" type="button" title="Download SVG" aria-label="Download SVG">SVG</button>
             <button id="downloadDxf" type="button" title="Download DXF" aria-label="Download DXF">DXF</button>
           </div>
+          <div class="export-status" id="exportStatus" aria-live="polite"></div>
+          <div class="export-links" id="exportLinks"></div>
         </section>
       </aside>
 
@@ -157,6 +159,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260622-v2-live-joint-checks"></script>
+    <script src="app.js?v=20260622-v2-export-links"></script>
   </body>
 </html>
