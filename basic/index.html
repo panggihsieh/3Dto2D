@@ -11,7 +11,7 @@
       <aside class="controls" aria-label="Basic 2D layout controls">
         <header class="brand">
           <div>
-            <p class="eyebrow">No joinery mode</p>
+            <p class="eyebrow">Basic mode</p>
             <h1>基本切割展開</h1>
           </div>
           <span class="status-pill" id="statusPill">Ready</span>
@@ -100,6 +100,12 @@
           <input id="tabDepth" type="hidden" value="3">
           <input id="tabSpacing" type="hidden" value="8">
           <input id="joineryToggle" type="checkbox" hidden>
+          <div class="toggle-row joinery-mode-row">
+            <button id="joineryModeButton" class="mode-button" type="button" aria-pressed="false">
+              顯示接榫後
+            </button>
+            <span id="joineryModeStatus">目前：沒有接榫</span>
+          </div>
         </section>
 
         <section class="panel" aria-labelledby="downloadsTitle">
@@ -139,6 +145,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260621-basic"></script>
+    <script src="app.js?v=20260623-basic-joinery-toggle"></script>
   </body>
 </html>

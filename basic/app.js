@@ -32,6 +32,8 @@ const els = {
   pathMetric: document.querySelector("#pathMetric"),
   warningList: document.querySelector("#warningList"),
   statusPill: document.querySelector("#statusPill"),
+  joineryModeButton: document.querySelector("#joineryModeButton"),
+  joineryModeStatus: document.querySelector("#joineryModeStatus"),
   circularFields: document.querySelectorAll("[data-field='circular']"),
   houseFields: document.querySelectorAll("[data-field='house']")
 };
@@ -67,7 +69,7 @@ function getParams() {
     tabSpacing: readNumber(els.tabSpacing, 8),
     partGap: readNumber(els.partGap, 8),
     segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
-    generateJoinery: false
+    generateJoinery: els.joineryToggle.checked
   };
 }
 
@@ -815,12 +817,28 @@ function resetParams() {
   els.partGap.value = "8";
   els.segments.value = "48";
   els.joineryToggle.checked = false;
+  updateJoineryModeControls();
   updateDefaultsForModel();
+}
+
+function updateJoineryModeControls() {
+  if (!els.joineryModeButton || !els.joineryModeStatus) return;
+  const enabled = els.joineryToggle.checked;
+  els.joineryModeButton.setAttribute("aria-pressed", String(enabled));
+  els.joineryModeButton.textContent = enabled ? "顯示沒有接榫" : "顯示接榫後";
+  els.joineryModeStatus.textContent = enabled ? "目前：接榫後" : "目前：沒有接榫";
+}
+
+function toggleJoineryMode() {
+  els.joineryToggle.checked = !els.joineryToggle.checked;
+  updateJoineryModeControls();
+  runConversion();
 }
 
 function runConversion() {
   els.statusPill.textContent = "Generating";
   updateFieldVisibility();
+  updateJoineryModeControls();
   state.result = buildResult(getParams());
   render(state.result);
   els.statusPill.textContent = "Ready";
@@ -851,6 +869,7 @@ function dxfNum(value) {
 
 els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
+els.joineryModeButton.addEventListener("click", toggleJoineryMode);
 
 for (const input of document.querySelectorAll("input, select")) {
   if (input.id !== "modelType") {
