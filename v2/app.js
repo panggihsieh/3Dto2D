@@ -1542,12 +1542,17 @@ function exportSvg(result) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n${clone.outerHTML}\n`;
 }
 
-function exportSampleSvg(pieces, name) {
+function exportSampleSvg(pieces, name, labels = {}) {
   const bounds = getBoundsFromPieces(pieces);
   const paths = [];
+  const textNodes = [];
   for (const piece of pieces) {
     for (const path of piece.paths) {
       paths.push(`  <path id="${escapeXml(piece.name)}" d="${pathToD(path, piece.x, piece.y)}" fill="none" stroke="#000000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>`);
+    }
+    const label = labels[piece.name];
+    if (label) {
+      textNodes.push(`  <text x="${svgNum(piece.x + piece.width / 2)}" y="${svgNum(piece.y + piece.height / 2)}" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">${escapeXml(label)}</text>`);
     }
   }
   return [
@@ -1557,6 +1562,7 @@ function exportSampleSvg(pieces, name) {
     `  <g id="CUT">`,
     ...paths,
     `  </g>`,
+    ...(textNodes.length ? [`  <g id="LABELS">`, ...textNodes, `  </g>`] : []),
     `</svg>`,
     ``
   ].join("\n");
@@ -1588,7 +1594,15 @@ async function downloadPracticeSample(type) {
 
   const params = sampleParams({ length: 120, width: 80, wallHeight: 55, roofHeight: 35, partGap: 12 });
   const pieces = layoutPieces(buildHousePieces(params), params.partGap);
-  await download("gable_house_practice.svg", exportSampleSvg(pieces, "Gable house practice SVG"), "image/svg+xml");
+  await download("gable_house_practice.svg", exportSampleSvg(pieces, "Gable house practice SVG", {
+    floor: "bottom",
+    left_wall: "left",
+    right_wall: "right",
+    front_gable: "front",
+    back_gable: "back",
+    roof_left: "roof left",
+    roof_right: "roof right"
+  }), "image/svg+xml");
 }
 
 function exportDxf(result) {
