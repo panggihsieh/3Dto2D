@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>V4 Beam Studio Gradient Layers</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="controls" aria-label="Gradient layer controls">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">V4 / FLUX</p>
+            <h1>漸層雷刻測試</h1>
+          </div>
+          <span class="status-pill" id="statusText">待上傳</span>
+        </header>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>Bitmap</h2>
+            <span>JPG / PNG / WebP</span>
+          </div>
+          <label class="full-field file-field">
+            <span>上傳圖片</span>
+            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/bmp">
+          </label>
+          <canvas id="sourceCanvas" hidden></canvas>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>FLUX 設定</h2>
+            <span>Beam Studio 友善</span>
+          </div>
+          <div class="field-grid">
+            <label>
+              <span>機型額定功率</span>
+              <select id="machineWatts">
+                <option value="30" selected>FLUX 30W</option>
+                <option value="40">FLUX 40W</option>
+                <option value="50">FLUX 50W</option>
+              </select>
+            </label>
+            <label>
+              <span>輸出寬度 mm</span>
+              <input id="outputWidthMm" type="number" min="10" max="600" step="1" value="100">
+            </label>
+            <label>
+              <span>最低功率 %</span>
+              <input id="minPower" type="number" min="0" max="100" step="0.1" value="8">
+            </label>
+            <label>
+              <span>最高功率 %</span>
+              <input id="maxPower" type="number" min="0" max="100" step="0.1" value="40">
+            </label>
+            <label>
+              <span>取樣寬度 px</span>
+              <input id="sampleWidth" type="number" min="24" max="240" step="1" value="140">
+            </label>
+            <label>
+              <span>專案名稱</span>
+              <input id="projectName" type="text" maxlength="48" value="flux_gradient_test">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>匯出</h2>
+            <span>12 色 / 12 層</span>
+          </div>
+          <div class="actions">
+            <button id="downloadSvg" type="button" disabled>下載 SVG</button>
+            <button id="downloadCsv" type="button" disabled>下載功率表</button>
+          </div>
+          <p class="hint">在 Beam Studio 匯入 SVG 時優先選 Color 分層，並依功率表設定各顏色的參數。</p>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>功率對照</h2>
+            <span id="profileSummary">FLUX 30W</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Layer</th>
+                  <th>Color</th>
+                  <th>Power</th>
+                  <th>Est. W</th>
+                </tr>
+              </thead>
+              <tbody id="powerTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="Gradient preview">
+        <div class="toolbar">
+          <div class="metric-strip">
+            <span id="imageMetric">未載入圖片</span>
+            <span id="svgMetric">12 layers</span>
+            <span id="cellMetric">0 paths</span>
+          </div>
+          <button id="resetView" type="button">重建預覽</button>
+        </div>
+
+        <div class="preview-frame">
+          <svg id="previewSvg" role="img" aria-label="Generated Beam Studio layer preview"></svg>
+          <div class="empty-state" id="emptyState">上傳圖片後會產生 12 個彩色灰階分離圖層</div>
+        </div>
+
+        <div class="legend" id="legend"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

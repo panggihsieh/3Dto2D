@@ -1,0 +1,408 @@
+const NS = "http://www.w3.org/2000/svg";
+const INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape";
+
+const LAYER_COUNT = 12;
+const LAYER_COLORS = [
+  "#0072b2",
+  "#e69f00",
+  "#009e73",
+  "#d55e00",
+  "#cc79a7",
+  "#56b4e9",
+  "#f0e442",
+  "#6a3d9a",
+  "#8c564b",
+  "#17becf",
+  "#7f7f7f",
+  "#000000"
+];
+
+const els = {
+  imageInput: document.querySelector("#imageInput"),
+  sourceCanvas: document.querySelector("#sourceCanvas"),
+  machineWatts: document.querySelector("#machineWatts"),
+  outputWidthMm: document.querySelector("#outputWidthMm"),
+  minPower: document.querySelector("#minPower"),
+  maxPower: document.querySelector("#maxPower"),
+  sampleWidth: document.querySelector("#sampleWidth"),
+  projectName: document.querySelector("#projectName"),
+  downloadSvg: document.querySelector("#downloadSvg"),
+  downloadCsv: document.querySelector("#downloadCsv"),
+  powerTable: document.querySelector("#powerTable"),
+  profileSummary: document.querySelector("#profileSummary"),
+  statusText: document.querySelector("#statusText"),
+  previewSvg: document.querySelector("#previewSvg"),
+  emptyState: document.querySelector("#emptyState"),
+  imageMetric: document.querySelector("#imageMetric"),
+  svgMetric: document.querySelector("#svgMetric"),
+  cellMetric: document.querySelector("#cellMetric"),
+  resetView: document.querySelector("#resetView"),
+  legend: document.querySelector("#legend")
+};
+
+const state = {
+  image: null,
+  imageName: "",
+  sourceWidth: 0,
+  sourceHeight: 0,
+  sampled: null,
+  layerRuns: []
+};
+
+renderPowerTable();
+renderLegend();
+
+els.imageInput.addEventListener("change", async () => {
+  const file = els.imageInput.files?.[0];
+  if (!file) return;
+  await loadImageFile(file);
+});
+
+[
+  els.machineWatts,
+  els.outputWidthMm,
+  els.minPower,
+  els.maxPower,
+  els.sampleWidth,
+  els.projectName
+].forEach((input) => {
+  input.addEventListener("input", () => {
+    renderPowerTable();
+    if (state.image) buildPreview();
+  });
+});
+
+els.resetView.addEventListener("click", () => {
+  if (state.image) buildPreview();
+});
+
+els.downloadSvg.addEventListener("click", () => {
+  if (!state.sampled) return;
+  download(`${safeBaseName()}.svg`, buildSvgDocument(), "image/svg+xml");
+});
+
+els.downloadCsv.addEventListener("click", () => {
+  download(`${safeBaseName()}_beam_studio_power_table.csv`, buildPowerCsv(), "text/csv;charset=utf-8");
+});
+
+async function loadImageFile(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(dataUrl);
+  state.image = image;
+  state.imageName = file.name;
+  state.sourceWidth = image.naturalWidth;
+  state.sourceHeight = image.naturalHeight;
+  buildPreview();
+}
+
+function buildPreview() {
+  const settings = readSettings();
+  const sampled = sampleImage(state.image, settings.sampleWidth);
+  const layerRuns = buildLayerRuns(sampled);
+  state.sampled = sampled;
+  state.layerRuns = layerRuns;
+  drawPreviewSvg(settings, sampled, layerRuns);
+  updateMetrics(settings, sampled, layerRuns);
+  els.downloadSvg.disabled = false;
+  els.downloadCsv.disabled = false;
+  els.emptyState.hidden = true;
+  els.statusText.textContent = "已建立";
+}
+
+function sampleImage(image, targetWidth) {
+  const width = clamp(Math.round(targetWidth), 24, 240);
+  const height = Math.max(1, Math.round(width * image.naturalHeight / image.naturalWidth));
+  const canvas = els.sourceCanvas;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const layers = new Uint8Array(width * height);
+  const visible = new Uint8Array(width * height);
+
+  for (let i = 0; i < width * height; i += 1) {
+    const offset = i * 4;
+    const alpha = imageData.data[offset + 3];
+    if (alpha < 16) continue;
+    const r = imageData.data[offset];
+    const g = imageData.data[offset + 1];
+    const b = imageData.data[offset + 2];
+    const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const darkness = 255 - gray;
+    const layer = Math.min(LAYER_COUNT - 1, Math.floor(darkness / 256 * LAYER_COUNT));
+    layers[i] = layer;
+    visible[i] = 1;
+  }
+
+  return { width, height, layers, visible };
+}
+
+function buildLayerRuns(sampled) {
+  const groups = Array.from({ length: LAYER_COUNT }, () => []);
+  for (let y = 0; y < sampled.height; y += 1) {
+    let x = 0;
+    while (x < sampled.width) {
+      const index = y * sampled.width + x;
+      if (!sampled.visible[index]) {
+        x += 1;
+        continue;
+      }
+      const layer = sampled.layers[index];
+      let runWidth = 1;
+      while (x + runWidth < sampled.width) {
+        const next = y * sampled.width + x + runWidth;
+        if (!sampled.visible[next] || sampled.layers[next] !== layer) break;
+        runWidth += 1;
+      }
+      groups[layer].push({ x, y, width: runWidth });
+      x += runWidth;
+    }
+  }
+  return groups;
+}
+
+function drawPreviewSvg(settings, sampled, layerRuns) {
+  clearSvg(els.previewSvg);
+  const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
+  els.previewSvg.setAttribute("viewBox", `0 0 ${svgNum(settings.outputWidthMm)} ${svgNum(outputHeightMm)}`);
+  els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  layerRuns.forEach((runs, layerIndex) => {
+    const group = createSvgElement("g", {
+      id: layerId(layerIndex, settings),
+      "data-layer": `L${pad2(layerIndex + 1)}`,
+      "data-power-percent": powerForLayer(layerIndex, settings).toFixed(1),
+      "data-estimated-watts": estimatedWatts(layerIndex, settings).toFixed(2),
+      fill: LAYER_COLORS[layerIndex],
+      stroke: "none"
+    });
+    appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    els.previewSvg.appendChild(group);
+  });
+}
+
+function buildSvgDocument() {
+  const settings = readSettings();
+  const sampled = state.sampled;
+  const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
+  const svg = createSvgElement("svg", {
+    xmlns: NS,
+    "xmlns:inkscape": INKSCAPE_NS,
+    width: `${svgNum(settings.outputWidthMm)}mm`,
+    height: `${svgNum(outputHeightMm)}mm`,
+    viewBox: `0 0 ${svgNum(settings.outputWidthMm)} ${svgNum(outputHeightMm)}`,
+    version: "1.1"
+  });
+
+  const metadata = createSvgElement("metadata", {});
+  metadata.textContent = JSON.stringify({
+    generator: "3Dto2D v4 FLUX gradient layer test",
+    source: state.imageName,
+    machineProfile: `FLUX ${settings.machineWatts}W`,
+    layerCount: LAYER_COUNT,
+    powerRangePercent: [settings.minPower, settings.maxPower],
+    note: "Suggested settings only. Calibrate in Beam Studio with real material before production.",
+    layers: layerSettings(settings)
+  }, null, 2);
+  svg.appendChild(metadata);
+
+  const desc = createSvgElement("desc", {});
+  desc.textContent = `Beam Studio friendly SVG: import by Color when possible. Profile FLUX ${settings.machineWatts}W, ${LAYER_COUNT} layers, ${settings.minPower}% to ${settings.maxPower}%.`;
+  svg.appendChild(desc);
+
+  state.layerRuns.forEach((runs, layerIndex) => {
+    const group = createSvgElement("g", {
+      id: layerId(layerIndex, settings),
+      "inkscape:groupmode": "layer",
+      "inkscape:label": layerLabel(layerIndex, settings),
+      "data-layer": `L${pad2(layerIndex + 1)}`,
+      "data-tone": layerTone(layerIndex),
+      "data-color": LAYER_COLORS[layerIndex],
+      "data-power-percent": powerForLayer(layerIndex, settings).toFixed(1),
+      "data-estimated-watts": estimatedWatts(layerIndex, settings).toFixed(2),
+      fill: LAYER_COLORS[layerIndex],
+      stroke: "none"
+    });
+    appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    svg.appendChild(group);
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}\n`;
+}
+
+function appendRuns(group, runs, sampled, outputWidthMm, outputHeightMm) {
+  const cellWidth = outputWidthMm / sampled.width;
+  const cellHeight = outputHeightMm / sampled.height;
+  runs.forEach((run) => {
+    group.appendChild(createSvgElement("rect", {
+      x: svgNum(run.x * cellWidth),
+      y: svgNum(run.y * cellHeight),
+      width: svgNum(run.width * cellWidth),
+      height: svgNum(cellHeight)
+    }));
+  });
+}
+
+function renderPowerTable() {
+  const settings = readSettings();
+  els.profileSummary.textContent = `FLUX ${settings.machineWatts}W`;
+  els.powerTable.replaceChildren(...layerSettings(settings).map((layer) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${layer.layer}</td>
+      <td><span class="swatch" style="background:${layer.color}"></span>${layer.color}</td>
+      <td>${layer.powerPercent.toFixed(1)}%</td>
+      <td>${layer.estimatedWatts.toFixed(2)}W</td>
+    `;
+    return tr;
+  }));
+}
+
+function renderLegend() {
+  els.legend.replaceChildren(...LAYER_COLORS.map((color, index) => {
+    const item = document.createElement("span");
+    item.innerHTML = `<span class="swatch" style="background:${color}"></span>L${pad2(index + 1)}`;
+    return item;
+  }));
+}
+
+function buildPowerCsv() {
+  const settings = readSettings();
+  const rows = [
+    ["Layer", "Tone", "Color", "MachineProfile", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
+    ...layerSettings(settings).map((layer) => [
+      layer.layer,
+      layer.tone,
+      layer.color,
+      `FLUX ${settings.machineWatts}W`,
+      layer.powerPercent.toFixed(1),
+      layer.estimatedWatts.toFixed(2),
+      "Import SVG by Color, then set this color layer power in Beam Studio."
+    ])
+  ];
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+function layerSettings(settings) {
+  return Array.from({ length: LAYER_COUNT }, (_, index) => ({
+    layer: `L${pad2(index + 1)}`,
+    tone: layerTone(index),
+    color: LAYER_COLORS[index],
+    powerPercent: powerForLayer(index, settings),
+    estimatedWatts: estimatedWatts(index, settings)
+  }));
+}
+
+function readSettings() {
+  const minPower = clamp(Number(els.minPower.value) || 0, 0, 100);
+  const maxPower = clamp(Number(els.maxPower.value) || minPower, minPower, 100);
+  return {
+    machineWatts: Number(els.machineWatts.value) || 30,
+    outputWidthMm: clamp(Number(els.outputWidthMm.value) || 100, 10, 600),
+    minPower,
+    maxPower,
+    sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240)
+  };
+}
+
+function powerForLayer(layerIndex, settings) {
+  if (LAYER_COUNT === 1) return settings.maxPower;
+  return settings.minPower + (settings.maxPower - settings.minPower) * layerIndex / (LAYER_COUNT - 1);
+}
+
+function estimatedWatts(layerIndex, settings) {
+  return settings.machineWatts * powerForLayer(layerIndex, settings) / 100;
+}
+
+function layerTone(layerIndex) {
+  if (layerIndex === 0) return "lightest";
+  if (layerIndex === LAYER_COUNT - 1) return "darkest";
+  return `tone_${pad2(layerIndex + 1)}`;
+}
+
+function layerLabel(layerIndex, settings) {
+  const layer = `L${pad2(layerIndex + 1)}`;
+  const power = powerForLayer(layerIndex, settings).toFixed(1).replace(".", "p");
+  return `${layer}_${layerTone(layerIndex)}_${LAYER_COLORS[layerIndex]}_${power}pct_FLUX_${settings.machineWatts}W`;
+}
+
+function layerId(layerIndex, settings) {
+  return layerLabel(layerIndex, settings)
+    .replace("#", "color_")
+    .replace(/[^A-Za-z0-9_:-]/g, "_");
+}
+
+function updateMetrics(settings, sampled, layerRuns) {
+  const rectCount = layerRuns.reduce((sum, runs) => sum + runs.length, 0);
+  const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
+  els.imageMetric.textContent = `${state.sourceWidth} x ${state.sourceHeight}px -> ${sampled.width} x ${sampled.height}px`;
+  els.svgMetric.textContent = `${svgNum(settings.outputWidthMm)} x ${svgNum(outputHeightMm)} mm`;
+  els.cellMetric.textContent = `${rectCount} rect runs`;
+}
+
+function createSvgElement(name, attributes) {
+  const element = document.createElementNS(NS, name);
+  Object.entries(attributes).forEach(([key, value]) => {
+    element.setAttribute(key, value);
+  });
+  return element;
+}
+
+function clearSvg(svg) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function download(name, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function csvCell(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function safeBaseName() {
+  return (els.projectName.value || "flux_gradient_test")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "flux_gradient_test";
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function svgNum(value) {
+  return Number.parseFloat(value.toFixed(4)).toString();
+}
