@@ -45,6 +45,15 @@
         width: min(1180px, 100%);
       }
 
+      .credit {
+        position: fixed;
+        right: 16px;
+        bottom: 12px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
       header {
         margin-bottom: 22px;
         text-align: center;
@@ -128,17 +137,20 @@
 
       .btn-steam {
         align-self: end;
-        justify-self: start;
+        justify-self: center;
         display: inline-flex;
         align-items: center;
-        min-height: 40px;
+        min-height: 58px;
         margin-top: 30px;
-        padding: 9px 14px;
-        border: 1px solid rgba(102, 192, 244, 0.55);
+        padding: 10px 28px;
+        border: 1px solid rgba(255, 138, 0, 0.72);
         border-radius: 6px;
-        color: #dff4ff;
-        background: linear-gradient(180deg, #244b63, #183040);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        color: var(--orange);
+        background: var(--black);
+        box-shadow:
+          0 0 16px rgba(255, 138, 0, 0.22),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        font-size: clamp(1.45rem, 2.6vw, 2.15rem);
         font-weight: 800;
         transition:
           transform 90ms ease,
@@ -148,8 +160,10 @@
 
       .btn-steam:hover,
       .btn-steam:focus-visible {
-        border-color: var(--steam-blue);
-        box-shadow: var(--steam-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border-color: var(--orange-soft);
+        box-shadow:
+          0 0 20px rgba(255, 138, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
       }
 
       /* Active-state click feedback requested for launch buttons. */
@@ -229,6 +243,11 @@
         .field-grid {
           grid-template-columns: 1fr;
         }
+
+        .credit {
+          right: 12px;
+          bottom: 10px;
+        }
       }
     </style>
   </head>
@@ -241,20 +260,18 @@
 
         <div class="workbench">
           <div class="options">
-            <a class="option" href="basic/">
+            <a class="option" href="basic/" target="_blank" rel="noopener">
               <div>
-                <h2 class="highlight-heading">3D展開範本圖接榫  練習區</h2>
                 <p>可切換沒有接榫與接榫後兩種狀態，適合檢視內建幾何展開後的凹凸契合。</p>
               </div>
-              <span class="btn-steam">開啟基本模式</span>
+              <span class="btn-steam">展示區</span>
             </a>
 
-            <a class="option" href="v2/">
+            <a class="option" href="joint/" target="_blank" rel="noopener">
               <div>
-                <h2 class="highlight-heading">3D展開平面圖接榫  上傳區</h2>
                 <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
               </div>
-              <span class="btn-steam">開啟接榫模式</span>
+              <span class="btn-steam">上傳區</span>
             </a>
           </div>
 
@@ -285,6 +302,7 @@
           </aside>
         </div>
       </section>
+      <div class="credit">@大南國小 邦基老師</div>
     </main>
   </body>
 </html>

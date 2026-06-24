@@ -1,26 +1,26 @@
-# 3D to 2D SVG V2
+# 3D to 2D SVG Joint
 
-V2 is a standalone uploaded SVG edge-pair selection page for finger-joint cutting.
+Joint is a standalone uploaded SVG edge-pair selection page for finger-joint cutting.
 
 ## Entry Point
 
-Open `v2/index.html` from GitHub Pages or a local static server:
+Open `joint/index.html` from GitHub Pages or a local static server:
 
 ```text
-/v2/
+/joint/
 ```
 
 Remote page:
 
 ```text
-https://panggihsieh.github.io/3Dto2D/v2/
+https://panggihsieh.github.io/3Dto2D/joint/
 ```
 
-## V2 Features
+## Joint Features
 
 - Import simple SVG polygons.
 - Use a default cube net for edge-pair testing.
-- Keep the V1 model selector out of the V2 interface.
+- Keep the V1 model selector out of the joint interface.
 - Preserve unfolded shape positions while inserting small gaps for reliable edge picking.
 - Use the 3D bottom face as the center of the default cube net.
 - Select one pair of polygon edges for complementary `f/F` joinery.
@@ -35,19 +35,19 @@ https://panggihsieh.github.io/3Dto2D/v2/
 - Generate a preview with finger-jointed polygon boundaries.
 - Download the generated SVG or DXF.
 
-## V2 Notes
+## Joint Notes
 
 - The first selected edge is always convex `f`; the second selected edge is concave `F`.
 - A pending edge can be clicked again to cancel it. A completed paired edge can be clicked again to delete that pair.
 - Manual pairing changes only the selected pair. It does not automatically apply all cube-net joinery.
 - The built-in cube net can still use its known correct topology when no manual pairs exist and the cube flow is confirmed.
-- Gable-roof practice SVG labels are intended for spatial matching practice. V2 preserves simple path `id` values and uses them to show labels again after import.
+- Gable-roof practice SVG labels are intended for spatial matching practice. The joint workflow preserves simple path `id` values and uses them to show labels again after import.
 - Exported production SVG removes temporary edge overlays, source overlays, and preview labels.
-- Browser download behavior differs by environment. V2 tries the native save picker first, then falls back to an on-page download link.
+- Browser download behavior differs by environment. The joint workflow tries the native save picker first, then falls back to an on-page download link.
 
 ## SVG Support
 
-The first V2 build supports:
+The first joint build supports:
 
 - `polygon`
 - `polyline`

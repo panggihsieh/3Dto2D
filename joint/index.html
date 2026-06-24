@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SVG Joinery V2</title>
-    <link rel="stylesheet" href="styles.css?v=20260622-v2-import-labels">
+    <title>SVG Joinery</title>
+    <link rel="stylesheet" href="styles.css?v=20260624-joint-red-edges">
   </head>
   <body>
     <main class="shell">
       <aside class="controls" aria-label="SVG joinery controls">
         <header class="brand">
           <div>
-            <p class="eyebrow">V2 standalone tool</p>
+            <p class="eyebrow">Joint standalone tool</p>
             <h1>SVG 接榫選邊</h1>
           </div>
           <span class="status-pill" id="statusPill">Ready</span>
@@ -30,16 +30,15 @@
             <input id="svgUpload" type="file" accept=".svg,image/svg+xml">
           </label>
 
-          <div class="actions stacked-actions">
-            <button id="useCubeNet" type="button">使用正方體展開圖</button>
-            <button id="toggleEdgeSelect" type="button" aria-pressed="false">選取接榫邊</button>
-            <button id="applyEdgePairs" type="button">確認產生接榫</button>
-            <button id="clearEdgePairs" type="button">清除配對</button>
-          </div>
-
           <div class="sample-actions">
             <button id="downloadCuboidSample" type="button">下載長方體練習 SVG</button>
             <button id="downloadHouseSample" type="button">下載斜頂房屋練習 SVG</button>
+          </div>
+
+          <div class="actions stacked-actions">
+            <button id="toggleEdgeSelect" type="button" aria-pressed="false">選取接榫邊</button>
+            <button id="applyEdgePairs" type="button">確認產生接榫</button>
+            <button id="clearEdgePairs" type="button">清除配對</button>
           </div>
 
           <ol class="pair-list" id="pairList" aria-live="polite"></ol>
@@ -164,6 +163,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260622-v2-import-labels"></script>
+    <script src="app.js?v=20260624-joint-practice-buttons-top"></script>
   </body>
 </html>

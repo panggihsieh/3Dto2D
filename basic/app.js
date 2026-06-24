@@ -83,7 +83,7 @@ function buildResult(params) {
   }
 
   if (params.modelType === "cuboid") {
-    pieces.push(...buildBoxPieces(params.length, params.width, params.height, params));
+    pieces.push(...buildBoxPieces(params.length, params.width, params.height, params, true));
   }
 
   if (params.modelType === "cylinder") {
@@ -153,17 +153,17 @@ function modelWarnings(params) {
   return warnings;
 }
 
-function buildBoxPieces(length, width, height, params) {
+function buildBoxPieces(length, width, height, params, reserveJoineryMargin = false) {
   const topEdges = params.generateJoinery ? "ffff" : "eeee";
   const longWallEdges = params.generateJoinery ? "FFFF" : "eeee";
   const shortWallEdges = params.generateJoinery ? "FfFf" : "eeee";
   return [
-    rectPiece("top", length, width, params, topEdges),
-    rectPiece("bottom", length, width, params, topEdges),
-    rectPiece("front", length, height, params, longWallEdges),
-    rectPiece("back", length, height, params, longWallEdges),
-    rectPiece("left", width, height, params, shortWallEdges),
-    rectPiece("right", width, height, params, shortWallEdges)
+    rectPiece("top", length, width, params, topEdges, reserveJoineryMargin),
+    rectPiece("bottom", length, width, params, topEdges, reserveJoineryMargin),
+    rectPiece("front", length, height, params, longWallEdges, reserveJoineryMargin),
+    rectPiece("back", length, height, params, longWallEdges, reserveJoineryMargin),
+    rectPiece("left", width, height, params, shortWallEdges, reserveJoineryMargin),
+    rectPiece("right", width, height, params, shortWallEdges, reserveJoineryMargin)
   ];
 }
 
@@ -206,12 +206,12 @@ function buildHousePieces(params) {
   ];
 }
 
-function rectPiece(name, width, height, params, edges = "eeee") {
+function rectPiece(name, width, height, params, edges = "eeee", reserveJoineryMargin = false) {
   const hasJoinery = /[fF]/.test(edges);
-  const margin = hasJoinery ? params.tabDepth : 0;
+  const margin = hasJoinery || reserveJoineryMargin ? params.tabDepth : 0;
   const path = hasJoinery
     ? fingerJointRectPath(margin, margin, width, height, edges, params)
-    : rectPath(0, 0, width, height);
+    : rectPath(margin, margin, width, height);
   return {
     name,
     layer: "CUT",
@@ -678,7 +678,7 @@ function render(result) {
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
-        "stroke-width": result.params.kerfWidth || 0.1
+        "stroke-width": previewStrokeWidth(result.params)
       }));
     }
   }
@@ -819,6 +819,10 @@ function resetParams() {
   els.joineryToggle.checked = false;
   updateJoineryModeControls();
   updateDefaultsForModel();
+}
+
+function previewStrokeWidth(params) {
+  return Math.max(params.kerfWidth || 0.1, 0.8);
 }
 
 function updateJoineryModeControls() {

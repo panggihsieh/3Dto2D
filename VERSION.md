@@ -14,9 +14,9 @@ This version records the first in-progress public webapp prototype for convertin
 
 The project should move to `v1.0.0` only after the V1 scope is stable enough for a public release.
 
-## V2 Preview
+## Joint Preview
 
-- Version path: `/v2/`
+- Version path: `/joint/`
 - Status: Prototype
 - Added: uploaded SVG edge-pair selection for complementary finger-joint SVG cutting output.
 - Default material thickness: `3mm`

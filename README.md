@@ -23,39 +23,39 @@ Arbitrary organic STL mesh unfolding is intentionally out of scope for the first
 
 See `VERSION.md` for the version record.
 
-## V2 SVG Joinery Preview
+## Joint SVG Joinery Preview
 
 The uploaded SVG edge-pair joinery workflow is versioned under:
 
 ```text
-/v2/
+/joint/
 ```
 
-Use the `/v2/` page for the V2 SVG joinery workflow. It supports simple SVG polygon import, selecting paired polygon edges, generating complementary finger-joint boundaries with a 3mm default material thickness, previewing the result, and downloading SVG/DXF output.
+Use the `/joint/` page for the SVG joinery workflow. It supports simple SVG polygon import, selecting paired polygon edges, generating complementary finger-joint boundaries with a 3mm default material thickness, previewing the result, and downloading SVG/DXF output.
 
-Remote V2 webapp:
+Remote joint webapp:
 
 ```text
-https://panggihsieh.github.io/3Dto2D/v2/
+https://panggihsieh.github.io/3Dto2D/joint/
 ```
 
-### V2 Notes
+### Joint Notes
 
 - The first selected edge is treated as convex `f`; the second selected edge is treated as concave `F`.
 - Each selected pair previews immediately. Clicking the same pending edge cancels it; clicking an already paired edge removes that pair.
 - Manual pairing only changes the selected pair. The built-in cube topology is used only when no manual pairs exist and the built-in cube flow is confirmed.
 - Practice SVG downloads are available for a cuboid and a gable-roof house. The gable-roof practice file includes English position labels such as `bottom`, `left`, `right`, `front`, `back`, `roof left`, and `roof right`.
-- Imported practice SVG paths preserve their `id` values so V2 can display position labels on the preview for spatial matching practice.
-- V2 supports simple SVG `polygon`, `polyline`, and path commands `M`, `L`, `H`, `V`, `Z`. Curves, complex transforms, and illustration-style SVG artwork should be expanded to straight paths before import.
+- Imported practice SVG paths preserve their `id` values so the joint workflow can display position labels on the preview for spatial matching practice.
+- The joint workflow supports simple SVG `polygon`, `polyline`, and path commands `M`, `L`, `H`, `V`, `Z`. Curves, complex transforms, and illustration-style SVG artwork should be expanded to straight paths before import.
 - Exported production SVG removes selection overlays, source overlays, and preview labels; the output contains the cut geometry.
-- Browser download behavior varies. On supported Chromium browsers V2 uses the native save picker; otherwise it shows a downloadable fallback link.
+- Browser download behavior varies. On supported Chromium browsers the joint workflow uses the native save picker; otherwise it shows a downloadable fallback link.
 
 ## Webapp
 
 The static webapp root is a mode selector in `index.html`.
 
 - `basic/`: basic SVG/DXF layout without joinery.
-- `v2/`: standalone uploaded SVG edge-pair joinery tool.
+- `joint/`: standalone uploaded SVG edge-pair joinery tool.
 
 Run a local static server from the project folder:
 

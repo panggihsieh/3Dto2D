@@ -39,7 +39,6 @@ const els = {
   downloadSvg: document.querySelector("#downloadSvg"),
   previewSvg: document.querySelector("#previewSvg"),
   svgUpload: document.querySelector("#svgUpload"),
-  useCubeNet: document.querySelector("#useCubeNet"),
   downloadCuboidSample: document.querySelector("#downloadCuboidSample"),
   downloadHouseSample: document.querySelector("#downloadHouseSample"),
   toggleEdgeSelect: document.querySelector("#toggleEdgeSelect"),
@@ -1156,7 +1155,7 @@ function render(result) {
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
-        "stroke-width": result.params.kerfWidth || 0.1
+        "stroke-width": previewStrokeWidth(result.params)
       }));
     }
   }
@@ -1202,6 +1201,10 @@ function renderPieceLabels(result) {
   if (labelCount) els.previewSvg.appendChild(group);
 }
 
+function previewStrokeWidth(params) {
+  return Math.max(params.kerfWidth || 0.1, 0.8);
+}
+
 function pieceLabel(name) {
   const labels = {
     floor: "bottom",
@@ -1230,7 +1233,7 @@ function renderEdgeOverlay(result) {
   els.previewSvg.appendChild(group);
 
   for (const edge of listSelectableEdges()) {
-    const color = colorForEdge(edge) || "#2468d8";
+    const color = colorForEdge(edge) || "#ff0000";
     const edgeRole = roleForEdge(edge);
     const className = [
       "edge-visible",
@@ -1296,7 +1299,7 @@ function renderSourceOverlay() {
       group.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: "#0b6bcb",
+        stroke: "#ff0000",
         "stroke-width": 0.45,
         "stroke-dasharray": "3 2",
         "vector-effect": "non-scaling-stroke"
@@ -1606,7 +1609,7 @@ function exportSampleSvg(pieces, name, labels = {}) {
   const textNodes = [];
   for (const piece of pieces) {
     for (const path of piece.paths) {
-      paths.push(`  <path id="${escapeXml(piece.name)}" d="${pathToD(path, piece.x, piece.y)}" fill="none" stroke="#000000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>`);
+      paths.push(`  <path id="${escapeXml(piece.name)}" d="${pathToD(path, piece.x, piece.y)}" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>`);
     }
     const label = labels[piece.name];
     if (label) {
@@ -1848,7 +1851,7 @@ els.svgUpload.addEventListener("change", async () => {
   loadImportedPieces(parsed.pieces, parsed.warnings);
 });
 
-els.useCubeNet.addEventListener("click", () => {
+function loadCubeNetPractice() {
   els.modelType.value = "cube";
   const cubeDefaults = defaults.cube;
   for (const [key, value] of Object.entries(cubeDefaults)) {
@@ -1861,7 +1864,7 @@ els.useCubeNet.addEventListener("click", () => {
     ["已載入正立方體展開圖；確認後會使用內建正確接榫拓撲輸出。"],
     { preset: "cube_net" }
   );
-});
+}
 
 els.downloadCuboidSample?.addEventListener("click", async () => {
   await downloadPracticeSample("cuboid");
@@ -1915,4 +1918,4 @@ els.downloadSvg.addEventListener("click", async () => {
 });
 
 updateFieldVisibility();
-runConversion();
+loadCubeNetPractice();
