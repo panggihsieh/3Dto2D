@@ -2,7 +2,9 @@ const NS = "http://www.w3.org/2000/svg";
 const TAU = Math.PI * 2;
 
 const state = {
-  result: null
+  result: null,
+  zoom: 1,
+  baseViewBox: null
 };
 
 const els = {
@@ -10,7 +12,6 @@ const els = {
   length: document.querySelector("#length"),
   width: document.querySelector("#width"),
   height: document.querySelector("#height"),
-  radius: document.querySelector("#radius"),
   wallHeight: document.querySelector("#wallHeight"),
   roofHeight: document.querySelector("#roofHeight"),
   materialThickness: document.querySelector("#materialThickness"),
@@ -21,12 +22,20 @@ const els = {
   partGap: document.querySelector("#partGap"),
   segments: document.querySelector("#segments"),
   projectName: document.querySelector("#projectName"),
+  dimensionMode: document.querySelector("#dimensionMode"),
+  innerDimensionButton: document.querySelector("#innerDimensionButton"),
+  dimensionModeStatus: document.querySelector("#dimensionModeStatus"),
+  outerDimensionStatus: document.querySelector("#outerDimensionStatus"),
   joineryToggle: document.querySelector("#joineryToggle"),
   resetButton: document.querySelector("#resetButton"),
   summaryText: document.querySelector("#summaryText"),
   downloadDxf: document.querySelector("#downloadDxf"),
   downloadSvg: document.querySelector("#downloadSvg"),
   previewSvg: document.querySelector("#previewSvg"),
+  zoomOutButton: document.querySelector("#zoomOutButton"),
+  zoomInButton: document.querySelector("#zoomInButton"),
+  zoomResetButton: document.querySelector("#zoomResetButton"),
+  zoomLevel: document.querySelector("#zoomLevel"),
   widthMetric: document.querySelector("#widthMetric"),
   heightMetric: document.querySelector("#heightMetric"),
   pathMetric: document.querySelector("#pathMetric"),
@@ -34,16 +43,13 @@ const els = {
   statusPill: document.querySelector("#statusPill"),
   joineryModeButton: document.querySelector("#joineryModeButton"),
   joineryModeStatus: document.querySelector("#joineryModeStatus"),
-  circularFields: document.querySelectorAll("[data-field='circular']"),
   houseFields: document.querySelectorAll("[data-field='house']")
 };
 
 const defaults = {
-  cube: { length: 60, width: 60, height: 60, radius: 30, wallHeight: 50, roofHeight: 28 },
-  cuboid: { length: 120, width: 80, height: 60, radius: 40, wallHeight: 50, roofHeight: 28 },
-  cylinder: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 50, roofHeight: 28 },
-  flex_box_5: { length: 120, width: 80, height: 45, radius: 18, wallHeight: 50, roofHeight: 28 },
-  gable_house: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 55, roofHeight: 35 }
+  cube: { length: 60, width: 60, height: 60, wallHeight: 50, roofHeight: 28 },
+  cuboid: { length: 120, width: 80, height: 60, wallHeight: 50, roofHeight: 28 },
+  gable_house: { length: 120, width: 80, height: 80, wallHeight: 55, roofHeight: 35 }
 };
 
 function readNumber(input, fallback) {
@@ -59,7 +65,6 @@ function getParams() {
     length: readNumber(els.length, 120),
     width: readNumber(els.width, 80),
     height: readNumber(els.height, 60),
-    radius: readNumber(els.radius, 35),
     wallHeight: readNumber(els.wallHeight, 55),
     roofHeight: readNumber(els.roofHeight, 35),
     materialThickness,
@@ -69,6 +74,7 @@ function getParams() {
     tabSpacing: readNumber(els.tabSpacing, 8),
     partGap: readNumber(els.partGap, 8),
     segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
+    dimensionMode: els.dimensionMode?.value || "inner",
     generateJoinery: els.joineryToggle.checked
   };
 }
@@ -79,26 +85,18 @@ function buildResult(params) {
 
   if (params.modelType === "cube") {
     const side = params.length;
-    pieces.push(...buildBoxPieces(side, side, side, params));
+    pieces.push(...buildDimensionedBoxPieces(side, side, side, params, true));
   }
 
   if (params.modelType === "cuboid") {
-    pieces.push(...buildBoxPieces(params.length, params.width, params.height, params, true));
-  }
-
-  if (params.modelType === "cylinder") {
-    pieces.push(...buildCylinderPieces(params));
-  }
-
-  if (params.modelType === "flex_box_5") {
-    pieces.push(...buildFlexBox5Pieces(params));
+    pieces.push(...buildDimensionedBoxPieces(params.length, params.width, params.height, params, true));
   }
 
   if (params.modelType === "gable_house") {
     pieces.push(...buildHousePieces(params));
   }
 
-  const laidOut = layoutPieces(pieces, params.partGap);
+  const laidOut = layoutModelPieces(pieces, params);
   const bounds = getBoundsFromPieces(laidOut);
   warnings.push(...modelWarnings(params));
 
@@ -115,10 +113,6 @@ function validateParams(params) {
     ["tab width", params.tabWidth],
     ["tab depth", params.tabDepth]
   ];
-
-  if (["cylinder", "flex_box_5"].includes(params.modelType)) {
-    positives.push(["radius", params.radius]);
-  }
 
   if (params.modelType === "gable_house") {
     positives.push(["wall height", params.wallHeight], ["roof height", params.roofHeight]);
@@ -137,16 +131,6 @@ function validateParams(params) {
 
 function modelWarnings(params) {
   const warnings = [];
-  if (params.modelType === "cylinder") {
-    warnings.push("圓柱側面寬度等於圓周長，上下圓以 segments 分段。");
-    if (params.generateJoinery) warnings.push("圓柱使用展開側板直線卡榫，頂/底圓使用圓周插槽。");
-  }
-  if (params.modelType === "flex_box_5") {
-    warnings.push("柔性盒子5為 Boxes.py FlexBox5-inspired 範例：圓角盒、活動鉸鏈切縫與簡化直線卡榫。");
-    if (params.radius > Math.min(params.length, params.width) / 2) {
-      warnings.push("圓角半徑已在輸出時限制為長寬的一半以內。");
-    }
-  }
   if (params.modelType === "gable_house") {
     warnings.push("雙斜屋頂第一版採外蓋式屋頂與簡化卡榫定位。");
   }
@@ -167,50 +151,113 @@ function buildBoxPieces(length, width, height, params, reserveJoineryMargin = fa
   ];
 }
 
+function buildInnerBoxPieces(innerLength, innerWidth, innerHeight, params, reserveJoineryMargin = false) {
+  const thickness = params.materialThickness;
+  const outerLength = innerLength + thickness * 2;
+  const outerWidth = innerWidth + thickness * 2;
+  return buildBoxPieces(
+    outerLength,
+    outerWidth,
+    innerHeight,
+    params,
+    reserveJoineryMargin
+  );
+}
+
+function buildDimensionedBoxPieces(length, width, height, params, reserveJoineryMargin = false) {
+  if (params.dimensionMode === "inner") {
+    return buildInnerBoxPieces(length, width, height, params, reserveJoineryMargin);
+  }
+  return buildBoxPieces(length, width, height, params, reserveJoineryMargin);
+}
+
 function buildCylinderPieces(params) {
-  const circumference = TAU * params.radius;
+  const dimensions = cylinderDimensions(params);
+  const circumference = TAU * dimensions.radius;
   return [
     circularFlexSidePiece("side_living_hinge", circumference, params.height, params),
-    circlePiece("top", params.radius, params, params.generateJoinery),
-    circlePiece("bottom", params.radius, params, params.generateJoinery)
+    circlePiece("top", dimensions.radius, params, params.generateJoinery),
+    circlePiece("bottom", dimensions.radius, params, params.generateJoinery)
   ];
 }
 
+function cylinderDimensions(params) {
+  if (params.dimensionMode !== "inner") {
+    return { radius: params.radius };
+  }
+  return { radius: params.radius + params.materialThickness };
+}
+
 function buildFlexBox5Pieces(params) {
+  const dimensions = flexBoxDimensions(params);
   const radius = Math.max(
     params.materialThickness * 2,
-    Math.min(params.radius, params.length / 2, params.width / 2)
+    Math.min(dimensions.radius, dimensions.length / 2, dimensions.width / 2)
   );
-  const perimeter = 2 * (params.length + params.width - 4 * radius) + TAU * radius;
+  const perimeter = 2 * (dimensions.length + dimensions.width - 4 * radius) + TAU * radius;
   return [
-    roundedRectPiece("top_rounded_panel", params.length, params.width, radius, params),
-    roundedRectPiece("bottom_rounded_panel", params.length, params.width, radius, params),
+    roundedRectPiece("top_rounded_panel", dimensions.length, dimensions.width, radius, params),
+    roundedRectPiece("bottom_rounded_panel", dimensions.length, dimensions.width, radius, params),
     flexSidePiece("flex_living_hinge_side", perimeter, params.height, radius, params),
     latchPiece("front_latch", params)
   ];
 }
 
+function flexBoxDimensions(params) {
+  if (params.dimensionMode !== "inner") {
+    return {
+      length: params.length,
+      width: params.width,
+      radius: params.radius
+    };
+  }
+
+  const thickness = params.materialThickness;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2,
+    radius: params.radius + thickness
+  };
+}
+
 function buildHousePieces(params) {
-  const roofSlopeLength = Math.hypot(params.width / 2, params.roofHeight);
+  const dimensions = houseDimensions(params);
+  const roofSlopeLength = Math.hypot(dimensions.width / 2, params.roofHeight);
   const floorEdges = params.generateJoinery ? "ffff" : "eeee";
   const wallEdges = params.generateJoinery ? "FFFF" : "eeee";
   const roofEdges = params.generateJoinery ? "ffff" : "eeee";
   return [
-    rectPiece("floor", params.length, params.width, params, floorEdges),
-    rectPiece("left_wall", params.length, params.wallHeight, params, wallEdges),
-    rectPiece("right_wall", params.length, params.wallHeight, params, wallEdges),
-    gablePiece("front_gable", params.width, params.wallHeight, params.roofHeight, params),
-    gablePiece("back_gable", params.width, params.wallHeight, params.roofHeight, params),
-    rectPiece("roof_left", params.length, roofSlopeLength, params, roofEdges),
-    rectPiece("roof_right", params.length, roofSlopeLength, params, roofEdges)
+    rectPiece("floor", dimensions.length, dimensions.width, params, floorEdges),
+    rectPiece("left_wall", dimensions.length, params.wallHeight, params, wallEdges),
+    rectPiece("right_wall", dimensions.length, params.wallHeight, params, wallEdges),
+    gablePiece("front_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
+    gablePiece("back_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
+    rectPiece("roof_left", dimensions.length, roofSlopeLength, params, roofEdges),
+    rectPiece("roof_right", dimensions.length, roofSlopeLength, params, roofEdges)
   ];
+}
+
+function houseDimensions(params) {
+  if (params.dimensionMode !== "inner") {
+    return {
+      length: params.length,
+      width: params.width
+    };
+  }
+
+  const thickness = params.materialThickness;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2
+  };
 }
 
 function rectPiece(name, width, height, params, edges = "eeee", reserveJoineryMargin = false) {
   const hasJoinery = /[fF]/.test(edges);
   const margin = hasJoinery || reserveJoineryMargin ? params.tabDepth : 0;
+  const edgeGuides = innerEdgeGuidesForRectPiece(name, width, height, params);
   const path = hasJoinery
-    ? fingerJointRectPath(margin, margin, width, height, edges, params)
+    ? fingerJointRectPath(margin, margin, width, height, edges, params, edgeGuides)
     : rectPath(margin, margin, width, height);
   return {
     name,
@@ -219,6 +266,39 @@ function rectPiece(name, width, height, params, edges = "eeee", reserveJoineryMa
     width: width + margin * 2,
     height: height + margin * 2
   };
+}
+
+function innerEdgeGuidesForRectPiece(name, width, height, params) {
+  if (params.dimensionMode !== "inner") return null;
+
+  const thickness = params.materialThickness;
+  const full = {
+    horizontal: { start: 0, length: width },
+    vertical: { start: 0, length: height }
+  };
+
+  if (["top", "bottom", "floor"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: { start: thickness, length: params.width }
+    };
+  }
+
+  if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: full.vertical
+    };
+  }
+
+  if (["left", "right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.width },
+      vertical: full.vertical
+    };
+  }
+
+  return full;
 }
 
 function circlePiece(name, radius, params, withSlots = false) {
@@ -515,13 +595,13 @@ function addFlexCutSegment(paths, x, y1, y2) {
   paths.push(path);
 }
 
-function fingerJointRectPath(x, y, width, height, edges, params) {
+function fingerJointRectPath(x, y, width, height, edges, params, edgeGuides = null) {
   const points = [];
   const [top = "e", right = "e", bottom = "e", left = "e"] = edges;
-  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params);
-  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params);
-  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params);
-  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params);
+  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params, edgeGuides?.vertical);
+  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params, edgeGuides?.vertical);
   return points;
 }
 
@@ -559,15 +639,29 @@ function edgeOutwardNormal(start, end, polygonArea) {
   return normal;
 }
 
-function addFingerEdge(points, start, end, outward, type, params) {
+function addFingerEdge(points, start, end, outward, type, params, guide = null) {
   const length = Math.hypot(end.x - start.x, end.y - start.y);
   const dx = (end.x - start.x) / length;
   const dy = (end.y - start.y) / length;
-  const count = calcFingerCount(length, params);
-  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
-  const inset = Math.max(params.materialThickness, (length - occupied) / 2);
   const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
   const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
+  const baseGuideStart = Math.max(0, Math.min(length, guide?.start ?? 0));
+  const baseGuideLength = Math.max(0, Math.min(length - baseGuideStart, guide?.length ?? length));
+  const baseGuideEnd = baseGuideStart + baseGuideLength;
+  const cornerClearance = direction
+    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth))
+    : 0;
+  const guideStart = baseGuideStart + cornerClearance;
+  const guideEnd = baseGuideEnd - cornerClearance;
+  const guideLength = Math.max(0, guideEnd - guideStart);
+  const count = calcFingerCount(guideLength, params);
+  const occupiedTabs = count * fingerWidth;
+  const fittedSpacing = count > 1
+    ? Math.max(0, (guideLength - occupiedTabs) / (count - 1))
+    : 0;
+  const inset = count > 1
+    ? guideStart
+    : guideStart + Math.max(0, (guideLength - fingerWidth) / 2);
 
   pushPoint(points, start);
 
@@ -577,9 +671,9 @@ function addFingerEdge(points, start, end, outward, type, params) {
   }
 
   for (let i = 0; i < count; i += 1) {
-    const tabStart = inset + i * (params.tabWidth + params.tabSpacing);
-    const tabEnd = Math.min(tabStart + fingerWidth, length - params.materialThickness);
-    if (tabEnd <= tabStart || tabStart >= length) continue;
+    const tabStart = inset + i * (fingerWidth + fittedSpacing);
+    const tabEnd = Math.min(tabStart + fingerWidth, guideEnd);
+    if (tabEnd <= tabStart || tabStart >= guideEnd) continue;
 
     const a = along(start, dx, dy, tabStart);
     const b = along(start, dx, dy, tabEnd);
@@ -647,6 +741,118 @@ function layoutPieces(pieces, gap) {
   return laidOut;
 }
 
+function layoutModelPieces(pieces, params) {
+  if (["cube", "cuboid"].includes(params.modelType)) {
+    return layoutFrontBoxNetPieces(pieces, params.partGap);
+  }
+  if (params.modelType === "gable_house") {
+    return layoutHouseNetPieces(pieces, params.partGap);
+  }
+  return layoutPieces(pieces, params.partGap);
+}
+
+function layoutFrontBoxNetPieces(pieces, gap) {
+  const byName = Object.fromEntries(pieces.map(piece => [piece.name, piece]));
+  const top = byName.top;
+  const bottom = byName.bottom;
+  const front = byName.front;
+  const back = byName.back;
+  const left = byName.left;
+  const right = byName.right;
+
+  if (!top || !bottom || !front || !back || !left || !right) {
+    return layoutPieces(pieces, gap);
+  }
+
+  const frontX = left.width + gap;
+  const frontY = top.height + gap;
+  const layout = [
+    { ...top, x: frontX + (front.width - top.width) / 2, y: 0 },
+    { ...left, x: 0, y: frontY + (front.height - left.height) / 2 },
+    { ...front, x: frontX, y: frontY },
+    { ...right, x: frontX + front.width + gap, y: frontY + (front.height - right.height) / 2 },
+    { ...bottom, x: frontX + (front.width - bottom.width) / 2, y: frontY + front.height + gap },
+    { ...back, x: frontX + (front.width - back.width) / 2, y: frontY + front.height + gap + bottom.height + gap }
+  ];
+
+  return normalizePiecePositions(layout);
+}
+
+function layoutCylinderNetPieces(pieces, gap) {
+  const byName = Object.fromEntries(pieces.map(piece => [piece.name, piece]));
+  const side = byName.side_living_hinge;
+  const top = byName.top;
+  const bottom = byName.bottom;
+  if (!side || !top || !bottom) return layoutPieces(pieces, gap);
+
+  const centerX = Math.max(top.width, side.width, bottom.width) / 2;
+  return normalizePiecePositions([
+    { ...top, x: centerX - top.width / 2, y: 0 },
+    { ...side, x: centerX - side.width / 2, y: top.height + gap },
+    { ...bottom, x: centerX - bottom.width / 2, y: top.height + gap + side.height + gap }
+  ]);
+}
+
+function layoutFlexBoxNetPieces(pieces, gap) {
+  const byName = Object.fromEntries(pieces.map(piece => [piece.name, piece]));
+  const top = byName.top_rounded_panel;
+  const bottom = byName.bottom_rounded_panel;
+  const side = byName.flex_living_hinge_side;
+  const front = byName.front_latch;
+  if (!top || !bottom || !side || !front) return layoutPieces(pieces, gap);
+
+  const centerX = Math.max(top.width, bottom.width, side.width, front.width) / 2;
+  return normalizePiecePositions([
+    { ...top, x: centerX - top.width / 2, y: 0 },
+    { ...side, x: centerX - side.width / 2, y: top.height + gap },
+    { ...bottom, x: centerX - bottom.width / 2, y: top.height + gap + side.height + gap },
+    { ...front, x: centerX - front.width / 2, y: top.height + gap + side.height + gap + bottom.height + gap }
+  ]);
+}
+
+function layoutHouseNetPieces(pieces, gap) {
+  const byName = Object.fromEntries(pieces.map(piece => [piece.name, piece]));
+  const floor = byName.floor;
+  const left = byName.left_wall;
+  const right = byName.right_wall;
+  const front = byName.front_gable;
+  const back = byName.back_gable;
+  const roofLeft = byName.roof_left;
+  const roofRight = byName.roof_right;
+  if (!floor || !left || !right || !front || !back || !roofLeft || !roofRight) {
+    return layoutPieces(pieces, gap);
+  }
+
+  const roofGroupWidth = roofLeft.width + gap + roofRight.width;
+  const middleWidth = left.width + gap + front.width + gap + right.width;
+  const centerX = Math.max(roofGroupWidth, middleWidth, floor.width, back.width) / 2;
+  const roofY = 0;
+  const middleY = Math.max(roofLeft.height, roofRight.height) + gap;
+  const floorY = middleY + front.height + gap;
+  const backY = floorY + floor.height + gap;
+  const middleX = centerX - middleWidth / 2;
+
+  return normalizePiecePositions([
+    { ...roofLeft, x: centerX - roofGroupWidth / 2, y: roofY },
+    { ...roofRight, x: centerX - roofGroupWidth / 2 + roofLeft.width + gap, y: roofY },
+    { ...left, x: middleX, y: middleY + (front.height - left.height) / 2 },
+    { ...front, x: middleX + left.width + gap, y: middleY },
+    { ...right, x: middleX + left.width + gap + front.width + gap, y: middleY + (front.height - right.height) / 2 },
+    { ...floor, x: centerX - floor.width / 2, y: floorY },
+    { ...back, x: centerX - back.width / 2, y: backY }
+  ]);
+}
+
+function normalizePiecePositions(pieces) {
+  const minX = Math.min(...pieces.map(piece => piece.x));
+  const minY = Math.min(...pieces.map(piece => piece.y));
+  return pieces.map(piece => ({
+    ...piece,
+    x: piece.x - minX,
+    y: piece.y - minY
+  }));
+}
+
 function getBoundsFromPieces(pieces) {
   if (!pieces.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
   const maxX = Math.max(...pieces.map(piece => piece.x + piece.width));
@@ -657,13 +863,14 @@ function getBoundsFromPieces(pieces) {
 function render(result) {
   clearSvg();
   const padding = 8;
-  els.previewSvg.setAttribute("viewBox", [
-    -padding,
-    -padding,
-    Math.max(result.bounds.width + padding * 2, 1),
-    Math.max(result.bounds.height + padding * 2, 1)
-  ].join(" "));
+  state.baseViewBox = {
+    x: -padding,
+    y: -padding,
+    width: Math.max(result.bounds.width + padding * 2, 1),
+    height: Math.max(result.bounds.height + padding * 2, 1)
+  };
   els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  updatePreviewZoom();
 
   addSvgStyles();
   const cutGroup = createSvgElement("g", { class: "svg-cut" });
@@ -682,6 +889,8 @@ function render(result) {
       }));
     }
   }
+  renderPieceLabels(result.pieces);
+  renderInnerDimensionGuides(result);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
   els.heightMetric.textContent = formatNumber(result.bounds.height);
@@ -726,8 +935,197 @@ function addSvgStyles() {
       stroke-linejoin: miter;
       stroke-linecap: square;
     }
+    .piece-label-overlay text {
+      fill: #ff0000;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+    .inner-dimension-guides path,
+    .inner-dimension-guides line {
+      fill: none;
+      stroke: #111827;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+      vector-effect: non-scaling-stroke;
+      stroke-width: 1.2;
+      pointer-events: none;
+    }
+    .inner-dimension-guides text {
+      fill: #111827;
+      font-family: Arial, sans-serif;
+      font-size: 8px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
   `;
   els.previewSvg.appendChild(style);
+}
+
+function renderInnerDimensionGuides(result) {
+  if (!["cube", "cuboid", "gable_house"].includes(result.params.modelType)) return;
+
+  const group = createSvgElement("g", { class: "inner-dimension-guides" });
+  let guideCount = 0;
+  for (const piece of result.pieces) {
+    const guide = innerGuideForPiece(piece, result.params);
+    if (!guide) continue;
+    group.appendChild(createSvgElement("path", {
+      d: rectPathD(piece.x + guide.x, piece.y + guide.y, guide.width, guide.height)
+    }));
+    group.appendChild(createSvgElement("text", {
+      x: svgNum(piece.x + guide.x + guide.width / 2),
+      y: svgNum(piece.y + guide.y + guide.height / 2 + dimensionTextOffset(guide))
+    })).textContent = guide.label;
+    guideCount += 1;
+  }
+  if (guideCount) els.previewSvg.appendChild(group);
+}
+
+function dimensionTextOffset(guide) {
+  return Math.min(18, Math.max(12, guide.height * 0.24));
+}
+
+function innerGuideForPiece(piece, params) {
+  const thickness = params.materialThickness;
+  const depth = params.tabDepth;
+  const innerLength = params.length;
+  const innerWidth = params.width;
+  const innerHeight = ["cube", "cuboid"].includes(params.modelType) ? params.height : params.wallHeight;
+  const guideX = depth + thickness;
+  const guideY = depth + thickness;
+
+  if (["top", "bottom", "floor"].includes(piece.name)) {
+    return {
+      x: guideX,
+      y: guideY,
+      width: innerLength,
+      height: innerWidth,
+      label: `${formatGuideNumber(innerLength)} x ${formatGuideNumber(innerWidth)}`
+    };
+  }
+
+  if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(piece.name)) {
+    return {
+      x: guideX,
+      y: depth,
+      width: innerLength,
+      height: innerHeight,
+      label: `${formatGuideNumber(innerLength)} x ${formatGuideNumber(innerHeight)}`
+    };
+  }
+
+  if (["front_gable", "back_gable"].includes(piece.name)) {
+    return {
+      x: Math.max(0, (piece.width - innerWidth) / 2),
+      y: Math.max(0, (piece.height - innerHeight) / 2),
+      width: innerWidth,
+      height: innerHeight,
+      label: `${formatGuideNumber(innerWidth)} x ${formatGuideNumber(innerHeight)}`
+    };
+  }
+
+  if (["left", "right"].includes(piece.name)) {
+    return {
+      x: guideX,
+      y: depth,
+      width: innerWidth,
+      height: innerHeight,
+      label: `${formatGuideNumber(innerWidth)} x ${formatGuideNumber(innerHeight)}`
+    };
+  }
+
+  return null;
+}
+
+function rectPathD(x, y, width, height) {
+  return [
+    `M ${svgNum(x)} ${svgNum(y)}`,
+    `L ${svgNum(x + width)} ${svgNum(y)}`,
+    `L ${svgNum(x + width)} ${svgNum(y + height)}`,
+    `L ${svgNum(x)} ${svgNum(y + height)}`,
+    "Z"
+  ].join(" ");
+}
+
+function formatGuideNumber(value) {
+  return Number(value).toFixed(1).replace(/\.0$/, "");
+}
+
+function formatVolumeNumber(value) {
+  return Math.round(Number(value)).toLocaleString("en-US");
+}
+
+function updatePreviewZoom() {
+  const zoom = Math.max(0.5, Math.min(3, state.zoom));
+  state.zoom = zoom;
+  if (state.baseViewBox) {
+    const centerX = state.baseViewBox.x + state.baseViewBox.width / 2;
+    const centerY = state.baseViewBox.y + state.baseViewBox.height / 2;
+    const width = state.baseViewBox.width / zoom;
+    const height = state.baseViewBox.height / zoom;
+    els.previewSvg.setAttribute("viewBox", [
+      svgNum(centerX - width / 2),
+      svgNum(centerY - height / 2),
+      svgNum(width),
+      svgNum(height)
+    ].join(" "));
+  }
+  els.previewSvg.style.width = "";
+  els.previewSvg.style.height = "";
+  els.previewSvg.style.minWidth = "";
+  els.previewSvg.style.minHeight = "";
+  if (els.zoomLevel) els.zoomLevel.textContent = `${Math.round(zoom * 100)}%`;
+  if (els.zoomOutButton) els.zoomOutButton.disabled = zoom <= 0.5;
+  if (els.zoomInButton) els.zoomInButton.disabled = zoom >= 3;
+}
+
+function setPreviewZoom(nextZoom) {
+  state.zoom = Math.max(0.5, Math.min(3, nextZoom));
+  updatePreviewZoom();
+}
+
+function renderPieceLabels(pieces) {
+  const group = createSvgElement("g", { class: "piece-label-overlay" });
+  let labelCount = 0;
+  for (const piece of pieces) {
+    const label = pieceLabel(piece.name);
+    if (!label) continue;
+    group.appendChild(createSvgElement("text", {
+      x: svgNum(piece.x + piece.width / 2),
+      y: svgNum(piece.y + piece.height / 2 - labelOffsetForPiece(piece))
+    })).textContent = label;
+    labelCount += 1;
+  }
+  if (labelCount) els.previewSvg.appendChild(group);
+}
+
+function labelOffsetForPiece(piece) {
+  return Math.min(18, Math.max(12, piece.height * 0.24));
+}
+
+function pieceLabel(name) {
+  const labels = {
+    top: "Top",
+    bottom: "Bottom",
+    front: "Front",
+    back: "Back",
+    left: "Left",
+    right: "Right",
+    floor: "Bottom",
+    left_wall: "Left",
+    right_wall: "Right",
+    front_gable: "Front",
+    back_gable: "Back",
+    roof_left: "Roof L",
+    roof_right: "Roof R"
+  };
+  return labels[name] || "";
 }
 
 function renderWarnings(warnings) {
@@ -741,16 +1139,40 @@ function renderWarnings(warnings) {
 }
 
 function exportSvg(result) {
-  const clone = els.previewSvg.cloneNode(true);
-  clone.setAttribute("xmlns", NS);
-  clone.setAttribute("width", `${svgNum(result.bounds.width)}mm`);
-  clone.setAttribute("height", `${svgNum(result.bounds.height)}mm`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${clone.outerHTML}\n`;
+  const svg = buildCutOnlySvg(result);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}\n`;
+}
+
+function buildCutOnlySvg(result) {
+  const svg = createSvgElement("svg", {
+    xmlns: NS,
+    width: `${svgNum(result.bounds.width)}mm`,
+    height: `${svgNum(result.bounds.height)}mm`,
+    viewBox: `0 0 ${svgNum(Math.max(result.bounds.width, 1))} ${svgNum(Math.max(result.bounds.height, 1))}`
+  });
+  const group = createSvgElement("g", { class: "svg-cut" });
+  svg.appendChild(group);
+  for (const piece of result.pieces) {
+    if (piece.layer !== "CUT") continue;
+    for (const path of piece.paths) {
+      group.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y),
+        fill: "none",
+        stroke: "#ff0000",
+        "stroke-linejoin": "miter",
+        "stroke-linecap": "square",
+        "vector-effect": "non-scaling-stroke",
+        "stroke-width": svgNum(previewStrokeWidth(result.params))
+      }));
+    }
+  }
+  return svg;
 }
 
 function exportDxf(result) {
   const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
   for (const piece of result.pieces) {
+    if (piece.layer !== "CUT") continue;
     for (const path of piece.paths) {
       const segmentCount = path.closed === false ? path.length - 1 : path.length;
       for (let i = 0; i < segmentCount; i += 1) {
@@ -793,9 +1215,7 @@ function download(name, content, type) {
 
 function updateFieldVisibility() {
   const type = els.modelType.value;
-  const circular = ["cylinder", "flex_box_5"].includes(type);
   const house = type === "gable_house";
-  els.circularFields.forEach(field => field.hidden = !circular);
   els.houseFields.forEach(field => field.hidden = !house);
 }
 
@@ -816,7 +1236,9 @@ function resetParams() {
   els.tabSpacing.value = "8";
   els.partGap.value = "8";
   els.segments.value = "48";
+  if (els.dimensionMode) els.dimensionMode.value = "inner";
   els.joineryToggle.checked = false;
+  updateDimensionModeControls();
   updateJoineryModeControls();
   updateDefaultsForModel();
 }
@@ -833,6 +1255,35 @@ function updateJoineryModeControls() {
   els.joineryModeStatus.textContent = enabled ? "目前：接榫後" : "目前：沒有接榫";
 }
 
+function updateDimensionModeControls() {
+  const mode = els.dimensionMode?.value || "inner";
+  if (els.innerDimensionButton) {
+    els.innerDimensionButton.setAttribute("aria-pressed", String(mode === "inner"));
+  }
+  if (els.dimensionModeStatus) {
+    els.dimensionModeStatus.textContent = mode === "inner" ? "目前：內尺寸(長寬高為內部尺寸)" : "目前：外尺寸";
+  }
+}
+
+function updateOuterDimensionStatus(params = getParams()) {
+  if (!els.outerDimensionStatus) return;
+  const outer = outerDimensionsFromInner(params);
+  const volume = outer.length * outer.width * outer.height;
+  els.outerDimensionStatus.textContent = `外尺寸：長 × 寬 × 高 = ${formatGuideNumber(outer.length)} × ${formatGuideNumber(outer.width)} × ${formatGuideNumber(outer.height)} = ${formatVolumeNumber(volume)} mm³`;
+}
+
+function outerDimensionsFromInner(params) {
+  const thickness = params.materialThickness;
+  const innerHeight = params.modelType === "gable_house"
+    ? params.wallHeight + params.roofHeight
+    : params.height;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2,
+    height: innerHeight + thickness * 2
+  };
+}
+
 function toggleJoineryMode() {
   els.joineryToggle.checked = !els.joineryToggle.checked;
   updateJoineryModeControls();
@@ -842,8 +1293,11 @@ function toggleJoineryMode() {
 function runConversion() {
   els.statusPill.textContent = "Generating";
   updateFieldVisibility();
+  updateDimensionModeControls();
   updateJoineryModeControls();
-  state.result = buildResult(getParams());
+  const params = getParams();
+  updateOuterDimensionStatus(params);
+  state.result = buildResult(params);
   render(state.result);
   els.statusPill.textContent = "Ready";
 }
@@ -852,8 +1306,6 @@ function modelLabel(type) {
   const labels = {
     cube: "正立方體",
     cuboid: "長方體",
-    cylinder: "圓柱體",
-    flex_box_5: "柔性盒子5",
     gable_house: "雙斜屋頂房子"
   };
   return labels[type] || type;
@@ -874,6 +1326,14 @@ function dxfNum(value) {
 els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
 els.joineryModeButton.addEventListener("click", toggleJoineryMode);
+els.innerDimensionButton?.addEventListener("click", () => {
+  if (els.dimensionMode) els.dimensionMode.value = "inner";
+  updateDimensionModeControls();
+  runConversion();
+});
+els.zoomOutButton?.addEventListener("click", () => setPreviewZoom(state.zoom - 0.25));
+els.zoomInButton?.addEventListener("click", () => setPreviewZoom(state.zoom + 0.25));
+els.zoomResetButton?.addEventListener("click", () => setPreviewZoom(1));
 
 for (const input of document.querySelectorAll("input, select")) {
   if (input.id !== "modelType") {

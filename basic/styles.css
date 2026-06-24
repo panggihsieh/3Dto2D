@@ -89,6 +89,17 @@ h2 {
   font-weight: 680;
 }
 
+.red-only-note {
+  color: var(--cut);
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.section-head .red-only-note {
+  color: var(--cut);
+  font-weight: 800;
+}
+
 .status-pill,
 .section-head span,
 .summaryText {
@@ -252,6 +263,18 @@ select:focus-visible {
   font-size: 0.82rem;
 }
 
+.outer-dimension-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7dee6;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #cbd5e1;
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .mode-button {
   flex: 1;
   min-width: 0;
@@ -304,18 +327,34 @@ button:disabled {
 }
 
 .metric-strip,
-.legend {
+.legend,
+.zoom-controls {
   gap: 10px;
   flex-wrap: wrap;
 }
 
 .metric-strip span,
-.legend span {
+.legend span,
+.zoom-controls span {
   padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #ffffff;
   font-size: 0.82rem;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.zoom-controls button {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: #ffffff;
 }
 
 .legend span::before {
@@ -332,6 +371,10 @@ button:disabled {
   color: var(--cut);
 }
 
+.legend .dimension {
+  color: #111827;
+}
+
 .legend .score {
   color: var(--score);
 }
@@ -346,6 +389,8 @@ button:disabled {
 
 .preview-frame {
   position: relative;
+  display: grid;
+  place-items: center;
   min-height: 420px;
   overflow: hidden;
   border: 1px solid var(--line);

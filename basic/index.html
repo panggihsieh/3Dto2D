@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>3D to 2D Basic</title>
-    <link rel="stylesheet" href="styles.css?v=20260621-basic">
+    <link rel="stylesheet" href="styles.css?v=20260624-outer-gray">
   </head>
   <body>
     <main class="shell">
@@ -28,8 +28,6 @@
             <select id="modelType">
               <option value="cuboid">長方體</option>
               <option value="cube">正立方體</option>
-              <option value="cylinder">圓柱</option>
-              <option value="flex_box_5">柔性盒子5</option>
               <option value="gable_house">雙斜屋頂小屋</option>
             </select>
           </label>
@@ -39,6 +37,13 @@
           <div class="section-head">
             <h2 id="sizeTitle">尺寸 mm</h2>
           </div>
+
+          <div class="dimension-mode-row" aria-label="尺寸基準">
+            <button id="innerDimensionButton" class="mode-button" type="button" aria-pressed="true">內尺寸</button>
+            <span id="dimensionModeStatus">目前：內尺寸(長寬高為內部尺寸)</span>
+          </div>
+
+          <input id="dimensionMode" type="hidden" value="inner">
 
           <div class="field-grid">
             <label>
@@ -53,10 +58,6 @@
               <span>高度</span>
               <input id="height" type="number" min="1" step="1" value="60">
             </label>
-            <label data-field="circular" hidden>
-              <span>半徑</span>
-              <input id="radius" type="number" min="1" step="1" value="35">
-            </label>
             <label data-field="house" hidden>
               <span>牆高</span>
               <input id="wallHeight" type="number" min="1" step="1" value="55">
@@ -65,6 +66,10 @@
               <span>屋頂高</span>
               <input id="roofHeight" type="number" min="1" step="1" value="35">
             </label>
+          </div>
+
+          <div class="outer-dimension-box" aria-live="polite">
+            <span id="outerDimensionStatus">外尺寸：-- × -- × -- mm</span>
           </div>
         </section>
 
@@ -110,7 +115,7 @@
 
         <section class="panel" aria-labelledby="downloadsTitle">
           <div class="section-head">
-            <h2 id="downloadsTitle">輸出</h2>
+            <h2 id="downloadsTitle">輸出<span class="red-only-note">(限紅線)</span></h2>
             <span id="summaryText">Ready</span>
           </div>
           <div class="actions">
@@ -128,7 +133,14 @@
             <span><strong id="pathMetric">0</strong> parts</span>
           </div>
           <div class="legend" aria-label="Layer legend">
-            <span class="cut">CUT</span>
+            <span class="dimension">黑色：內尺寸</span>
+            <span class="cut">紅色：切割區</span>
+          </div>
+          <div class="zoom-controls" aria-label="Preview zoom controls">
+            <button id="zoomOutButton" type="button" title="Zoom out" aria-label="Zoom out">-</button>
+            <span id="zoomLevel">100%</span>
+            <button id="zoomInButton" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+            <button id="zoomResetButton" type="button" title="Reset zoom" aria-label="Reset zoom">Reset</button>
           </div>
         </div>
 
@@ -145,6 +157,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260624-basic-red-visible"></script>
+    <script src="app.js?v=20260624-basic-outer-gray"></script>
   </body>
 </html>
