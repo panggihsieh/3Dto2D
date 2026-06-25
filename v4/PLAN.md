@@ -6,6 +6,50 @@ Create a standalone V4 workflow for generating 12 grayscale-separated SVG layers
 
 The first target machine profile is FLUX 30W. The tool should also allow switching to 40W and 50W rated laser profiles for future calibration.
 
+## 中文說明
+
+V4 是一個獨立的 FLUX / Beam Studio 漸層雷刻測試工具。它會把上傳的 bitmap 圖片轉成 12 個灰階分離圖層，每一層使用不同顏色，方便在 Beam Studio 裡用「依顏色分層」匯入。
+
+預設機型是 `FLUX 30W`，也可以切換成 `FLUX 40W` 或 `FLUX 50W`。這裡的 30W / 40W / 50W 是機器額定功率，不是直接輸出的雷射功率。
+
+12 層的建議雷刻功率從 `8%` 到 `40%` 均分：
+
+- `L01` 是最淺層，建議 `8.0%`
+- `L12` 是最深層，建議 `40.0%`
+
+SVG 匯出時會保留：
+
+- 圖層名稱
+- 顏色
+- 建議功率百分比
+- 估算瓦數
+- FLUX 機型設定
+- 校正提醒
+
+Beam Studio 不一定會自動讀取 SVG metadata 或圖層名稱來設定功率，所以實務上建議用「12 色分層 + CSV 功率表」手動或半自動設定 Beam Studio 參數。
+
+## English Description
+
+V4 is a standalone FLUX / Beam Studio gradient engraving test tool. It converts an uploaded bitmap image into 12 grayscale-separated layers. Each layer uses a fixed color so the exported SVG can be imported into Beam Studio by color.
+
+The default machine profile is `FLUX 30W`, with optional `FLUX 40W` and `FLUX 50W` profiles. These values represent the machine's rated laser power, not the direct engraving output.
+
+The 12 suggested engraving layers are evenly distributed from `8%` to `40%` power:
+
+- `L01` is the lightest layer, suggested at `8.0%`
+- `L12` is the darkest layer, suggested at `40.0%`
+
+The exported SVG includes:
+
+- Layer names
+- Layer colors
+- Suggested power percentage
+- Estimated watts
+- FLUX machine profile
+- Calibration notes
+
+Beam Studio should not be assumed to automatically apply power settings from SVG metadata or layer names. The safer workflow is to import by color and use the exported CSV power table to set each Beam Studio color layer.
+
 ## Machine Power Profiles
 
 Treat `30W`, `40W`, and `50W` as machine rated-power profiles, not as direct layer power values.
