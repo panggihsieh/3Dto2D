@@ -145,7 +145,8 @@ function buildPreview() {
 }
 
 function sampleImage(image, targetWidth, settings) {
-  const width = clamp(Math.round(targetWidth), 24, 240);
+  const maxUsefulWidth = Math.min(image.naturalWidth || targetWidth, 1200);
+  const width = clamp(Math.round(targetWidth), 24, maxUsefulWidth);
   const height = Math.max(1, Math.round(width * image.naturalHeight / image.naturalWidth));
   const canvas = els.sourceCanvas;
   canvas.width = width;
@@ -497,7 +498,7 @@ function readSettings() {
     outputWidthMm: clamp(Number(els.outputWidthMm.value) || 100, 10, 600),
     minPower,
     maxPower,
-    sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240),
+    sampleWidth: clamp(Number(els.sampleWidth.value) || 381, 24, 1200),
     outputMode: els.outputMode.value === "trace" ? "trace" : "rect",
     traceMode: "grayscale",
     traceScans: LAYER_COUNT,
