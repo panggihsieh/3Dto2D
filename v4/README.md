@@ -80,6 +80,39 @@ The workflow:
 
 Note: Inkscape's GUI Trace Bitmap panel is not reliably exposed as a CLI action. The batch workflow uses Potrace for the actual layer tracing and Inkscape for SVG rasterization or inspection support.
 
+## Local Potrace Install
+
+Potrace is optional for the current browser preview, but it is the recommended local dependency for future high-quality export that is closer to Inkscape Trace Bitmap.
+
+Windows PowerShell:
+
+```powershell
+winget search potrace
+winget install --id <package-id-from-search>
+potrace --version
+```
+
+If winget does not list Potrace, download it from the official site and add the folder containing `potrace.exe` to `PATH`:
+
+```text
+https://potrace.sourceforge.net/
+```
+
+macOS:
+
+```sh
+brew install potrace
+potrace --version
+```
+
+Ubuntu / Debian:
+
+```sh
+sudo apt update
+sudo apt install potrace
+potrace --version
+```
+
 ## Default Power Profile
 
 Default profile:

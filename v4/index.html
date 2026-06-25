@@ -138,6 +138,31 @@
 
         <section class="panel">
           <div class="section-head">
+            <h2>Potrace 安裝</h2>
+            <span>接近 Inkscape</span>
+          </div>
+          <p class="hint">正式高品質匯出會使用 Potrace 逐層 trace，效果會比瀏覽器即時預覽更接近 Inkscape Trace Bitmap。安裝後請重新開啟 PowerShell / Terminal，並用 `potrace --version` 確認。</p>
+          <pre class="cli-box"><code>Windows PowerShell:
+winget search potrace
+winget install --id 找到的套件ID
+potrace --version
+
+macOS:
+brew install potrace
+potrace --version
+
+Ubuntu / Debian:
+sudo apt update
+sudo apt install potrace
+potrace --version</code></pre>
+          <p class="hint">
+            Windows 若找不到 winget 套件，可改用官方下載後把 `potrace.exe` 所在資料夾加入 PATH：
+            <a href="https://potrace.sourceforge.net/" target="_blank" rel="noopener">Potrace Official</a>
+          </p>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
             <h2>匯出</h2>
             <span>5 灰階 / 5 層</span>
           </div>
