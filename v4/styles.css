@@ -183,6 +183,34 @@ button:disabled {
   margin-top: 12px;
 }
 
+.toggle-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.toggle-row input {
+  inline-size: 18px;
+  block-size: 18px;
+}
+
+.toggle-row span {
+  margin: 0;
+  color: var(--ink);
+}
+
 .hint {
   margin-top: 10px;
   line-height: 1.45;

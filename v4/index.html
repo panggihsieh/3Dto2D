@@ -65,8 +65,8 @@
             <label>
               <span>輸出模式</span>
               <select id="outputMode">
-                <option value="rect" selected>快速矩形分層</option>
-                <option value="trace">平滑 Trace 分層</option>
+                <option value="trace" selected>平滑 Trace 分層</option>
+                <option value="rect">快速矩形分層</option>
                 <option value="inkscape" disabled>Inkscape CLI 模式（需本機 helper）</option>
               </select>
             </label>
@@ -75,6 +75,48 @@
               <input id="projectName" type="text" maxlength="48" value="flux_gradient_test">
             </label>
           </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>Bitmap Trace 設定</h2>
+            <span>多次掃描 / 灰階</span>
+          </div>
+          <div class="field-grid">
+            <label>
+              <span>偵測模式</span>
+              <select id="traceMode">
+                <option value="grayscale" selected>灰階</option>
+              </select>
+            </label>
+            <label>
+              <span>掃描數</span>
+              <input id="traceScans" type="number" min="12" max="12" step="1" value="12">
+            </label>
+            <label>
+              <span>斑點</span>
+              <input id="traceSpeckles" type="number" min="0" max="128" step="1" value="2">
+            </label>
+            <label>
+              <span>平滑轉角</span>
+              <input id="traceSmoothCorners" type="number" min="0" max="5" step="0.01" value="1.00">
+            </label>
+            <label>
+              <span>最佳化</span>
+              <input id="traceOptimize" type="number" min="0" max="5" step="0.001" value="0.200">
+            </label>
+          </div>
+          <div class="toggle-row compact-toggle">
+            <label>
+              <input id="traceSmooth" type="checkbox" checked>
+              <span>平滑</span>
+            </label>
+            <label>
+              <input id="traceRemoveBackground" type="checkbox" checked>
+              <span>移除背景</span>
+            </label>
+          </div>
+          <p class="hint">此設定對應 Inkscape Trace Bitmap 的「多次掃描 / 灰階」流程。v4 會用瀏覽器端 trace 產生 12 個 SVG path 圖層；若未來接上 Inkscape helper，可用同一組參數送到 CLI 流程。</p>
         </section>
 
         <section class="panel">

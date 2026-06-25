@@ -129,6 +129,18 @@ V4 應支援兩種純瀏覽器輸出模式：
 
 平滑 Trace 模式屬於 Potrace 風格的瀏覽器端向量化，但不需要安裝 Inkscape 或 Potrace。它適合較平滑的輪廓輸出；矩形分層模式則保留作為較可預測的密集雕刻測試輸出。
 
+預設 Bitmap Trace 參數對應 Inkscape「多次掃描 / 灰階」設定：
+
+- 偵測模式：灰階
+- 掃描數：12
+- 平滑：啟用
+- 移除背景：啟用
+- 斑點：2
+- 平滑轉角：1.00
+- 最佳化：0.200
+
+匯出的 SVG 應包含 12 個 traced path 圖層，而不是單一合併影像。CSV 功率表與 SVG metadata 需記錄這些 trace 參數，方便之後導入真正的 Inkscape CLI helper。
+
 ## Inkscape CLI 模式
 
 若要改用 Inkscape CLI 品質模式，使用端或伺服端必須先安裝 Inkscape。此模式品質接近 Inkscape 的 trace / 向量處理流程，但純 GitHub Pages 或一般瀏覽器頁面無法直接啟動本機 `inkscape` 指令。

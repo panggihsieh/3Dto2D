@@ -24,10 +24,20 @@ https://panggihsieh.github.io/3Dto2D/v4/
 ## Output Modes
 
 - Fast rectangular layers: stable browser-only output using sampled pixel runs.
-- Smooth trace layers: browser-only vector tracing using vendored ImageTracerJS. This is Potrace-style raster-to-SVG tracing, but it does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
+- Smooth trace layers: browser-only bitmap trace using vendored ImageTracerJS. This follows the Inkscape-style Multiple Scans / Grayscale workflow with 12 scans by default, but it does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
 - Inkscape CLI mode: planned high-quality trace mode. The user machine or server must have Inkscape installed, and a local helper or backend service is required because a static browser page cannot directly launch `inkscape`.
 
 Smooth trace mode is better for softer outlines, while fast rectangular mode is more predictable for dense photo-style engraving tests.
+
+Default bitmap trace settings:
+
+- Scan mode: Grayscale
+- Scans: 12
+- Smooth: enabled
+- Remove background: enabled
+- Speckles: 2
+- Smooth corners: 1.00
+- Optimize: 0.200
 
 Official Inkscape download page:
 

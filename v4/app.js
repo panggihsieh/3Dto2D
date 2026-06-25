@@ -28,6 +28,13 @@ const els = {
   sampleWidth: document.querySelector("#sampleWidth"),
   outputMode: document.querySelector("#outputMode"),
   projectName: document.querySelector("#projectName"),
+  traceMode: document.querySelector("#traceMode"),
+  traceScans: document.querySelector("#traceScans"),
+  traceSmooth: document.querySelector("#traceSmooth"),
+  traceRemoveBackground: document.querySelector("#traceRemoveBackground"),
+  traceSpeckles: document.querySelector("#traceSpeckles"),
+  traceSmoothCorners: document.querySelector("#traceSmoothCorners"),
+  traceOptimize: document.querySelector("#traceOptimize"),
   checkInkscape: document.querySelector("#checkInkscape"),
   inkscapeStatus: document.querySelector("#inkscapeStatus"),
   downloadSvg: document.querySelector("#downloadSvg"),
@@ -81,7 +88,14 @@ els.checkInkscape.addEventListener("click", () => {
   els.maxPower,
   els.sampleWidth,
   els.outputMode,
-  els.projectName
+  els.projectName,
+  els.traceMode,
+  els.traceScans,
+  els.traceSmooth,
+  els.traceRemoveBackground,
+  els.traceSpeckles,
+  els.traceSmoothCorners,
+  els.traceOptimize
 ].forEach((input) => {
   input.addEventListener("input", () => {
     renderPowerTable();
@@ -123,9 +137,9 @@ async function loadImageUrl(url, name) {
 
 function buildPreview() {
   const settings = readSettings();
-  const sampled = sampleImage(state.image, settings.sampleWidth);
+  const sampled = sampleImage(state.image, settings.sampleWidth, settings);
   const layerRuns = buildLayerRuns(sampled);
-  const tracePaths = settings.outputMode === "trace" ? buildTracePaths(sampled) : [];
+  const tracePaths = settings.outputMode === "trace" ? buildTracePaths(sampled, settings) : [];
   state.sampled = sampled;
   state.layerRuns = layerRuns;
   state.tracePaths = tracePaths;
@@ -137,7 +151,7 @@ function buildPreview() {
   els.statusText.textContent = "已建立";
 }
 
-function sampleImage(image, targetWidth) {
+function sampleImage(image, targetWidth, settings) {
   const width = clamp(Math.round(targetWidth), 24, 240);
   const height = Math.max(1, Math.round(width * image.naturalHeight / image.naturalWidth));
   const canvas = els.sourceCanvas;
@@ -158,6 +172,7 @@ function sampleImage(image, targetWidth) {
     const g = imageData.data[offset + 1];
     const b = imageData.data[offset + 2];
     const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (settings.traceRemoveBackground && gray >= 248) continue;
     const darkness = 255 - gray;
     const layer = Math.min(LAYER_COUNT - 1, Math.floor(darkness / 256 * LAYER_COUNT));
     layers[i] = layer;
@@ -234,6 +249,7 @@ function buildSvgDocument() {
     machineProfile: `FLUX ${settings.machineWatts}W`,
     layerCount: LAYER_COUNT,
     outputMode: settings.outputMode,
+    traceSettings: traceSettingsForExport(settings),
     powerRangePercent: [settings.minPower, settings.maxPower],
     note: "Suggested settings only. Calibrate in Beam Studio with real material before production.",
     layers: layerSettings(settings)
@@ -281,14 +297,14 @@ function appendRuns(group, runs, sampled, outputWidthMm, outputHeightMm) {
   });
 }
 
-function buildTracePaths(sampled) {
+function buildTracePaths(sampled, settings) {
   const tracer = getImageTracer();
   if (!tracer) return Array.from({ length: LAYER_COUNT }, () => []);
   const options = {
-    ltres: 0.6,
-    qtres: 0.6,
-    pathomit: 4,
-    rightangleenhance: false,
+    ltres: settings.traceOptimize,
+    qtres: settings.traceSmoothCorners,
+    pathomit: settings.traceSpeckles,
+    rightangleenhance: !settings.traceSmooth,
     colorsampling: 0,
     colorquantcycles: 1,
     numberofcolors: 2,
@@ -448,13 +464,20 @@ function renderLegend() {
 function buildPowerCsv() {
   const settings = readSettings();
   const rows = [
-    ["Layer", "Tone", "Color", "MachineProfile", "OutputMode", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
+    ["Layer", "Tone", "Color", "MachineProfile", "OutputMode", "TraceMode", "Scans", "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
     ...layerSettings(settings).map((layer) => [
       layer.layer,
       layer.tone,
       layer.color,
       `FLUX ${settings.machineWatts}W`,
       settings.outputMode,
+      settings.traceMode,
+      settings.traceScans,
+      settings.traceSmooth ? "yes" : "no",
+      settings.traceRemoveBackground ? "yes" : "no",
+      settings.traceSpeckles,
+      settings.traceSmoothCorners.toFixed(2),
+      settings.traceOptimize.toFixed(3),
       layer.powerPercent.toFixed(1),
       layer.estimatedWatts.toFixed(2),
       "Import SVG by Color, then set this color layer power in Beam Studio."
@@ -482,7 +505,27 @@ function readSettings() {
     minPower,
     maxPower,
     sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240),
-    outputMode: els.outputMode.value === "trace" ? "trace" : "rect"
+    outputMode: els.outputMode.value === "trace" ? "trace" : "rect",
+    traceMode: "grayscale",
+    traceScans: 12,
+    traceSmooth: Boolean(els.traceSmooth.checked),
+    traceRemoveBackground: Boolean(els.traceRemoveBackground.checked),
+    traceSpeckles: clamp(Math.round(Number(els.traceSpeckles.value) || 0), 0, 128),
+    traceSmoothCorners: clamp(Number(els.traceSmoothCorners.value) || 0, 0, 5),
+    traceOptimize: clamp(Number(els.traceOptimize.value) || 0, 0, 5)
+  };
+}
+
+function traceSettingsForExport(settings) {
+  return {
+    workflow: "bitmap-trace-multiple-scan-grayscale",
+    traceMode: settings.traceMode,
+    scans: settings.traceScans,
+    smooth: settings.traceSmooth,
+    removeBackground: settings.traceRemoveBackground,
+    speckles: settings.traceSpeckles,
+    smoothCorners: settings.traceSmoothCorners,
+    optimize: settings.traceOptimize
   };
 }
 
