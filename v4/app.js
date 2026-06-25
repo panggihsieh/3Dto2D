@@ -30,6 +30,7 @@ const els = {
   projectName: document.querySelector("#projectName"),
   downloadSvg: document.querySelector("#downloadSvg"),
   downloadCsv: document.querySelector("#downloadCsv"),
+  downloadFallback: document.querySelector("#downloadFallback"),
   powerTable: document.querySelector("#powerTable"),
   profileSummary: document.querySelector("#profileSummary"),
   statusText: document.querySelector("#statusText"),
@@ -49,7 +50,8 @@ const state = {
   sourceHeight: 0,
   sampled: null,
   layerRuns: [],
-  tracePaths: []
+  tracePaths: [],
+  fallbackUrls: {}
 };
 
 renderPowerTable();
@@ -86,11 +88,11 @@ els.resetView.addEventListener("click", () => {
 
 els.downloadSvg.addEventListener("click", () => {
   if (!state.sampled) return;
-  download(`${safeBaseName()}.svg`, buildSvgDocument(), "image/svg+xml");
+  exposeDownload(`${safeBaseName()}.svg`, buildSvgDocument(), "image/svg+xml", "svg");
 });
 
 els.downloadCsv.addEventListener("click", () => {
-  download(`${safeBaseName()}_beam_studio_power_table.csv`, buildPowerCsv(), "text/csv;charset=utf-8");
+  exposeDownload(`${safeBaseName()}_beam_studio_power_table.csv`, buildPowerCsv(), "text/csv;charset=utf-8", "csv");
 });
 
 async function loadImageFile(file) {
@@ -516,16 +518,40 @@ function loadImage(src) {
   });
 }
 
-function download(name, content, type) {
+function exposeDownload(name, content, type, key) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
+  if (state.fallbackUrls[key]) URL.revokeObjectURL(state.fallbackUrls[key]);
+  state.fallbackUrls[key] = url;
+
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 500);
+  renderDownloadFallback();
+}
+
+function renderDownloadFallback() {
+  const links = Object.entries(state.fallbackUrls);
+  if (!links.length) return;
+  els.downloadFallback.hidden = false;
+  els.downloadFallback.replaceChildren();
+  const note = document.createElement("p");
+  note.textContent = "若瀏覽器沒有自動下載，請用下方連結開啟後另存。";
+  els.downloadFallback.appendChild(note);
+  links.forEach(([key, url]) => {
+    const link = document.createElement("a");
+    const isSvg = key === "svg";
+    const name = isSvg ? `${safeBaseName()}.svg` : `${safeBaseName()}_beam_studio_power_table.csv`;
+    link.href = url;
+    link.download = name;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = isSvg ? "開啟 / 另存 SVG" : "開啟 / 另存功率表 CSV";
+    els.downloadFallback.appendChild(link);
+  });
 }
 
 function csvCell(value) {

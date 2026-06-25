@@ -24,7 +24,7 @@
           </div>
           <label class="full-field file-field">
             <span>上傳圖片</span>
-            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/bmp">
+            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/svg+xml,.svg">
           </label>
           <div class="actions">
             <button id="loadSample" type="button">載入老虎範例</button>
@@ -85,6 +85,7 @@
             <button id="downloadSvg" type="button" disabled>下載 SVG</button>
             <button id="downloadCsv" type="button" disabled>下載功率表</button>
           </div>
+          <div class="download-fallback" id="downloadFallback" hidden></div>
           <p class="hint">在 Beam Studio 匯入 SVG 時優先選 Color 分層，並依功率表設定各顏色的參數。</p>
         </section>
 

@@ -188,6 +188,30 @@ button:disabled {
   line-height: 1.45;
 }
 
+.download-fallback {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f7fafc;
+  font-size: 0.82rem;
+}
+
+.download-fallback p {
+  color: var(--muted);
+}
+
+.download-fallback a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.download-fallback[hidden] {
+  display: none;
+}
+
 .table-wrap {
   margin-top: 12px;
   overflow-x: auto;
