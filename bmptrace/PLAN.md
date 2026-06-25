@@ -1,14 +1,14 @@
-# V4 漸層雷刻測試規劃
+# BMPTrace 漸層雷刻測試規劃
 
 ## 目標
 
-建立一個獨立的 V4 工作流程，用來產生 5 個灰階分離 SVG 圖層，作為漸層雷射雕刻測試檔案。
+建立一個獨立的 BMPTrace 工作流程，用來產生 5 個灰階分離 SVG 圖層，作為漸層雷射雕刻測試檔案。
 
 第一個目標機型設定為 FLUX 30W。工具也應允許切換到 40W 與 50W 額定雷射功率設定，方便未來校正。
 
 ## 中文說明
 
-V4 是一個獨立的 FLUX / Beam Studio 漸層雷刻測試工具。它會把上傳的 bitmap 圖片轉成 5 個灰階分離圖層，每一層使用固定灰階填色，方便在 Beam Studio 裡用「依顏色 / 灰階填色分層」匯入。
+BMPTrace 是一個獨立的 FLUX / Beam Studio 漸層雷刻測試工具。它會把上傳的 bitmap 圖片轉成 5 個灰階分離圖層，每一層使用固定灰階填色，方便在 Beam Studio 裡用「依顏色 / 灰階填色分層」匯入。
 
 預設機型是 `FLUX 30W`，也可以切換成 `FLUX 40W` 或 `FLUX 50W`。這裡的 30W / 40W / 50W 是機器額定功率，不是直接輸出的雷射功率。
 
@@ -30,7 +30,7 @@ Beam Studio 不一定會自動讀取 SVG metadata 或圖層名稱來設定功率
 
 ## English Summary
 
-V4 is a standalone FLUX / Beam Studio gradient engraving test tool. It converts an uploaded bitmap image into 5 grayscale-separated layers. Each layer uses a fixed grayscale fill so the exported SVG can be imported into Beam Studio by color/gray fill.
+BMPTrace is a standalone FLUX / Beam Studio gradient engraving test tool. It converts an uploaded bitmap image into 5 grayscale-separated layers. Each layer uses a fixed grayscale fill so the exported SVG can be imported into Beam Studio by color/gray fill.
 
 The default machine profile is `FLUX 30W`, with optional `FLUX 40W` and `FLUX 50W` profiles. These values represent the machine's rated laser power, not the direct engraving output.
 
@@ -115,7 +115,7 @@ L05_darkest_power_40.0pct_flux_30w
 4. 每個區段產生一個 SVG group。
 5. 匯出分層 SVG，供 FLUX 軟體或 Inkscape 檢查。
 
-V4 應支援兩種純瀏覽器輸出模式：
+BMPTrace 應支援兩種純瀏覽器輸出模式：
 
 - 快速矩形分層：將取樣後的連續像素區段輸出成 SVG rectangles。
 - 平滑 Trace 分層：對每個灰階區段遮罩使用 ImageTracerJS 產生向量 paths。
@@ -142,18 +142,18 @@ V4 應支援兩種純瀏覽器輸出模式：
 
 - 使用端安裝 Inkscape，並執行本機 helper，由 helper 呼叫 `inkscape` CLI。
 - 伺服端安裝 Inkscape，由後端服務接收圖片或 SVG 後呼叫 `inkscape` CLI。
-- V4 頁面載入時先詢問本機 helper：`http://127.0.0.1:4175/status`。
+- BMPTrace 頁面載入時先詢問本機 helper：`http://127.0.0.1:4175/status`。
 - 若 helper 回報找到 Inkscape，頁面顯示 `inkscape.exe` 安裝位置。
 - 若 helper 未啟動或找不到 Inkscape，頁面提示使用者安裝 Inkscape 或啟動 helper。
 
 ## GitHub Actions 批次高品質 Trace
 
-GitHub Pages 不能安裝或執行 Inkscape，但 GitHub Actions runner 可以。V4 以 `V4 Batch High Quality Trace` workflow 提供批次輸出流程。
+GitHub Pages 不能安裝或執行 Inkscape，但 GitHub Actions runner 可以。BMPTrace 以 `BMPTrace Batch High Quality Trace` workflow 提供批次輸出流程。
 
 批次流程：
 
 1. 手動啟動 GitHub Actions workflow。
-2. 指定 repo 內的輸入圖片路徑，例如 `v4/assets/sample.png`。
+2. 指定 repo 內的輸入圖片路徑，例如 `bmptrace/assets/sample.png`。
 3. Actions 安裝 Inkscape、Potrace、Pillow。
 4. 腳本依灰階分成 5 個遮罩。
 5. 使用 Potrace 逐層輸出向量 path。
@@ -171,7 +171,7 @@ https://inkscape.org/release/
 本機 helper 啟動方式：
 
 ```powershell
-node v4/helper/inkscape-helper.js
+node bmptrace/helper/inkscape-helper.js
 ```
 
 ## 驗證標準

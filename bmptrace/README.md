@@ -1,11 +1,11 @@
-# V4 Beam Studio Gradient Layers
+# BMPTrace Beam Studio Gradient Layers
 
-V4 is a standalone browser tool for preparing FLUX Beam Studio friendly grayscale engraving test files.
+BMPTrace is a standalone browser tool for preparing FLUX Beam Studio friendly grayscale engraving test files.
 
 Open:
 
 ```text
-https://panggihsieh.github.io/3Dto2D/v4/
+https://panggihsieh.github.io/3Dto2D/bmptrace/
 ```
 
 ## Workflow
@@ -48,10 +48,10 @@ https://inkscape.org/release/
 Optional local helper for checking the installed Inkscape path:
 
 ```powershell
-node v4/helper/inkscape-helper.js
+node bmptrace/helper/inkscape-helper.js
 ```
 
-The V4 page checks `http://127.0.0.1:4175/status` on load. If the helper is running and Inkscape is installed in a known location, the page shows the detected `inkscape.exe` path. If not, it prompts the user to install Inkscape or start the helper.
+The BMPTrace page checks `http://127.0.0.1:4175/status` on load. If the helper is running and Inkscape is installed in a known location, the page shows the detected `inkscape.exe` path. If not, it prompts the user to install Inkscape or start the helper.
 
 ## Beam Studio Import
 
@@ -68,12 +68,12 @@ Beam Studio may preserve SVG layer names, but automatic power assignment from SV
 
 ## GitHub Actions Batch Trace
 
-For higher-quality batch output, run the `V4 Batch High Quality Trace` workflow in GitHub Actions.
+For higher-quality batch output, run the `BMPTrace Batch High Quality Trace` workflow in GitHub Actions.
 
 The workflow:
 
 - Installs Inkscape, Potrace, and Pillow on the GitHub runner.
-- Accepts a repo image path such as `v4/assets/sample.png`.
+- Accepts a repo image path such as `bmptrace/assets/sample.png`.
 - Generates a 5-layer grayscale traced SVG.
 - Generates a Beam Studio power CSV.
 - Uploads both files as a workflow artifact.
@@ -84,7 +84,7 @@ Note: Inkscape's GUI Trace Bitmap panel is not reliably exposed as a CLI action.
 
 Potrace is optional for the current browser preview, but it is the recommended local dependency for future high-quality export that is closer to Inkscape Trace Bitmap.
 
-The V4 page provides Windows, macOS, and Ubuntu buttons that copy these commands to the clipboard. Browsers cannot safely execute installer commands directly; paste the copied command into PowerShell or Terminal.
+The BMPTrace page provides Windows, macOS, and Ubuntu buttons that copy these commands to the clipboard. Browsers cannot safely execute installer commands directly; paste the copied command into PowerShell or Terminal.
 
 Windows PowerShell:
 

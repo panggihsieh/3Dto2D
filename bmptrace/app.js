@@ -1,8 +1,9 @@
 const NS = "http://www.w3.org/2000/svg";
 const INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape";
 
-const LAYER_COUNT = 5;
-const LAYER_COLORS = [
+const DEFAULT_LAYER_COUNT = 5;
+const LAYER_PRESETS = [5, 7, 12, 24];
+const FIVE_LAYER_COLORS = [
   "#b3b3b3",
   "#939393",
   "#6e6e6e",
@@ -18,25 +19,24 @@ const els = {
   outputWidthMm: document.querySelector("#outputWidthMm"),
   minPower: document.querySelector("#minPower"),
   maxPower: document.querySelector("#maxPower"),
-  sampleWidth: document.querySelector("#sampleWidth"),
+  engraveSpeed: document.querySelector("#engraveSpeed"),
   outputMode: document.querySelector("#outputMode"),
   projectName: document.querySelector("#projectName"),
-  traceMode: document.querySelector("#traceMode"),
   traceScans: document.querySelector("#traceScans"),
-  traceSmooth: document.querySelector("#traceSmooth"),
-  traceRemoveBackground: document.querySelector("#traceRemoveBackground"),
-  traceSpeckles: document.querySelector("#traceSpeckles"),
-  traceSmoothCorners: document.querySelector("#traceSmoothCorners"),
-  traceOptimize: document.querySelector("#traceOptimize"),
-  checkInkscape: document.querySelector("#checkInkscape"),
-  inkscapeStatus: document.querySelector("#inkscapeStatus"),
+  checkTools: document.querySelector("#checkTools"),
+  potraceStatus: document.querySelector("#potraceStatus"),
+  installModal: document.querySelector("#installModal"),
+  closeInstallModal: document.querySelector("#closeInstallModal"),
   downloadSvg: document.querySelector("#downloadSvg"),
   downloadCsv: document.querySelector("#downloadCsv"),
   downloadFallback: document.querySelector("#downloadFallback"),
   powerTable: document.querySelector("#powerTable"),
   profileSummary: document.querySelector("#profileSummary"),
+  layerSummary: document.querySelector("#layerSummary"),
   statusText: document.querySelector("#statusText"),
   previewSvg: document.querySelector("#previewSvg"),
+  sourceInset: document.querySelector("#sourceInset"),
+  sourcePreview: document.querySelector("#sourcePreview"),
   emptyState: document.querySelector("#emptyState"),
   imageMetric: document.querySelector("#imageMetric"),
   svgMetric: document.querySelector("#svgMetric"),
@@ -49,6 +49,7 @@ const els = {
 const state = {
   image: null,
   imageName: "",
+  imageUrl: "",
   sourceWidth: 0,
   sourceHeight: 0,
   sampled: null,
@@ -59,7 +60,7 @@ const state = {
 
 renderPowerTable();
 renderLegend();
-checkInkscapeStatus();
+checkToolStatus();
 
 els.imageInput.addEventListener("change", async () => {
   const file = els.imageInput.files?.[0];
@@ -71,8 +72,22 @@ els.loadSample.addEventListener("click", async () => {
   await loadImageUrl("assets/sample.png", "sample.png");
 });
 
-els.checkInkscape.addEventListener("click", () => {
-  checkInkscapeStatus();
+els.checkTools.addEventListener("click", () => {
+  checkToolStatus();
+});
+
+els.closeInstallModal.addEventListener("click", () => {
+  closeInstallModal();
+});
+
+els.installModal.addEventListener("click", (event) => {
+  if (event.target === els.installModal) closeInstallModal();
+});
+
+document.querySelectorAll(".tab-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    activateTab(button.dataset.tab);
+  });
 });
 
 document.querySelectorAll(".copy-command").forEach((button) => {
@@ -81,26 +96,29 @@ document.querySelectorAll(".copy-command").forEach((button) => {
   });
 });
 
+document.querySelectorAll(".open-powershell").forEach((button) => {
+  button.addEventListener("click", async () => {
+    await openPowerShell();
+  });
+});
+
 [
   els.machineWatts,
   els.outputWidthMm,
   els.minPower,
   els.maxPower,
-  els.sampleWidth,
+  els.engraveSpeed,
   els.outputMode,
   els.projectName,
-  els.traceMode,
-  els.traceScans,
-  els.traceSmooth,
-  els.traceRemoveBackground,
-  els.traceSpeckles,
-  els.traceSmoothCorners,
-  els.traceOptimize
+  els.traceScans
 ].forEach((input) => {
-  input.addEventListener("input", () => {
+  const onSettingsChange = () => {
     renderPowerTable();
+    renderLegend();
     if (state.image) buildPreview();
-  });
+  };
+  input.addEventListener("input", onSettingsChange);
+  input.addEventListener("change", onSettingsChange);
 });
 
 els.resetView.addEventListener("click", () => {
@@ -121,6 +139,7 @@ async function loadImageFile(file) {
   const image = await loadImage(dataUrl);
   state.image = image;
   state.imageName = file.name;
+  state.imageUrl = dataUrl;
   state.sourceWidth = image.naturalWidth;
   state.sourceHeight = image.naturalHeight;
   buildPreview();
@@ -130,6 +149,7 @@ async function loadImageUrl(url, name) {
   const image = await loadImage(url);
   state.image = image;
   state.imageName = name;
+  state.imageUrl = url;
   state.sourceWidth = image.naturalWidth;
   state.sourceHeight = image.naturalHeight;
   buildPreview();
@@ -138,7 +158,7 @@ async function loadImageUrl(url, name) {
 function buildPreview() {
   const settings = readSettings();
   const sampled = sampleImage(state.image, settings.sampleWidth, settings);
-  const layerRuns = buildLayerRuns(sampled);
+  const layerRuns = buildLayerRuns(sampled, settings.traceScans);
   const tracePaths = settings.outputMode === "trace" ? buildTracePaths(sampled, settings) : [];
   state.sampled = sampled;
   state.layerRuns = layerRuns;
@@ -147,6 +167,8 @@ function buildPreview() {
   updateMetrics(settings, sampled, layerRuns, tracePaths);
   els.downloadSvg.disabled = false;
   els.downloadCsv.disabled = false;
+  els.sourcePreview.src = state.imageUrl;
+  els.sourceInset.hidden = false;
   els.emptyState.hidden = true;
   els.statusText.textContent = "已建立";
 }
@@ -175,7 +197,7 @@ function sampleImage(image, targetWidth, settings) {
     const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     if (settings.traceRemoveBackground && gray >= 248) continue;
     const darkness = 255 - gray;
-    const layer = Math.min(LAYER_COUNT - 1, Math.floor(darkness / 256 * LAYER_COUNT));
+    const layer = Math.min(settings.traceScans - 1, Math.floor(darkness / 256 * settings.traceScans));
     layers[i] = layer;
     visible[i] = 1;
   }
@@ -183,8 +205,8 @@ function sampleImage(image, targetWidth, settings) {
   return { width, height, layers, visible };
 }
 
-function buildLayerRuns(sampled) {
-  const groups = Array.from({ length: LAYER_COUNT }, () => []);
+function buildLayerRuns(sampled, layerCount) {
+  const groups = Array.from({ length: layerCount }, () => []);
   for (let y = 0; y < sampled.height; y += 1) {
     let x = 0;
     while (x < sampled.width) {
@@ -209,6 +231,7 @@ function buildLayerRuns(sampled) {
 
 function drawPreviewSvg(settings, sampled, layerRuns, tracePaths) {
   clearSvg(els.previewSvg);
+  const colors = layerColors(settings.traceScans);
   const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
   els.previewSvg.setAttribute("viewBox", `0 0 ${svgNum(settings.outputWidthMm)} ${svgNum(outputHeightMm)}`);
   els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
@@ -217,8 +240,9 @@ function drawPreviewSvg(settings, sampled, layerRuns, tracePaths) {
       id: layerId(layerIndex, settings),
       "data-layer": `L${pad2(layerIndex + 1)}`,
       "data-power-percent": powerForLayer(layerIndex, settings).toFixed(1),
+      "data-speed-mm-sec": speedForLayer(layerIndex, settings).toFixed(0),
       "data-estimated-watts": estimatedWatts(layerIndex, settings).toFixed(2),
-      fill: LAYER_COLORS[layerIndex],
+      fill: colors[layerIndex],
       stroke: "none"
     });
     if (settings.outputMode === "trace") {
@@ -233,6 +257,7 @@ function drawPreviewSvg(settings, sampled, layerRuns, tracePaths) {
 function buildSvgDocument() {
   const settings = readSettings();
   const sampled = state.sampled;
+  const colors = layerColors(settings.traceScans);
   const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
   const svg = createSvgElement("svg", {
     xmlns: NS,
@@ -245,12 +270,13 @@ function buildSvgDocument() {
 
   const metadata = createSvgElement("metadata", {});
   metadata.textContent = JSON.stringify({
-    generator: "3Dto2D v4 FLUX gradient layer test",
+    generator: "3Dto2D BMPTrace FLUX gradient layer test",
     source: state.imageName,
     machineProfile: `FLUX ${settings.machineWatts}W`,
-    layerCount: LAYER_COUNT,
+    layerCount: settings.traceScans,
     outputMode: settings.outputMode,
     traceSettings: traceSettingsForExport(settings),
+    speedMmPerSec: settings.engraveSpeed,
     powerRangePercent: [settings.minPower, settings.maxPower],
     note: "Suggested settings only. Calibrate in Beam Studio with real material before production.",
     layers: layerSettings(settings)
@@ -258,7 +284,7 @@ function buildSvgDocument() {
   svg.appendChild(metadata);
 
   const desc = createSvgElement("desc", {});
-  desc.textContent = `Beam Studio friendly grayscale SVG: ${LAYER_COUNT} grayscale trace layers, profile FLUX ${settings.machineWatts}W, ${settings.minPower}% to ${settings.maxPower}%.`;
+  desc.textContent = `Beam Studio friendly grayscale SVG: ${settings.traceScans} grayscale trace layers, profile FLUX ${settings.machineWatts}W, ${settings.minPower}% to ${settings.maxPower}%.`;
   svg.appendChild(desc);
 
   state.layerRuns.forEach((runs, layerIndex) => {
@@ -267,11 +293,12 @@ function buildSvgDocument() {
       "inkscape:groupmode": "layer",
       "inkscape:label": layerLabel(layerIndex, settings),
       "data-layer": `L${pad2(layerIndex + 1)}`,
-      "data-tone": layerTone(layerIndex),
-      "data-color": LAYER_COLORS[layerIndex],
+      "data-tone": layerTone(layerIndex, settings.traceScans),
+      "data-color": colors[layerIndex],
       "data-power-percent": powerForLayer(layerIndex, settings).toFixed(1),
+      "data-speed-mm-sec": speedForLayer(layerIndex, settings).toFixed(0),
       "data-estimated-watts": estimatedWatts(layerIndex, settings).toFixed(2),
-      fill: LAYER_COLORS[layerIndex],
+      fill: colors[layerIndex],
       stroke: "none"
     });
     if (settings.outputMode === "trace") {
@@ -300,7 +327,7 @@ function appendRuns(group, runs, sampled, outputWidthMm, outputHeightMm) {
 
 function buildTracePaths(sampled, settings) {
   const tracer = getImageTracer();
-  if (!tracer) return Array.from({ length: LAYER_COUNT }, () => []);
+  if (!tracer) return Array.from({ length: settings.traceScans }, () => []);
   const options = {
     ltres: settings.traceOptimize,
     qtres: settings.traceSmoothCorners,
@@ -318,7 +345,7 @@ function buildTracePaths(sampled, settings) {
     ]
   };
 
-  return Array.from({ length: LAYER_COUNT }, (_, layerIndex) => {
+  return Array.from({ length: settings.traceScans }, (_, layerIndex) => {
     const imageData = maskImageDataForLayer(sampled, layerIndex);
     const traced = tracer.imagedataToTracedata(imageData, options);
     const blackLayerIndex = findPaletteIndex(traced.palette, 0, 0, 0);
@@ -415,20 +442,22 @@ function traceHolePathData(path, scaleX, scaleY) {
 function renderPowerTable() {
   const settings = readSettings();
   els.profileSummary.textContent = `FLUX ${settings.machineWatts}W`;
+  els.layerSummary.textContent = `${settings.traceScans} 灰階 / ${settings.traceScans} 層`;
   els.powerTable.replaceChildren(...layerSettings(settings).map((layer) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${layer.layer}</td>
       <td><span class="swatch" style="background:${layer.color}"></span>${layer.color}</td>
       <td>${layer.powerPercent.toFixed(1)}%</td>
+      <td>${layer.speedMmPerSec.toFixed(0)} mm/s</td>
       <td>${layer.estimatedWatts.toFixed(2)}W</td>
     `;
     return tr;
   }));
 }
 
-async function checkInkscapeStatus() {
-  setInkscapeStatus("正在檢查本機 Inkscape helper...", "warn");
+async function checkToolStatus() {
+  setToolStatus(els.potraceStatus, "正在檢查 Potrace...", "warn");
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 1500);
   try {
@@ -437,21 +466,42 @@ async function checkInkscapeStatus() {
       signal: controller.signal
     });
     const result = await response.json();
-    if (result.found) {
-      setInkscapeStatus(`已找到 Inkscape：${result.path}`, "ok");
-      return;
+    const potrace = result.potrace || { found: false };
+    if (potrace.found) {
+      setToolStatus(els.potraceStatus, `已找到 Potrace：${potrace.path}`, "ok");
+    } else {
+      setToolStatus(els.potraceStatus, "尚未偵測到 Potrace。", "error");
+      openInstallModal();
     }
-    setInkscapeStatus("本機 helper 已啟動，但找不到 Inkscape。請先安裝 Inkscape，或把 inkscape.exe 加到 PATH。", "error");
   } catch (error) {
-    setInkscapeStatus("尚未連上本機 helper，無法自動確認 Inkscape 安裝位置。請執行 `node v4/helper/inkscape-helper.js`，或手動確認已安裝 Inkscape。", "warn");
+    setToolStatus(els.potraceStatus, "尚未連上本機 helper，請安裝 Potrace 或啟動 helper 後重試。", "error");
+    openInstallModal();
   } finally {
     window.clearTimeout(timeoutId);
   }
 }
 
-function setInkscapeStatus(message, level) {
-  els.inkscapeStatus.textContent = message;
-  els.inkscapeStatus.className = `inkscape-status ${level}`;
+function setToolStatus(element, message, level) {
+  element.textContent = message;
+  element.className = `tool-status ${level}`;
+}
+
+function openInstallModal() {
+  els.installModal.hidden = false;
+}
+
+function closeInstallModal() {
+  els.installModal.hidden = true;
+}
+
+function activateTab(tabId) {
+  if (!tabId) return;
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.tab === tabId);
+  });
+  document.querySelectorAll(".tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === tabId);
+  });
 }
 
 async function copyInstallCommand(command) {
@@ -468,9 +518,22 @@ async function copyInstallCommand(command) {
     copied = fallbackCopyText(command);
   }
   if (copied) {
-    setCopyStatus("已複製指令，請貼到 PowerShell / Terminal 執行。", "ok");
+    setCopyStatus("已複製指令，請按「開啟 PowerShell」後貼上執行。", "ok");
   } else {
     setCopyStatus("已選取備用複製內容，請手動複製後貼到終端機執行。", "warn");
+  }
+}
+
+async function openPowerShell() {
+  try {
+    const response = await fetch("http://127.0.0.1:4175/open-powershell", {
+      method: "POST",
+      cache: "no-store"
+    });
+    if (!response.ok) throw new Error("open failed");
+    setCopyStatus("已送出開啟 PowerShell 命令；若沒有彈出新視窗，請手動開啟 PowerShell 後貼上剛複製的安裝命令。", "warn");
+  } catch (error) {
+    setCopyStatus("無法由網頁直接開啟 PowerShell，請手動開啟 PowerShell 後貼上命令。", "warn");
   }
 }
 
@@ -495,9 +558,13 @@ function setCopyStatus(message, level) {
 }
 
 function renderLegend() {
-  els.legend.replaceChildren(...LAYER_COLORS.map((color, index) => {
+  const settings = readSettings();
+  els.legend.replaceChildren(...layerSettings(settings).map((layer) => {
     const item = document.createElement("span");
-    item.innerHTML = `<span class="swatch" style="background:${color}"></span>L${pad2(index + 1)}`;
+    item.innerHTML = `
+      <strong><span class="swatch" style="background:${layer.color}"></span>${layer.layer}</strong>
+      <small>${layer.powerPercent.toFixed(1)}% / ${layer.speedMmPerSec.toFixed(0)} mm/s</small>
+    `;
     return item;
   }));
 }
@@ -505,7 +572,7 @@ function renderLegend() {
 function buildPowerCsv() {
   const settings = readSettings();
   const rows = [
-    ["Layer", "Tone", "GrayFill", "MachineProfile", "OutputMode", "TraceMode", "Scans", "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
+    ["Layer", "Tone", "GrayFill", "MachineProfile", "OutputMode", "TraceMode", "Scans", "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize", "SuggestedPowerPercent", "SpeedMmPerSec", "EstimatedWatts", "BeamStudioNote"],
     ...layerSettings(settings).map((layer) => [
       layer.layer,
       layer.tone,
@@ -520,6 +587,7 @@ function buildPowerCsv() {
       settings.traceSmoothCorners.toFixed(2),
       settings.traceOptimize.toFixed(3),
       layer.powerPercent.toFixed(1),
+      layer.speedMmPerSec.toFixed(0),
       layer.estimatedWatts.toFixed(2),
       "Import SVG by Color/gray fill, then set this grayscale layer power in Beam Studio."
     ])
@@ -527,12 +595,26 @@ function buildPowerCsv() {
   return rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 
+function layerColors(layerCount) {
+  if (layerCount === 5) return [...FIVE_LAYER_COLORS];
+  const light = 0xb3;
+  const dark = 0x1d;
+  return Array.from({ length: layerCount }, (_, index) => {
+    const ratio = layerCount === 1 ? 1 : index / (layerCount - 1);
+    const value = Math.round(light + (dark - light) * ratio);
+    const hex = value.toString(16).padStart(2, "0");
+    return `#${hex}${hex}${hex}`;
+  });
+}
+
 function layerSettings(settings) {
-  return Array.from({ length: LAYER_COUNT }, (_, index) => ({
+  const colors = layerColors(settings.traceScans);
+  return Array.from({ length: settings.traceScans }, (_, index) => ({
     layer: `L${pad2(index + 1)}`,
-    tone: layerTone(index),
-    color: LAYER_COLORS[index],
+    tone: layerTone(index, settings.traceScans),
+    color: colors[index],
     powerPercent: powerForLayer(index, settings),
+    speedMmPerSec: speedForLayer(index, settings),
     estimatedWatts: estimatedWatts(index, settings)
   }));
 }
@@ -540,20 +622,23 @@ function layerSettings(settings) {
 function readSettings() {
   const minPower = clamp(Number(els.minPower.value) || 0, 0, 100);
   const maxPower = clamp(Number(els.maxPower.value) || minPower, minPower, 100);
+  const requestedScans = Number(els.traceScans.value) || DEFAULT_LAYER_COUNT;
+  const traceScans = LAYER_PRESETS.includes(requestedScans) ? requestedScans : DEFAULT_LAYER_COUNT;
   return {
     machineWatts: Number(els.machineWatts.value) || 30,
     outputWidthMm: clamp(Number(els.outputWidthMm.value) || 100, 10, 600),
     minPower,
     maxPower,
-    sampleWidth: clamp(Number(els.sampleWidth.value) || 381, 24, 1200),
+    engraveSpeed: clamp(Number(els.engraveSpeed.value) || 100, 1, 1000),
+    sampleWidth: clamp(state.sourceWidth || 381, 24, 1200),
     outputMode: els.outputMode.value === "trace" ? "trace" : "rect",
     traceMode: "grayscale",
-    traceScans: LAYER_COUNT,
-    traceSmooth: Boolean(els.traceSmooth.checked),
-    traceRemoveBackground: Boolean(els.traceRemoveBackground.checked),
-    traceSpeckles: clamp(Math.round(Number(els.traceSpeckles.value) || 0), 0, 128),
-    traceSmoothCorners: clamp(Number(els.traceSmoothCorners.value) || 0, 0, 5),
-    traceOptimize: clamp(Number(els.traceOptimize.value) || 0, 0, 5)
+    traceScans,
+    traceSmooth: true,
+    traceRemoveBackground: true,
+    traceSpeckles: 2,
+    traceSmoothCorners: 1,
+    traceOptimize: 0.2
   };
 }
 
@@ -571,24 +656,29 @@ function traceSettingsForExport(settings) {
 }
 
 function powerForLayer(layerIndex, settings) {
-  if (LAYER_COUNT === 1) return settings.maxPower;
-  return settings.minPower + (settings.maxPower - settings.minPower) * layerIndex / (LAYER_COUNT - 1);
+  if (settings.traceScans === 1) return settings.maxPower;
+  return settings.minPower + (settings.maxPower - settings.minPower) * layerIndex / (settings.traceScans - 1);
 }
 
 function estimatedWatts(layerIndex, settings) {
   return settings.machineWatts * powerForLayer(layerIndex, settings) / 100;
 }
 
-function layerTone(layerIndex) {
+function speedForLayer(layerIndex, settings) {
+  return settings.engraveSpeed;
+}
+
+function layerTone(layerIndex, layerCount) {
   if (layerIndex === 0) return "lightest";
-  if (layerIndex === LAYER_COUNT - 1) return "darkest";
+  if (layerIndex === layerCount - 1) return "darkest";
   return `tone_${pad2(layerIndex + 1)}`;
 }
 
 function layerLabel(layerIndex, settings) {
+  const colors = layerColors(settings.traceScans);
   const layer = `L${pad2(layerIndex + 1)}`;
   const power = powerForLayer(layerIndex, settings).toFixed(1).replace(".", "p");
-  return `${layer}_${layerTone(layerIndex)}_gray_${LAYER_COLORS[layerIndex].slice(1)}_${power}pct_FLUX_${settings.machineWatts}W`;
+  return `${layer}_${layerTone(layerIndex, settings.traceScans)}_gray_${colors[layerIndex].slice(1)}_${power}pct_FLUX_${settings.machineWatts}W`;
 }
 
 function layerId(layerIndex, settings) {

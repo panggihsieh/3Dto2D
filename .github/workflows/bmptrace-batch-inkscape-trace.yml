@@ -1,4 +1,4 @@
-name: V4 Batch High Quality Trace
+name: BMPTrace Batch High Quality Trace
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       image_path:
         description: "Repo path to input bitmap or SVG"
         required: true
-        default: "v4/assets/sample.png"
+        default: "bmptrace/assets/sample.png"
       output_name:
         description: "Output basename"
         required: true
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@BMPTrace
 
       - name: Install Inkscape, Potrace, and Pillow
         run: |
@@ -36,15 +36,15 @@ jobs:
 
       - name: Generate 5-layer trace SVG
         run: |
-          python3 v4/scripts/batch_trace.py \
+          python3 bmptrace/scripts/batch_trace.py \
             --input "${{ inputs.image_path }}" \
-            --output-dir "v4-output" \
+            --output-dir "BMPTrace-output" \
             --name "${{ inputs.output_name }}" \
             --width-mm "${{ inputs.width_mm }}" \
             --machine-watts "${{ inputs.machine_watts }}"
 
       - name: Upload trace artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@BMPTrace
         with:
-          name: v4-batch-trace-${{ inputs.output_name }}
-          path: v4-output/
+          name: BMPTrace-batch-trace-${{ inputs.output_name }}
+          path: BMPTrace-output/

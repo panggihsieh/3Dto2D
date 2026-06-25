@@ -145,7 +145,7 @@ def write_svg(output_path, image, traced_layers, args):
     })
     metadata = ET.SubElement(svg, "metadata")
     metadata.text = json.dumps({
-        "generator": "3Dto2D v4 GitHub Actions batch trace",
+        "generator": "3Dto2D BMPTrace GitHub Actions batch trace",
         "workflow": "bitmap-trace-multiple-scan-grayscale",
         "machineProfile": f"FLUX {args.machine_watts:g}W",
         "layers": LAYER_COUNT,
