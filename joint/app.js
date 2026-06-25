@@ -1554,11 +1554,12 @@ function render(result) {
   const padding = 8;
   const showSourceOnly = shouldShowImportedSourceOnly();
   const showJoinerySegmentsOnly = shouldShowJoinerySegmentsOnly();
+  const previewBounds = stablePreviewBounds(result);
   state.baseViewBox = {
-    x: result.bounds.minX - padding,
-    y: result.bounds.minY - padding,
-    width: Math.max(result.bounds.width + padding * 2, 1),
-    height: Math.max(result.bounds.height + padding * 2, 1)
+    x: previewBounds.minX - padding,
+    y: previewBounds.minY - padding,
+    width: Math.max(previewBounds.width + padding * 2, 1),
+    height: Math.max(previewBounds.height + padding * 2, 1)
   };
   els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   updatePreviewZoom();
@@ -1598,6 +1599,20 @@ function render(result) {
   els.downloadSvg.disabled = false;
   renderWarnings(result.warnings);
   render3dPreview(result);
+}
+
+function stablePreviewBounds(result) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length) return result.bounds;
+  const sourceBounds = getBoundsFromPaths(state.importedPieces);
+  const guard = Math.max(result.params.tabDepth || 0, result.params.materialThickness || 0, 0);
+  return {
+    minX: sourceBounds.minX - guard,
+    minY: sourceBounds.minY - guard,
+    maxX: sourceBounds.maxX + guard,
+    maxY: sourceBounds.maxY + guard,
+    width: sourceBounds.width + guard * 2,
+    height: sourceBounds.height + guard * 2
+  };
 }
 
 function shouldShowImportedSourceOnly() {
@@ -1645,11 +1660,10 @@ function buildSelectedJoineryPieces(params) {
 
 function ensure3dPreviewElements() {
   if (els.preview3dCanvas) return true;
-  const previewFrame = document.querySelector(".preview-frame");
-  if (!previewFrame) return false;
 
   const frame = document.createElement("div");
   frame.className = "preview-3d-frame";
+  frame.hidden = true;
   frame.setAttribute("aria-label", "3D preview");
 
   const badge = document.createElement("div");
@@ -1657,11 +1671,18 @@ function ensure3dPreviewElements() {
   badge.className = "preview-3d-badge";
   badge.textContent = "3D preview";
 
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "preview-3d-close";
+  closeButton.setAttribute("aria-label", "Close 3D preview");
+  closeButton.textContent = "\u00d7";
+  closeButton.addEventListener("click", () => set3dPreviewVisible(false));
+
   const canvas = document.createElement("canvas");
   canvas.id = "preview3dCanvas";
 
-  frame.append(badge, canvas);
-  previewFrame.insertAdjacentElement("afterend", frame);
+  frame.append(badge, closeButton, canvas);
+  document.body.appendChild(frame);
   els.preview3dCanvas = canvas;
   els.preview3dMode = badge;
   return true;
@@ -1760,9 +1781,11 @@ function render3dPreview(result) {
   set3dPreviewVisible(true);
   clear3dGroup(ctx.group);
 
-  const mode = shouldRenderAssembledBox(result)
-    ? buildAssembledBox3d(ctx.group, result.params)
-    : buildPlatePreview3d(ctx.group, result);
+  const importedAssemblyMode = buildKnownImportedAssembly3d(ctx.group, result);
+  const mode = importedAssemblyMode
+    || (shouldRenderAssembledBox(result)
+      ? buildAssembledBox3d(ctx.group, result.params)
+      : buildPlatePreview3d(ctx.group, result));
   els.preview3dMode.textContent = mode;
   fit3dCamera(ctx, get3dBox(ctx.group));
 }
@@ -1780,6 +1803,44 @@ function set3dPreviewVisible(isVisible) {
 function shouldRenderAssembledBox(result) {
   return state.importedPreset === "cube_net"
     || (state.sourceMode !== "svg" && ["cube", "cuboid"].includes(result.params.modelType));
+}
+
+function buildKnownImportedAssembly3d(group, result) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length) return null;
+  const pieces = importedPieceMap();
+
+  if (hasImportedPieceNames(pieces, ["top", "bottom", "front", "back", "left", "right"])) {
+    return buildImportedCuboidAssembly3d(group, pieces, result.params);
+  }
+
+  if (hasImportedPieceNames(pieces, ["floor", "left_wall", "right_wall", "front_gable", "back_gable", "roof_left", "roof_right"])) {
+    return buildImportedGableHouseAssembly3d(group, pieces, result.params);
+  }
+
+  return null;
+}
+
+function importedPieceMap() {
+  return new Map((state.importedPieces || []).map(piece => [piece.name, piece]));
+}
+
+function hasImportedPieceNames(pieceMap, names) {
+  return names.every(name => pieceMap.has(name));
+}
+
+function boardMaterial3d(color = 0xf7fafc, opacity = 0.92) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.72,
+    metalness: 0.02,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide
+  });
+}
+
+function redMaterial3d() {
+  return new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.45 });
 }
 
 function clear3dGroup(group) {
@@ -1827,10 +1888,114 @@ function buildAssembledBox3d(group, params) {
   return "3D 組裝預覽";
 }
 
+function buildImportedCuboidAssembly3d(group, pieces, params) {
+  const t = Math.max(params.materialThickness || 3, 0.2);
+  const top = pieces.get("top");
+  const front = pieces.get("front");
+  const left = pieces.get("left");
+  const length = Math.max(top.width, front.width, 1);
+  const width = Math.max(top.height, left.width, 1);
+  const height = Math.max(front.height, left.height, 1);
+  const boardMaterial = boardMaterial3d(0xf7fafc, 0.92);
+  const edgeMaterial = redMaterial3d();
+
+  addBoard3d(group, length, t, width, 0, -t / 2, 0, boardMaterial);
+  addBoard3d(group, length, t, width, 0, height + t / 2, 0, boardMaterial);
+  addBoard3d(group, length, height, t, 0, height / 2, -width / 2 - t / 2, boardMaterial);
+  addBoard3d(group, length, height, t, 0, height / 2, width / 2 + t / 2, boardMaterial);
+  addBoard3d(group, t, height, width, -length / 2 - t / 2, height / 2, 0, boardMaterial);
+  addBoard3d(group, t, height, width, length / 2 + t / 2, height / 2, 0, boardMaterial);
+  addCuboidEdgeHighlights(group, length, width, height, t, edgeMaterial);
+  return "3D 組裝預覽";
+}
+
+function addCuboidEdgeHighlights(group, length, width, height, t, material) {
+  const d = Math.max(t * 0.42, 0.8);
+  addEdgeStrip3d(group, length, d, 0, 0.25, -width / 2 - t - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, 0.25, width / 2 + t + 0.2, 0, material);
+  addEdgeStrip3d(group, width, d, -length / 2 - t - 0.2, 0.25, 0, Math.PI / 2, material);
+  addEdgeStrip3d(group, width, d, length / 2 + t + 0.2, 0.25, 0, Math.PI / 2, material);
+  addEdgeStrip3d(group, length, d, 0, height + t + 0.2, -width / 2 - t - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, height + t + 0.2, width / 2 + t + 0.2, 0, material);
+}
+
+function buildImportedGableHouseAssembly3d(group, pieces, params) {
+  const t = Math.max(params.materialThickness || 3, 0.2);
+  const floor = pieces.get("floor");
+  const leftWall = pieces.get("left_wall");
+  const frontGable = pieces.get("front_gable");
+  const roofLeft = pieces.get("roof_left");
+  const length = Math.max(floor.width, leftWall.width, roofLeft.width, 1);
+  const width = Math.max(floor.height, frontGable.width, 1);
+  const wallHeight = Math.max(leftWall.height, 1);
+  const totalGableHeight = Math.max(frontGable.height, wallHeight + 1);
+  const roofHeight = Math.max(totalGableHeight - wallHeight, 1);
+  const roofSlope = Math.max(roofLeft.height, Math.hypot(width / 2, roofHeight));
+  const roofAngle = Math.atan2(roofHeight, width / 2);
+  const boardMaterial = boardMaterial3d(0xf7fafc, 0.92);
+  const roofMaterial = boardMaterial3d(0xe8edf4, 0.94);
+  const gableMaterial = boardMaterial3d(0xffffff, 0.94);
+  const edgeMaterial = redMaterial3d();
+
+  addBoard3d(group, length, t, width, 0, -t / 2, 0, boardMaterial);
+  addBoard3d(group, length, wallHeight, t, 0, wallHeight / 2, -width / 2 - t / 2, boardMaterial);
+  addBoard3d(group, length, wallHeight, t, 0, wallHeight / 2, width / 2 + t / 2, boardMaterial);
+  addGableWall3d(group, width, wallHeight, roofHeight, t, -length / 2 - t / 2, gableMaterial);
+  addGableWall3d(group, width, wallHeight, roofHeight, t, length / 2 + t / 2, gableMaterial);
+
+  const leftRoof = addBoard3d(group, length, t, roofSlope, 0, wallHeight + roofHeight / 2 + t * 0.15, -width / 4, roofMaterial);
+  leftRoof.rotation.x = -roofAngle;
+  const rightRoof = addBoard3d(group, length, t, roofSlope, 0, wallHeight + roofHeight / 2 + t * 0.15, width / 4, roofMaterial);
+  rightRoof.rotation.x = roofAngle;
+  addHouseEdgeHighlights(group, length, width, wallHeight, roofHeight, t, roofAngle, edgeMaterial);
+  return "3D 組裝預覽";
+}
+
+function addGableWall3d(group, width, wallHeight, roofHeight, thickness, x, material) {
+  const totalHeight = wallHeight + roofHeight;
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, 0);
+  shape.lineTo(width / 2, 0);
+  shape.lineTo(width / 2, wallHeight);
+  shape.lineTo(0, totalHeight);
+  shape.lineTo(-width / 2, wallHeight);
+  shape.lineTo(-width / 2, 0);
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geometry, material.clone());
+  mesh.rotation.y = Math.PI / 2;
+  mesh.position.set(x - thickness / 2, 0, 0);
+  group.add(mesh);
+  addMeshOutline3d(mesh);
+  return mesh;
+}
+
+function addHouseEdgeHighlights(group, length, width, wallHeight, roofHeight, thickness, roofAngle, material) {
+  const d = Math.max(thickness * 0.42, 0.8);
+  addEdgeStrip3d(group, length, d, 0, 0.25, -width / 2 - thickness - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, 0.25, width / 2 + thickness + 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, wallHeight + thickness * 0.3, -width / 2 - thickness - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, wallHeight + thickness * 0.3, width / 2 + thickness + 0.2, 0, material);
+  const leftEave = addEdgeStrip3d(group, length, d, 0, wallHeight + thickness, -width / 2, 0, material);
+  leftEave.rotation.x = -roofAngle;
+  const rightEave = addEdgeStrip3d(group, length, d, 0, wallHeight + thickness, width / 2, 0, material);
+  rightEave.rotation.x = roofAngle;
+  addEdgeStrip3d(group, length, d, 0, wallHeight + roofHeight + thickness * 0.6, 0, 0, material);
+}
+
 function addBoard3d(group, width, height, depth, x, y, z, material) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material.clone());
   mesh.position.set(x, y, z);
   group.add(mesh);
+  addMeshOutline3d(mesh);
+  return mesh;
+}
+
+function addMeshOutline3d(mesh) {
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry),
+    new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.42 })
+  );
+  mesh.add(edges);
 }
 
 function addEdgeStrip3d(group, length, depth, x, y, z, rotationY, material) {
@@ -1838,6 +2003,7 @@ function addEdgeStrip3d(group, length, depth, x, y, z, rotationY, material) {
   strip.position.set(x, y, z);
   strip.rotation.y = rotationY;
   group.add(strip);
+  return strip;
 }
 
 function buildPlatePreview3d(group, result) {
@@ -2141,7 +2307,7 @@ function handleEdgeClick(event) {
   if (existingPairIndex >= 0) {
     state.edgeSelection.pairs.splice(existingPairIndex, 1);
     state.edgeSelection.pending = null;
-    state.appliedJoinery = state.edgeSelection.pairs.length > 0;
+    state.appliedJoinery = false;
     runConversion();
     return;
   }
@@ -2164,7 +2330,7 @@ function handleEdgeClick(event) {
 
   if (sameEdge(state.edgeSelection.pending, ref)) {
     state.edgeSelection.pending = null;
-    state.appliedJoinery = state.edgeSelection.pairs.length > 0;
+    state.appliedJoinery = false;
     runConversion();
     renderPairList();
     return;
@@ -2194,7 +2360,7 @@ function handleEdgeClick(event) {
   });
   playJoineryTone("concave");
   state.edgeSelection.pending = null;
-  state.appliedJoinery = true;
+  state.appliedJoinery = false;
   runConversion();
 }
 
