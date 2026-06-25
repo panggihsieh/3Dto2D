@@ -1,10 +1,10 @@
-# V4 Gradient Laser Engraving Test Plan
+# V4 漸層雷刻測試規劃
 
-## Goal
+## 目標
 
-Create a standalone V4 workflow for generating 12 grayscale-separated SVG layers for gradient laser engraving tests.
+建立一個獨立的 V4 工作流程，用來產生 12 個灰階分離 SVG 圖層，作為漸層雷射雕刻測試檔案。
 
-The first target machine profile is FLUX 30W. The tool should also allow switching to 40W and 50W rated laser profiles for future calibration.
+第一個目標機型設定為 FLUX 30W。工具也應允許切換到 40W 與 50W 額定雷射功率設定，方便未來校正。
 
 ## 中文說明
 
@@ -28,7 +28,7 @@ SVG 匯出時會保留：
 
 Beam Studio 不一定會自動讀取 SVG metadata 或圖層名稱來設定功率，所以實務上建議用「12 色分層 + CSV 功率表」手動或半自動設定 Beam Studio 參數。
 
-## English Description
+## English Summary
 
 V4 is a standalone FLUX / Beam Studio gradient engraving test tool. It converts an uploaded bitmap image into 12 grayscale-separated layers. Each layer uses a fixed color so the exported SVG can be imported into Beam Studio by color.
 
@@ -50,30 +50,30 @@ The exported SVG includes:
 
 Beam Studio should not be assumed to automatically apply power settings from SVG metadata or layer names. The safer workflow is to import by color and use the exported CSV power table to set each Beam Studio color layer.
 
-## Machine Power Profiles
+## 機器功率設定
 
-Treat `30W`, `40W`, and `50W` as machine rated-power profiles, not as direct layer power values.
+將 `30W`、`40W`、`50W` 視為機器額定功率設定，而不是直接套用到每個圖層的雷射輸出功率。
 
-Default profile:
+預設設定：
 
-- Machine: FLUX
-- Rated power: 30W
-- Layer count: 12
-- Engraving power range: 8% to 40%
+- 機器：FLUX
+- 額定功率：30W
+- 圖層數：12
+- 雕刻功率範圍：8% 到 40%
 
-Selectable profiles:
+可選設定：
 
 - FLUX 30W
 - FLUX 40W
 - FLUX 50W
 
-## 12-Layer Gradient Power Table
+## 12 層漸層功率表
 
-For the default 30W profile, generate 12 layers from light to dark. The suggested engraving power is evenly distributed from 8% to 40%.
+在預設 30W 設定下，從淺到深產生 12 個圖層。建議雕刻功率由 8% 到 40% 均分。
 
-| Layer | Tone | Suggested power |
+| 圖層 | 色調 | 建議功率 |
 | --- | --- | --- |
-| L01 | Lightest | 8.0% |
+| L01 | 最淺 | 8.0% |
 | L02 |  | 10.9% |
 | L03 |  | 13.8% |
 | L04 |  | 16.7% |
@@ -84,55 +84,70 @@ For the default 30W profile, generate 12 layers from light to dark. The suggeste
 | L09 |  | 31.3% |
 | L10 |  | 34.2% |
 | L11 |  | 37.1% |
-| L12 | Darkest | 40.0% |
+| L12 | 最深 | 40.0% |
 
-Estimated optical power can be shown as a reference only:
+估算光學輸出功率只作為參考：
 
 ```text
 estimated watts = rated machine watts * suggested power percent / 100
 ```
 
-For a 30W machine, the 8% to 40% range corresponds to about 2.4W to 12.0W estimated output. Actual engraving behavior must be calibrated by material, speed, focus, lens condition, and beam alignment.
+以 30W 機器為例，8% 到 40% 約等於 2.4W 到 12.0W 的估算輸出。實際雕刻效果仍必須依材質、速度、焦距、鏡片狀態與光路校正結果測試。
 
-## SVG Layer Metadata
+## SVG 圖層中繼資料
 
-Each exported SVG layer should include:
+每個匯出的 SVG 圖層應包含：
 
-- Layer id: `L01` through `L12`
-- Tone range: light to dark grayscale threshold band
-- Machine profile: `FLUX 30W`, `FLUX 40W`, or `FLUX 50W`
-- Suggested power percent
-- Estimated watts as reference
-- Calibration note: verify with real FLUX beamo material tests before production
+- 圖層 id：`L01` 到 `L12`
+- 色調範圍：由淺到深的灰階門檻區段
+- 機器設定：`FLUX 30W`、`FLUX 40W` 或 `FLUX 50W`
+- 建議功率百分比
+- 參考用估算瓦數
+- 校正提醒：正式製作前必須用實際 FLUX beamo 材料測試確認
 
-Example layer naming:
+圖層命名範例：
 
 ```text
 L01_lightest_power_8.0pct_flux_30w
 L12_darkest_power_40.0pct_flux_30w
 ```
 
-## Trace Strategy
+## Trace 策略
 
-Start with a browser-only grayscale separation workflow:
+先從純瀏覽器灰階分離流程開始：
 
-1. Load bitmap into Canvas.
-2. Convert pixels to grayscale.
-3. Split grayscale values into 12 threshold bands.
-4. Generate one SVG group per band.
-5. Export a layered SVG for FLUX software or Inkscape inspection.
+1. 將 bitmap 載入 Canvas。
+2. 將像素轉成灰階。
+3. 將灰階值分成 12 個門檻區段。
+4. 每個區段產生一個 SVG group。
+5. 匯出分層 SVG，供 FLUX 軟體或 Inkscape 檢查。
 
-V4 should support two browser-only output modes:
+V4 應支援兩種純瀏覽器輸出模式：
 
-- Fast rectangular layers: sampled pixel runs exported as SVG rectangles.
-- Smooth trace layers: ImageTracerJS vector paths generated from each grayscale band mask.
+- 快速矩形分層：將取樣後的連續像素區段輸出成 SVG rectangles。
+- 平滑 Trace 分層：對每個灰階區段遮罩使用 ImageTracerJS 產生向量 paths。
 
-The smooth trace mode is Potrace-style browser vectorization, but it does not require installing Inkscape or Potrace. It is intended for smoother outline output; the rectangular mode remains available for predictable dense engraving tests.
+平滑 Trace 模式屬於 Potrace 風格的瀏覽器端向量化，但不需要安裝 Inkscape 或 Potrace。它適合較平滑的輪廓輸出；矩形分層模式則保留作為較可預測的密集雕刻測試輸出。
 
-## Verification
+## Inkscape CLI 模式
 
-- Default profile is FLUX 30W.
-- 40W and 50W profiles are selectable.
-- The 12 layers recalculate their estimated watts when the rated profile changes.
-- The suggested power percent table remains 8% to 40% unless the user changes the engraving range.
-- Exported SVG contains 12 named layers and machine/power metadata.
+若要改用 Inkscape CLI 品質模式，使用端或伺服端必須先安裝 Inkscape。此模式品質接近 Inkscape 的 trace / 向量處理流程，但純 GitHub Pages 或一般瀏覽器頁面無法直接啟動本機 `inkscape` 指令。
+
+可行架構：
+
+- 使用端安裝 Inkscape，並執行本機 helper，由 helper 呼叫 `inkscape` CLI。
+- 伺服端安裝 Inkscape，由後端服務接收圖片或 SVG 後呼叫 `inkscape` CLI。
+
+官方下載頁面：
+
+```text
+https://inkscape.org/release/
+```
+
+## 驗證標準
+
+- 預設設定為 FLUX 30W。
+- 可選擇 40W 與 50W 設定。
+- 當額定功率設定改變時，12 個圖層會重新計算估算瓦數。
+- 除非使用者調整雕刻範圍，建議功率百分比維持 8% 到 40%。
+- 匯出的 SVG 包含 12 個命名圖層與機器 / 功率中繼資料。

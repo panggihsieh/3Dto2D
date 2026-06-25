@@ -188,6 +188,11 @@ button:disabled {
   line-height: 1.45;
 }
 
+.hint a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .download-fallback {
   display: grid;
   gap: 8px;

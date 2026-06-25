@@ -25,8 +25,15 @@ https://panggihsieh.github.io/3Dto2D/v4/
 
 - Fast rectangular layers: stable browser-only output using sampled pixel runs.
 - Smooth trace layers: browser-only vector tracing using vendored ImageTracerJS. This is Potrace-style raster-to-SVG tracing, but it does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
+- Inkscape CLI mode: planned high-quality trace mode. The user machine or server must have Inkscape installed, and a local helper or backend service is required because a static browser page cannot directly launch `inkscape`.
 
 Smooth trace mode is better for softer outlines, while fast rectangular mode is more predictable for dense photo-style engraving tests.
+
+Official Inkscape download page:
+
+```text
+https://inkscape.org/release/
+```
 
 ## Beam Studio Import
 

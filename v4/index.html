@@ -67,6 +67,7 @@
               <select id="outputMode">
                 <option value="rect" selected>快速矩形分層</option>
                 <option value="trace">平滑 Trace 分層</option>
+                <option value="inkscape" disabled>Inkscape CLI 模式（需本機 helper）</option>
               </select>
             </label>
             <label>
@@ -74,6 +75,18 @@
               <input id="projectName" type="text" maxlength="48" value="flux_gradient_test">
             </label>
           </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>Inkscape CLI 模式</h2>
+            <span>高品質 Trace</span>
+          </div>
+          <p class="hint">若要改用 Inkscape CLI 品質模式，使用端或伺服端必須先安裝 Inkscape，且需要本機 helper 或後端服務代替網頁呼叫 `inkscape` 指令。純 GitHub Pages / 瀏覽器頁面無法直接啟動本機程式。</p>
+          <p class="hint">
+            官方下載：
+            <a href="https://inkscape.org/release/" target="_blank" rel="noopener">Inkscape Download</a>
+          </p>
         </section>
 
         <section class="panel">
