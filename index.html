@@ -183,6 +183,40 @@
         gap: 18px;
       }
 
+      .test-entry {
+        display: grid;
+        min-height: 96px;
+        place-items: center;
+        border: 1px solid rgba(255, 138, 0, 0.72);
+        border-radius: 8px;
+        color: var(--orange);
+        background: var(--black);
+        text-decoration: none;
+        box-shadow: 0 0 16px rgba(255, 138, 0, 0.22);
+        transition:
+          transform 90ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
+      }
+
+      .test-entry:hover,
+      .test-entry:focus-visible {
+        border-color: var(--orange-soft);
+        box-shadow: 0 0 22px rgba(255, 138, 0, 0.32);
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      .test-entry:active {
+        transform: scale(0.98);
+      }
+
+      .test-entry strong {
+        color: var(--orange);
+        font-size: clamp(1.45rem, 2.6vw, 2.1rem);
+        font-weight: 900;
+      }
+
       .control-panel {
         padding: 18px;
       }
@@ -306,6 +340,9 @@
               </div>
             </section>
 
+            <a class="test-entry" href="bmptrace/" target="_blank" rel="noopener">
+              <strong>測試中</strong>
+            </a>
           </aside>
         </div>
       </section>
