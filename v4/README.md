@@ -18,13 +18,13 @@ https://panggihsieh.github.io/3Dto2D/v4/
    - FLUX 50W
 3. Keep or adjust the suggested engraving power range.
 4. Download:
-   - A 12-color / 12-layer SVG.
+   - A 5-grayscale-fill / 5-layer SVG.
    - A CSV Beam Studio power table.
 
 ## Output Modes
 
 - Fast rectangular layers: stable browser-only output using sampled pixel runs.
-- Smooth trace layers: browser-only bitmap trace using vendored ImageTracerJS. This follows the Inkscape-style Multiple Scans / Grayscale workflow with 12 scans by default, but it does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
+- Smooth trace layers: browser-only bitmap trace using vendored ImageTracerJS. This follows the Inkscape-style Multiple Scans / Grayscale workflow with 5 scans by default, matching the current tiger.svg reference more closely. It does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
 - Inkscape CLI mode: planned high-quality trace mode. The user machine or server must have Inkscape installed, and a local helper or backend service is required because a static browser page cannot directly launch `inkscape`.
 
 Smooth trace mode is better for softer outlines, while fast rectangular mode is more predictable for dense photo-style engraving tests.
@@ -32,7 +32,7 @@ Smooth trace mode is better for softer outlines, while fast rectangular mode is 
 Default bitmap trace settings:
 
 - Scan mode: Grayscale
-- Scans: 12
+- Scans: 5
 - Smooth: enabled
 - Remove background: enabled
 - Speckles: 2
@@ -55,16 +55,16 @@ The V4 page checks `http://127.0.0.1:4175/status` on load. If the helper is runn
 
 ## Beam Studio Import
 
-Prefer importing the exported SVG by color in Beam Studio.
+Prefer importing the exported SVG by color in Beam Studio. The colors are grayscale fills, matching the Inkscape Multiple Scans / Grayscale workflow more closely than the earlier color-swatch output.
 
-Each layer uses a fixed color and a readable layer name such as:
+Each layer uses a fixed grayscale fill and a readable layer name such as:
 
 ```text
-L01_lightest_color_0072b2_8p0pct_FLUX_30W
-L12_darkest_color_000000_40p0pct_FLUX_30W
+L01_lightest_gray_b3b3b3_8p0pct_FLUX_30W
+L05_darkest_gray_1d1d1d_40p0pct_FLUX_30W
 ```
 
-Beam Studio may preserve SVG layer names, but automatic power assignment from SVG names or metadata should not be assumed. Use the exported CSV table to set the matching color layers in Beam Studio.
+Beam Studio may preserve SVG layer names, but automatic power assignment from SVG names or metadata should not be assumed. Use the exported CSV table to set the matching grayscale layers in Beam Studio.
 
 ## GitHub Actions Batch Trace
 
@@ -74,7 +74,7 @@ The workflow:
 
 - Installs Inkscape, Potrace, and Pillow on the GitHub runner.
 - Accepts a repo image path such as `v4/assets/sample.png`.
-- Generates a 12-layer grayscale traced SVG.
+- Generates a 5-layer grayscale traced SVG.
 - Generates a Beam Studio power CSV.
 - Uploads both files as a workflow artifact.
 
@@ -85,7 +85,7 @@ Note: Inkscape's GUI Trace Bitmap panel is not reliably exposed as a CLI action.
 Default profile:
 
 - Machine: FLUX 30W
-- Layers: 12
+- Layers: 5
 - Suggested power range: 8% to 40%
 
 The estimated watt value is only a reference:

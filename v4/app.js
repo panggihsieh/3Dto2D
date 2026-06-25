@@ -1,20 +1,13 @@
 const NS = "http://www.w3.org/2000/svg";
 const INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape";
 
-const LAYER_COUNT = 12;
+const LAYER_COUNT = 5;
 const LAYER_COLORS = [
-  "#0072b2",
-  "#e69f00",
-  "#009e73",
-  "#d55e00",
-  "#cc79a7",
-  "#56b4e9",
-  "#f0e442",
-  "#6a3d9a",
-  "#8c564b",
-  "#17becf",
-  "#7f7f7f",
-  "#000000"
+  "#b3b3b3",
+  "#939393",
+  "#6e6e6e",
+  "#4e4e4e",
+  "#1d1d1d"
 ];
 
 const els = {
@@ -257,7 +250,7 @@ function buildSvgDocument() {
   svg.appendChild(metadata);
 
   const desc = createSvgElement("desc", {});
-  desc.textContent = `Beam Studio friendly SVG: import by Color when possible. Profile FLUX ${settings.machineWatts}W, ${LAYER_COUNT} layers, ${settings.minPower}% to ${settings.maxPower}%.`;
+  desc.textContent = `Beam Studio friendly grayscale SVG: ${LAYER_COUNT} grayscale trace layers, profile FLUX ${settings.machineWatts}W, ${settings.minPower}% to ${settings.maxPower}%.`;
   svg.appendChild(desc);
 
   state.layerRuns.forEach((runs, layerIndex) => {
@@ -464,7 +457,7 @@ function renderLegend() {
 function buildPowerCsv() {
   const settings = readSettings();
   const rows = [
-    ["Layer", "Tone", "Color", "MachineProfile", "OutputMode", "TraceMode", "Scans", "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
+    ["Layer", "Tone", "GrayFill", "MachineProfile", "OutputMode", "TraceMode", "Scans", "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
     ...layerSettings(settings).map((layer) => [
       layer.layer,
       layer.tone,
@@ -480,7 +473,7 @@ function buildPowerCsv() {
       settings.traceOptimize.toFixed(3),
       layer.powerPercent.toFixed(1),
       layer.estimatedWatts.toFixed(2),
-      "Import SVG by Color, then set this color layer power in Beam Studio."
+      "Import SVG by Color/gray fill, then set this grayscale layer power in Beam Studio."
     ])
   ];
   return rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
@@ -507,7 +500,7 @@ function readSettings() {
     sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240),
     outputMode: els.outputMode.value === "trace" ? "trace" : "rect",
     traceMode: "grayscale",
-    traceScans: 12,
+    traceScans: LAYER_COUNT,
     traceSmooth: Boolean(els.traceSmooth.checked),
     traceRemoveBackground: Boolean(els.traceRemoveBackground.checked),
     traceSpeckles: clamp(Math.round(Number(els.traceSpeckles.value) || 0), 0, 128),
@@ -547,7 +540,7 @@ function layerTone(layerIndex) {
 function layerLabel(layerIndex, settings) {
   const layer = `L${pad2(layerIndex + 1)}`;
   const power = powerForLayer(layerIndex, settings).toFixed(1).replace(".", "p");
-  return `${layer}_${layerTone(layerIndex)}_${LAYER_COLORS[layerIndex]}_${power}pct_FLUX_${settings.machineWatts}W`;
+  return `${layer}_${layerTone(layerIndex)}_gray_${LAYER_COLORS[layerIndex].slice(1)}_${power}pct_FLUX_${settings.machineWatts}W`;
 }
 
 function layerId(layerIndex, settings) {

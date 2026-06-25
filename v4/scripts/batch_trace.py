@@ -13,24 +13,18 @@ from xml.etree import ElementTree as ET
 from PIL import Image
 
 
+LAYER_COUNT = 5
 COLORS = [
-    "#0072b2",
-    "#e69f00",
-    "#009e73",
-    "#d55e00",
-    "#cc79a7",
-    "#56b4e9",
-    "#f0e442",
-    "#6a3d9a",
-    "#8c564b",
-    "#17becf",
-    "#7f7f7f",
-    "#000000",
+    "#b3b3b3",
+    "#939393",
+    "#6e6e6e",
+    "#4e4e4e",
+    "#1d1d1d",
 ]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Create 12-layer grayscale trace SVG for FLUX / Beam Studio.")
+    parser = argparse.ArgumentParser(description="Create 5-layer grayscale trace SVG for FLUX / Beam Studio.")
     parser.add_argument("--input", required=True, help="Input bitmap or SVG path.")
     parser.add_argument("--output-dir", required=True, help="Directory for SVG and CSV outputs.")
     parser.add_argument("--name", default="flux_gradient_trace", help="Output basename.")
@@ -38,7 +32,7 @@ def parse_args():
     parser.add_argument("--max-px", type=int, default=1200, help="Maximum raster width before tracing.")
     parser.add_argument("--machine-watts", type=float, default=30.0, help="Rated laser power.")
     parser.add_argument("--min-power", type=float, default=8.0, help="L01 suggested power percent.")
-    parser.add_argument("--max-power", type=float, default=40.0, help="L12 suggested power percent.")
+    parser.add_argument("--max-power", type=float, default=40.0, help="L05 suggested power percent.")
     parser.add_argument("--speckles", type=int, default=2, help="Small path suppression threshold.")
     parser.add_argument("--remove-background", action="store_true", default=True, help="Ignore near-white background.")
     parser.add_argument("--keep-background", action="store_true", help="Do not ignore near-white background.")
@@ -70,7 +64,7 @@ def load_image(path, max_px):
     return image
 
 
-def layer_power(index, min_power, max_power, count=12):
+def layer_power(index, min_power, max_power, count=LAYER_COUNT):
     if count <= 1:
         return max_power
     return min_power + (max_power - min_power) * index / (count - 1)
@@ -90,7 +84,7 @@ def make_mask(image, layer_index, remove_background):
             if remove_background and gray >= 248:
                 continue
             darkness = 255 - gray
-            layer = min(11, int(math.floor(darkness / 256 * 12)))
+            layer = min(LAYER_COUNT - 1, int(math.floor(darkness / 256 * LAYER_COUNT)))
             if layer == layer_index:
                 out[x, y] = 0
     return mask
@@ -131,9 +125,9 @@ def extract_paths(svg_path):
 
 def layer_label(index, machine_watts, power):
     layer = f"L{index + 1:02d}"
-    tone = "lightest" if index == 0 else "darkest" if index == 11 else f"tone_{index + 1:02d}"
+    tone = "lightest" if index == 0 else "darkest" if index == LAYER_COUNT - 1 else f"tone_{index + 1:02d}"
     power_label = f"{power:.1f}".replace(".", "p")
-    return f"{layer}_{tone}_{COLORS[index]}_{power_label}pct_FLUX_{machine_watts:g}W".replace("#", "color_")
+    return f"{layer}_{tone}_gray_{COLORS[index].lstrip('#')}_{power_label}pct_FLUX_{machine_watts:g}W"
 
 
 def write_svg(output_path, image, traced_layers, args):
@@ -154,13 +148,13 @@ def write_svg(output_path, image, traced_layers, args):
         "generator": "3Dto2D v4 GitHub Actions batch trace",
         "workflow": "bitmap-trace-multiple-scan-grayscale",
         "machineProfile": f"FLUX {args.machine_watts:g}W",
-        "layers": 12,
+        "layers": LAYER_COUNT,
         "powerRangePercent": [args.min_power, args.max_power],
         "traceEngine": "potrace",
         "inkscapeRequired": "for SVG rasterization/inspection, not Trace Bitmap automation",
     }, ensure_ascii=False, indent=2)
     desc = ET.SubElement(svg, "desc")
-    desc.text = "12-layer grayscale trace SVG for Beam Studio color-layer import."
+    desc.text = "5-layer grayscale trace SVG for Beam Studio grayscale-layer import."
 
     for index, paths in enumerate(traced_layers):
         power = layer_power(index, args.min_power, args.max_power)
@@ -187,20 +181,20 @@ def write_csv(output_path, args):
     with output_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow([
-            "Layer", "Tone", "Color", "MachineProfile", "TraceMode", "Scans",
+            "Layer", "Tone", "GrayFill", "MachineProfile", "TraceMode", "Scans",
             "Smooth", "RemoveBackground", "Speckles", "SmoothCorners", "Optimize",
             "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"
         ])
         for index, color in enumerate(COLORS):
             power = layer_power(index, args.min_power, args.max_power)
-            tone = "lightest" if index == 0 else "darkest" if index == 11 else f"tone_{index + 1:02d}"
+            tone = "lightest" if index == 0 else "darkest" if index == LAYER_COUNT - 1 else f"tone_{index + 1:02d}"
             writer.writerow([
                 f"L{index + 1:02d}",
                 tone,
                 color,
                 f"FLUX {args.machine_watts:g}W",
                 "grayscale",
-                12,
+                LAYER_COUNT,
                 "yes",
                 "no" if args.keep_background else "yes",
                 args.speckles,
@@ -208,7 +202,7 @@ def write_csv(output_path, args):
                 "0.200",
                 f"{power:.1f}",
                 f"{args.machine_watts * power / 100:.2f}",
-                "Import SVG by Color, then set this color layer power in Beam Studio."
+                "Import SVG by Color/gray fill, then set this grayscale layer power in Beam Studio."
             ])
 
 
@@ -229,7 +223,7 @@ def main():
         raster_path = rasterize_if_needed(input_path, work_dir)
         image = load_image(raster_path, args.max_px)
         traced_layers = []
-        for index in range(12):
+        for index in range(LAYER_COUNT):
             mask = make_mask(image, index, args.remove_background)
             traced_layers.append(trace_mask(mask, index, work_dir, args.speckles))
 

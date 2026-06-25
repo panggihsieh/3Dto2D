@@ -34,7 +34,7 @@ jobs:
           inkscape --version
           potrace --version
 
-      - name: Generate 12-layer trace SVG
+      - name: Generate 5-layer trace SVG
         run: |
           python3 v4/scripts/batch_trace.py \
             --input "${{ inputs.image_path }}" \

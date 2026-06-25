@@ -91,7 +91,7 @@
             </label>
             <label>
               <span>掃描數</span>
-              <input id="traceScans" type="number" min="12" max="12" step="1" value="12">
+              <input id="traceScans" type="number" min="5" max="5" step="1" value="5">
             </label>
             <label>
               <span>斑點</span>
@@ -116,7 +116,7 @@
               <span>移除背景</span>
             </label>
           </div>
-          <p class="hint">此設定對應 Inkscape Trace Bitmap 的「多次掃描 / 灰階」流程。v4 會用瀏覽器端 trace 產生 12 個 SVG path 圖層；若未來接上 Inkscape helper，可用同一組參數送到 CLI 流程。</p>
+          <p class="hint">此設定對應 Inkscape Trace Bitmap 的「多次掃描 / 灰階」流程。v4 會用瀏覽器端 trace 產生 5 個 SVG path 圖層；若未來接上 Inkscape helper，可用同一組參數送到 CLI 流程。</p>
         </section>
 
         <section class="panel">
@@ -139,14 +139,14 @@
         <section class="panel">
           <div class="section-head">
             <h2>匯出</h2>
-            <span>12 色 / 12 層</span>
+            <span>5 灰階 / 5 層</span>
           </div>
           <div class="actions">
             <button id="downloadSvg" type="button" disabled>下載 SVG</button>
             <button id="downloadCsv" type="button" disabled>下載功率表</button>
           </div>
           <div class="download-fallback" id="downloadFallback" hidden></div>
-          <p class="hint">在 Beam Studio 匯入 SVG 時優先選 Color 分層，並依功率表設定各顏色的參數。</p>
+          <p class="hint">SVG 會輸出 5 個灰階填色圖層；在 Beam Studio 匯入時可依 Color / 灰階填色分層，再依功率表設定各層參數。</p>
         </section>
 
         <section class="panel">
@@ -159,7 +159,7 @@
               <thead>
                 <tr>
                   <th>Layer</th>
-                  <th>Color</th>
+                  <th>灰階</th>
                   <th>Power</th>
                   <th>Est. W</th>
                 </tr>
@@ -174,7 +174,7 @@
         <div class="toolbar">
           <div class="metric-strip">
             <span id="imageMetric">未載入圖片</span>
-            <span id="svgMetric">12 layers</span>
+            <span id="svgMetric">5 layers</span>
             <span id="cellMetric">0 paths</span>
           </div>
           <button id="resetView" type="button">重建預覽</button>
@@ -182,7 +182,7 @@
 
         <div class="preview-frame">
           <svg id="previewSvg" role="img" aria-label="Generated Beam Studio layer preview"></svg>
-          <div class="empty-state" id="emptyState">上傳圖片後會產生 12 個彩色灰階分離圖層</div>
+          <div class="empty-state" id="emptyState">上傳圖片後會產生 5 個灰階 trace 分離圖層</div>
         </div>
 
         <div class="legend" id="legend"></div>
