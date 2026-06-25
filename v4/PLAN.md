@@ -137,11 +137,20 @@ V4 應支援兩種純瀏覽器輸出模式：
 
 - 使用端安裝 Inkscape，並執行本機 helper，由 helper 呼叫 `inkscape` CLI。
 - 伺服端安裝 Inkscape，由後端服務接收圖片或 SVG 後呼叫 `inkscape` CLI。
+- V4 頁面載入時先詢問本機 helper：`http://127.0.0.1:4175/status`。
+- 若 helper 回報找到 Inkscape，頁面顯示 `inkscape.exe` 安裝位置。
+- 若 helper 未啟動或找不到 Inkscape，頁面提示使用者安裝 Inkscape 或啟動 helper。
 
 官方下載頁面：
 
 ```text
 https://inkscape.org/release/
+```
+
+本機 helper 啟動方式：
+
+```powershell
+node v4/helper/inkscape-helper.js
 ```
 
 ## 驗證標準

@@ -35,6 +35,14 @@ Official Inkscape download page:
 https://inkscape.org/release/
 ```
 
+Optional local helper for checking the installed Inkscape path:
+
+```powershell
+node v4/helper/inkscape-helper.js
+```
+
+The V4 page checks `http://127.0.0.1:4175/status` on load. If the helper is running and Inkscape is installed in a known location, the page shows the detected `inkscape.exe` path. If not, it prompts the user to install Inkscape or start the helper.
+
 ## Beam Studio Import
 
 Prefer importing the exported SVG by color in Beam Studio.

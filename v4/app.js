@@ -28,6 +28,8 @@ const els = {
   sampleWidth: document.querySelector("#sampleWidth"),
   outputMode: document.querySelector("#outputMode"),
   projectName: document.querySelector("#projectName"),
+  checkInkscape: document.querySelector("#checkInkscape"),
+  inkscapeStatus: document.querySelector("#inkscapeStatus"),
   downloadSvg: document.querySelector("#downloadSvg"),
   downloadCsv: document.querySelector("#downloadCsv"),
   downloadFallback: document.querySelector("#downloadFallback"),
@@ -56,6 +58,7 @@ const state = {
 
 renderPowerTable();
 renderLegend();
+checkInkscapeStatus();
 
 els.imageInput.addEventListener("change", async () => {
   const file = els.imageInput.files?.[0];
@@ -65,6 +68,10 @@ els.imageInput.addEventListener("change", async () => {
 
 els.loadSample.addEventListener("click", async () => {
   await loadImageUrl("assets/sample.png", "sample.png");
+});
+
+els.checkInkscape.addEventListener("click", () => {
+  checkInkscapeStatus();
 });
 
 [
@@ -401,6 +408,33 @@ function renderPowerTable() {
     `;
     return tr;
   }));
+}
+
+async function checkInkscapeStatus() {
+  setInkscapeStatus("正在檢查本機 Inkscape helper...", "warn");
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 1500);
+  try {
+    const response = await fetch("http://127.0.0.1:4175/status", {
+      cache: "no-store",
+      signal: controller.signal
+    });
+    const result = await response.json();
+    if (result.found) {
+      setInkscapeStatus(`已找到 Inkscape：${result.path}`, "ok");
+      return;
+    }
+    setInkscapeStatus("本機 helper 已啟動，但找不到 Inkscape。請先安裝 Inkscape，或把 inkscape.exe 加到 PATH。", "error");
+  } catch (error) {
+    setInkscapeStatus("尚未連上本機 helper，無法自動確認 Inkscape 安裝位置。請執行 `node v4/helper/inkscape-helper.js`，或手動確認已安裝 Inkscape。", "warn");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function setInkscapeStatus(message, level) {
+  els.inkscapeStatus.textContent = message;
+  els.inkscapeStatus.className = `inkscape-status ${level}`;
 }
 
 function renderLegend() {
