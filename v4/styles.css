@@ -183,6 +183,15 @@ button:disabled {
   margin-top: 12px;
 }
 
+.install-actions {
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.install-actions button {
+  flex: 1 1 150px;
+}
+
 .toggle-row {
   display: flex;
   gap: 10px;
@@ -232,6 +241,22 @@ button:disabled {
   color: var(--ink);
   font: 0.78rem/1.45 Consolas, "SFMono-Regular", Menlo, monospace;
   white-space: pre;
+}
+
+.copy-status {
+  min-height: 1.2rem;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.copy-status.ok {
+  color: #12663f;
+}
+
+.copy-status.warn {
+  color: #775d16;
 }
 
 .inkscape-status {

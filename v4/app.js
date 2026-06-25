@@ -42,7 +42,8 @@ const els = {
   svgMetric: document.querySelector("#svgMetric"),
   cellMetric: document.querySelector("#cellMetric"),
   resetView: document.querySelector("#resetView"),
-  legend: document.querySelector("#legend")
+  legend: document.querySelector("#legend"),
+  copyStatus: document.querySelector("#copyStatus")
 };
 
 const state = {
@@ -72,6 +73,12 @@ els.loadSample.addEventListener("click", async () => {
 
 els.checkInkscape.addEventListener("click", () => {
   checkInkscapeStatus();
+});
+
+document.querySelectorAll(".copy-command").forEach((button) => {
+  button.addEventListener("click", async () => {
+    await copyInstallCommand(button.dataset.copyCommand || "");
+  });
 });
 
 [
@@ -445,6 +452,46 @@ async function checkInkscapeStatus() {
 function setInkscapeStatus(message, level) {
   els.inkscapeStatus.textContent = message;
   els.inkscapeStatus.className = `inkscape-status ${level}`;
+}
+
+async function copyInstallCommand(command) {
+  if (!command.trim()) return;
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(command);
+      copied = true;
+    } else {
+      copied = fallbackCopyText(command);
+    }
+  } catch (error) {
+    copied = fallbackCopyText(command);
+  }
+  if (copied) {
+    setCopyStatus("已複製指令，請貼到 PowerShell / Terminal 執行。", "ok");
+  } else {
+    setCopyStatus("已選取備用複製內容，請手動複製後貼到終端機執行。", "warn");
+  }
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.inset = "0 auto auto 0";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return copied;
+}
+
+function setCopyStatus(message, level) {
+  if (!els.copyStatus) return;
+  els.copyStatus.textContent = message;
+  els.copyStatus.className = `copy-status ${level}`;
 }
 
 function renderLegend() {

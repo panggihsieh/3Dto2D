@@ -142,6 +142,12 @@
             <span>接近 Inkscape</span>
           </div>
           <p class="hint">正式高品質匯出會使用 Potrace 逐層 trace，效果會比瀏覽器即時預覽更接近 Inkscape Trace Bitmap。安裝後請重新開啟 PowerShell / Terminal，並用 `potrace --version` 確認。</p>
+          <div class="actions install-actions">
+            <button type="button" class="copy-command" data-copy-command="winget search potrace&#10;winget install --id 找到的套件ID&#10;potrace --version">複製 Windows 指令</button>
+            <button type="button" class="copy-command" data-copy-command="brew install potrace&#10;potrace --version">複製 macOS 指令</button>
+            <button type="button" class="copy-command" data-copy-command="sudo apt update&#10;sudo apt install potrace&#10;potrace --version">複製 Ubuntu 指令</button>
+          </div>
+          <div class="copy-status" id="copyStatus" aria-live="polite"></div>
           <pre class="cli-box"><code>Windows PowerShell:
 winget search potrace
 winget install --id 找到的套件ID

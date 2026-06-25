@@ -84,6 +84,8 @@ Note: Inkscape's GUI Trace Bitmap panel is not reliably exposed as a CLI action.
 
 Potrace is optional for the current browser preview, but it is the recommended local dependency for future high-quality export that is closer to Inkscape Trace Bitmap.
 
+The V4 page provides Windows, macOS, and Ubuntu buttons that copy these commands to the clipboard. Browsers cannot safely execute installer commands directly; paste the copied command into PowerShell or Terminal.
+
 Windows PowerShell:
 
 ```powershell
