@@ -1751,8 +1751,13 @@ function resize3dRenderer(ctx) {
 }
 
 function render3dPreview(result) {
+  if (!shouldShow3dPreviewAfterConfirm()) {
+    set3dPreviewVisible(false);
+    return;
+  }
   const ctx = ensure3dPreview();
   if (!ctx || !result) return;
+  set3dPreviewVisible(true);
   clear3dGroup(ctx.group);
 
   const mode = shouldRenderAssembledBox(result)
@@ -1760,6 +1765,16 @@ function render3dPreview(result) {
     : buildPlatePreview3d(ctx.group, result);
   els.preview3dMode.textContent = mode;
   fit3dCamera(ctx, get3dBox(ctx.group));
+}
+
+function shouldShow3dPreviewAfterConfirm() {
+  return state.sourceMode !== "svg" || state.appliedJoinery;
+}
+
+function set3dPreviewVisible(isVisible) {
+  const frame = els.preview3dCanvas?.closest(".preview-3d-frame") || document.querySelector(".preview-3d-frame");
+  if (!frame) return;
+  frame.hidden = !isVisible;
 }
 
 function shouldRenderAssembledBox(result) {
