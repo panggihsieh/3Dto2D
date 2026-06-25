@@ -11,6 +11,7 @@ https://panggihsieh.github.io/3Dto2D/v4/
 ## Workflow
 
 1. Upload a bitmap image.
+   - Or click the built-in tiger sample image.
 2. Choose a FLUX rated-power profile:
    - FLUX 30W
    - FLUX 40W

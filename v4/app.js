@@ -19,6 +19,7 @@ const LAYER_COLORS = [
 
 const els = {
   imageInput: document.querySelector("#imageInput"),
+  loadSample: document.querySelector("#loadSample"),
   sourceCanvas: document.querySelector("#sourceCanvas"),
   machineWatts: document.querySelector("#machineWatts"),
   outputWidthMm: document.querySelector("#outputWidthMm"),
@@ -60,6 +61,10 @@ els.imageInput.addEventListener("change", async () => {
   await loadImageFile(file);
 });
 
+els.loadSample.addEventListener("click", async () => {
+  await loadImageUrl("assets/sample.png", "sample.png");
+});
+
 [
   els.machineWatts,
   els.outputWidthMm,
@@ -93,6 +98,15 @@ async function loadImageFile(file) {
   const image = await loadImage(dataUrl);
   state.image = image;
   state.imageName = file.name;
+  state.sourceWidth = image.naturalWidth;
+  state.sourceHeight = image.naturalHeight;
+  buildPreview();
+}
+
+async function loadImageUrl(url, name) {
+  const image = await loadImage(url);
+  state.image = image;
+  state.imageName = name;
   state.sourceWidth = image.naturalWidth;
   state.sourceHeight = image.naturalHeight;
   buildPreview();
