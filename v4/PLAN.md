@@ -122,7 +122,12 @@ Start with a browser-only grayscale separation workflow:
 4. Generate one SVG group per band.
 5. Export a layered SVG for FLUX software or Inkscape inspection.
 
-Bitmap trace quality can be improved later with Potrace-style path fitting if the first browser-only contour output is too jagged.
+V4 should support two browser-only output modes:
+
+- Fast rectangular layers: sampled pixel runs exported as SVG rectangles.
+- Smooth trace layers: ImageTracerJS vector paths generated from each grayscale band mask.
+
+The smooth trace mode is Potrace-style browser vectorization, but it does not require installing Inkscape or Potrace. It is intended for smoother outline output; the rectangular mode remains available for predictable dense engraving tests.
 
 ## Verification
 

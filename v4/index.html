@@ -60,6 +60,13 @@
               <input id="sampleWidth" type="number" min="24" max="240" step="1" value="140">
             </label>
             <label>
+              <span>輸出模式</span>
+              <select id="outputMode">
+                <option value="rect" selected>快速矩形分層</option>
+                <option value="trace">平滑 Trace 分層</option>
+              </select>
+            </label>
+            <label>
               <span>專案名稱</span>
               <input id="projectName" type="text" maxlength="48" value="flux_gradient_test">
             </label>
@@ -118,6 +125,7 @@
       </section>
     </main>
 
+    <script src="vendor/imagetracer_v1.2.6.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

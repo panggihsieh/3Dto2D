@@ -25,6 +25,7 @@ const els = {
   minPower: document.querySelector("#minPower"),
   maxPower: document.querySelector("#maxPower"),
   sampleWidth: document.querySelector("#sampleWidth"),
+  outputMode: document.querySelector("#outputMode"),
   projectName: document.querySelector("#projectName"),
   downloadSvg: document.querySelector("#downloadSvg"),
   downloadCsv: document.querySelector("#downloadCsv"),
@@ -46,7 +47,8 @@ const state = {
   sourceWidth: 0,
   sourceHeight: 0,
   sampled: null,
-  layerRuns: []
+  layerRuns: [],
+  tracePaths: []
 };
 
 renderPowerTable();
@@ -64,6 +66,7 @@ els.imageInput.addEventListener("change", async () => {
   els.minPower,
   els.maxPower,
   els.sampleWidth,
+  els.outputMode,
   els.projectName
 ].forEach((input) => {
   input.addEventListener("input", () => {
@@ -99,10 +102,12 @@ function buildPreview() {
   const settings = readSettings();
   const sampled = sampleImage(state.image, settings.sampleWidth);
   const layerRuns = buildLayerRuns(sampled);
+  const tracePaths = settings.outputMode === "trace" ? buildTracePaths(sampled) : [];
   state.sampled = sampled;
   state.layerRuns = layerRuns;
-  drawPreviewSvg(settings, sampled, layerRuns);
-  updateMetrics(settings, sampled, layerRuns);
+  state.tracePaths = tracePaths;
+  drawPreviewSvg(settings, sampled, layerRuns, tracePaths);
+  updateMetrics(settings, sampled, layerRuns, tracePaths);
   els.downloadSvg.disabled = false;
   els.downloadCsv.disabled = false;
   els.emptyState.hidden = true;
@@ -163,7 +168,7 @@ function buildLayerRuns(sampled) {
   return groups;
 }
 
-function drawPreviewSvg(settings, sampled, layerRuns) {
+function drawPreviewSvg(settings, sampled, layerRuns, tracePaths) {
   clearSvg(els.previewSvg);
   const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
   els.previewSvg.setAttribute("viewBox", `0 0 ${svgNum(settings.outputWidthMm)} ${svgNum(outputHeightMm)}`);
@@ -177,7 +182,11 @@ function drawPreviewSvg(settings, sampled, layerRuns) {
       fill: LAYER_COLORS[layerIndex],
       stroke: "none"
     });
-    appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    if (settings.outputMode === "trace") {
+      appendTracePaths(group, tracePaths[layerIndex], sampled, settings.outputWidthMm, outputHeightMm);
+    } else {
+      appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    }
     els.previewSvg.appendChild(group);
   });
 }
@@ -201,6 +210,7 @@ function buildSvgDocument() {
     source: state.imageName,
     machineProfile: `FLUX ${settings.machineWatts}W`,
     layerCount: LAYER_COUNT,
+    outputMode: settings.outputMode,
     powerRangePercent: [settings.minPower, settings.maxPower],
     note: "Suggested settings only. Calibrate in Beam Studio with real material before production.",
     layers: layerSettings(settings)
@@ -224,7 +234,11 @@ function buildSvgDocument() {
       fill: LAYER_COLORS[layerIndex],
       stroke: "none"
     });
-    appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    if (settings.outputMode === "trace") {
+      appendTracePaths(group, state.tracePaths[layerIndex], sampled, settings.outputWidthMm, outputHeightMm);
+    } else {
+      appendRuns(group, runs, sampled, settings.outputWidthMm, outputHeightMm);
+    }
     svg.appendChild(group);
   });
 
@@ -242,6 +256,120 @@ function appendRuns(group, runs, sampled, outputWidthMm, outputHeightMm) {
       height: svgNum(cellHeight)
     }));
   });
+}
+
+function buildTracePaths(sampled) {
+  const tracer = getImageTracer();
+  if (!tracer) return Array.from({ length: LAYER_COUNT }, () => []);
+  const options = {
+    ltres: 0.6,
+    qtres: 0.6,
+    pathomit: 4,
+    rightangleenhance: false,
+    colorsampling: 0,
+    colorquantcycles: 1,
+    numberofcolors: 2,
+    strokewidth: 0,
+    scale: 1,
+    viewbox: true,
+    pal: [
+      { r: 255, g: 255, b: 255, a: 255 },
+      { r: 0, g: 0, b: 0, a: 255 }
+    ]
+  };
+
+  return Array.from({ length: LAYER_COUNT }, (_, layerIndex) => {
+    const imageData = maskImageDataForLayer(sampled, layerIndex);
+    const traced = tracer.imagedataToTracedata(imageData, options);
+    const blackLayerIndex = findPaletteIndex(traced.palette, 0, 0, 0);
+    const paths = traced.layers[blackLayerIndex] || [];
+    return paths
+      .filter((path) => !path.isholepath)
+      .map((path) => ({
+        segments: path.segments,
+        holes: path.holechildren.map((childIndex) => paths[childIndex]).filter(Boolean)
+      }));
+  });
+}
+
+function getImageTracer() {
+  return globalThis.ImageTracer || globalThis.self?.ImageTracer || globalThis.window?.ImageTracer || null;
+}
+
+function maskImageDataForLayer(sampled, layerIndex) {
+  const data = new Uint8ClampedArray(sampled.width * sampled.height * 4);
+  for (let i = 0; i < sampled.width * sampled.height; i += 1) {
+    const offset = i * 4;
+    const isLayerPixel = sampled.visible[i] && sampled.layers[i] === layerIndex;
+    const value = isLayerPixel ? 0 : 255;
+    data[offset] = value;
+    data[offset + 1] = value;
+    data[offset + 2] = value;
+    data[offset + 3] = 255;
+  }
+  return { width: sampled.width, height: sampled.height, data };
+}
+
+function findPaletteIndex(palette, r, g, b) {
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  palette.forEach((color, index) => {
+    const distance = Math.abs(color.r - r) + Math.abs(color.g - g) + Math.abs(color.b - b);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+}
+
+function appendTracePaths(group, paths, sampled, outputWidthMm, outputHeightMm) {
+  const scaleX = outputWidthMm / sampled.width;
+  const scaleY = outputHeightMm / sampled.height;
+  (paths || []).forEach((path) => {
+    const d = tracePathData(path, scaleX, scaleY);
+    if (!d) return;
+    group.appendChild(createSvgElement("path", { d, "fill-rule": "evenodd" }));
+  });
+}
+
+function tracePathData(path, scaleX, scaleY) {
+  if (!path?.segments?.length) return "";
+  const segments = path.segments;
+  const first = segments[0];
+  const commands = [`M ${svgNum(first.x1 * scaleX)} ${svgNum(first.y1 * scaleY)}`];
+  segments.forEach((segment) => {
+    if (segment.type === "Q") {
+      commands.push(`Q ${svgNum(segment.x2 * scaleX)} ${svgNum(segment.y2 * scaleY)} ${svgNum(segment.x3 * scaleX)} ${svgNum(segment.y3 * scaleY)}`);
+    } else {
+      commands.push(`L ${svgNum(segment.x2 * scaleX)} ${svgNum(segment.y2 * scaleY)}`);
+    }
+  });
+  commands.push("Z");
+  (path.holes || []).forEach((hole) => {
+    const holeCommands = traceHolePathData(hole, scaleX, scaleY);
+    if (holeCommands) commands.push(holeCommands);
+  });
+  return commands.join(" ");
+}
+
+function traceHolePathData(path, scaleX, scaleY) {
+  if (!path?.segments?.length) return "";
+  const segments = path.segments;
+  const last = segments[segments.length - 1];
+  const startX = last.x3 ?? last.x2;
+  const startY = last.y3 ?? last.y2;
+  const commands = [`M ${svgNum(startX * scaleX)} ${svgNum(startY * scaleY)}`];
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const segment = segments[index];
+    if (segment.type === "Q") {
+      commands.push(`Q ${svgNum(segment.x2 * scaleX)} ${svgNum(segment.y2 * scaleY)} ${svgNum(segment.x1 * scaleX)} ${svgNum(segment.y1 * scaleY)}`);
+    } else {
+      commands.push(`L ${svgNum(segment.x1 * scaleX)} ${svgNum(segment.y1 * scaleY)}`);
+    }
+  }
+  commands.push("Z");
+  return commands.join(" ");
 }
 
 function renderPowerTable() {
@@ -270,12 +398,13 @@ function renderLegend() {
 function buildPowerCsv() {
   const settings = readSettings();
   const rows = [
-    ["Layer", "Tone", "Color", "MachineProfile", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
+    ["Layer", "Tone", "Color", "MachineProfile", "OutputMode", "SuggestedPowerPercent", "EstimatedWatts", "BeamStudioNote"],
     ...layerSettings(settings).map((layer) => [
       layer.layer,
       layer.tone,
       layer.color,
       `FLUX ${settings.machineWatts}W`,
+      settings.outputMode,
       layer.powerPercent.toFixed(1),
       layer.estimatedWatts.toFixed(2),
       "Import SVG by Color, then set this color layer power in Beam Studio."
@@ -302,7 +431,8 @@ function readSettings() {
     outputWidthMm: clamp(Number(els.outputWidthMm.value) || 100, 10, 600),
     minPower,
     maxPower,
-    sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240)
+    sampleWidth: clamp(Number(els.sampleWidth.value) || 140, 24, 240),
+    outputMode: els.outputMode.value === "trace" ? "trace" : "rect"
   };
 }
 
@@ -333,12 +463,13 @@ function layerId(layerIndex, settings) {
     .replace(/[^A-Za-z0-9_:-]/g, "_");
 }
 
-function updateMetrics(settings, sampled, layerRuns) {
+function updateMetrics(settings, sampled, layerRuns, tracePaths) {
   const rectCount = layerRuns.reduce((sum, runs) => sum + runs.length, 0);
+  const traceCount = tracePaths.reduce((sum, paths) => sum + paths.length, 0);
   const outputHeightMm = settings.outputWidthMm * sampled.height / sampled.width;
   els.imageMetric.textContent = `${state.sourceWidth} x ${state.sourceHeight}px -> ${sampled.width} x ${sampled.height}px`;
   els.svgMetric.textContent = `${svgNum(settings.outputWidthMm)} x ${svgNum(outputHeightMm)} mm`;
-  els.cellMetric.textContent = `${rectCount} rect runs`;
+  els.cellMetric.textContent = settings.outputMode === "trace" ? `${traceCount} trace paths` : `${rectCount} rect runs`;
 }
 
 function createSvgElement(name, attributes) {

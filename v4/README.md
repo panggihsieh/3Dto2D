@@ -20,6 +20,13 @@ https://panggihsieh.github.io/3Dto2D/v4/
    - A 12-color / 12-layer SVG.
    - A CSV Beam Studio power table.
 
+## Output Modes
+
+- Fast rectangular layers: stable browser-only output using sampled pixel runs.
+- Smooth trace layers: browser-only vector tracing using vendored ImageTracerJS. This is Potrace-style raster-to-SVG tracing, but it does not require installing Inkscape, Potrace, Node.js, or Python on the user's computer.
+
+Smooth trace mode is better for softer outlines, while fast rectangular mode is more predictable for dense photo-style engraving tests.
+
 ## Beam Studio Import
 
 Prefer importing the exported SVG by color in Beam Studio.
