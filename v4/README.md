@@ -66,6 +66,20 @@ L12_darkest_color_000000_40p0pct_FLUX_30W
 
 Beam Studio may preserve SVG layer names, but automatic power assignment from SVG names or metadata should not be assumed. Use the exported CSV table to set the matching color layers in Beam Studio.
 
+## GitHub Actions Batch Trace
+
+For higher-quality batch output, run the `V4 Batch High Quality Trace` workflow in GitHub Actions.
+
+The workflow:
+
+- Installs Inkscape, Potrace, and Pillow on the GitHub runner.
+- Accepts a repo image path such as `v4/assets/sample.png`.
+- Generates a 12-layer grayscale traced SVG.
+- Generates a Beam Studio power CSV.
+- Uploads both files as a workflow artifact.
+
+Note: Inkscape's GUI Trace Bitmap panel is not reliably exposed as a CLI action. The batch workflow uses Potrace for the actual layer tracing and Inkscape for SVG rasterization or inspection support.
+
 ## Default Power Profile
 
 Default profile:

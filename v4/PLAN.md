@@ -153,6 +153,22 @@ V4 應支援兩種純瀏覽器輸出模式：
 - 若 helper 回報找到 Inkscape，頁面顯示 `inkscape.exe` 安裝位置。
 - 若 helper 未啟動或找不到 Inkscape，頁面提示使用者安裝 Inkscape 或啟動 helper。
 
+## GitHub Actions 批次高品質 Trace
+
+GitHub Pages 不能安裝或執行 Inkscape，但 GitHub Actions runner 可以。V4 以 `V4 Batch High Quality Trace` workflow 提供批次輸出流程。
+
+批次流程：
+
+1. 手動啟動 GitHub Actions workflow。
+2. 指定 repo 內的輸入圖片路徑，例如 `v4/assets/sample.png`。
+3. Actions 安裝 Inkscape、Potrace、Pillow。
+4. 腳本依灰階分成 12 個遮罩。
+5. 使用 Potrace 逐層輸出向量 path。
+6. 組合成 12 層 SVG，並輸出 Beam Studio 功率表 CSV。
+7. 將 SVG 與 CSV 上傳為 workflow artifact。
+
+注意：Inkscape GUI 的 Trace Bitmap 面板目前不適合作為穩定 CLI 自動化入口。批次 workflow 以 Potrace 執行實際 tracing，Inkscape 則用於 SVG 輸入 rasterize 或檢查支援。
+
 官方下載頁面：
 
 ```text

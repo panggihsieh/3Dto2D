@@ -1,0 +1,50 @@
+name: V4 Batch High Quality Trace
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_path:
+        description: "Repo path to input bitmap or SVG"
+        required: true
+        default: "v4/assets/sample.png"
+      output_name:
+        description: "Output basename"
+        required: true
+        default: "flux_gradient_trace"
+      width_mm:
+        description: "Output SVG width in mm"
+        required: true
+        default: "100"
+      machine_watts:
+        description: "FLUX rated power"
+        required: true
+        default: "30"
+
+jobs:
+  batch-trace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Inkscape, Potrace, and Pillow
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y inkscape potrace python3-pil
+          inkscape --version
+          potrace --version
+
+      - name: Generate 12-layer trace SVG
+        run: |
+          python3 v4/scripts/batch_trace.py \
+            --input "${{ inputs.image_path }}" \
+            --output-dir "v4-output" \
+            --name "${{ inputs.output_name }}" \
+            --width-mm "${{ inputs.width_mm }}" \
+            --machine-watts "${{ inputs.machine_watts }}"
+
+      - name: Upload trace artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v4-batch-trace-${{ inputs.output_name }}
+          path: v4-output/
