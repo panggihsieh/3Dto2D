@@ -28,6 +28,7 @@ const els = {
   checkTools: document.querySelector("#checkTools"),
   potraceStatus: document.querySelector("#potraceStatus"),
   potraceInstallBadge: document.querySelector("#potraceInstallBadge"),
+  topPotraceBadge: document.querySelector("#topPotraceBadge"),
   installModal: document.querySelector("#installModal"),
   closeInstallModal: document.querySelector("#closeInstallModal"),
   downloadSvg: document.querySelector("#downloadSvg"),
@@ -508,6 +509,8 @@ function setToolStatus(element, message, level) {
 function setInstallBadge(message, level) {
   els.potraceInstallBadge.textContent = message;
   els.potraceInstallBadge.className = `install-badge ${level}`;
+  els.topPotraceBadge.className = `floating-tool-status ${level}`;
+  els.topPotraceBadge.querySelector("span:last-child").textContent = `Potrace：${message}`;
 }
 
 function openInstallModal() {
