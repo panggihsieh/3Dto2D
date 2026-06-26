@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Z-Axis Gradient Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260626-3">
+    <link rel="stylesheet" href="styles.css?v=20260626-4">
   </head>
   <body>
     <main class="shell">
@@ -178,7 +178,7 @@
             <span>安裝指令</span>
           </div>
           <div class="actions install-actions">
-            <button type="button" class="copy-command step-button" data-copy-command="winget search potrace&#10;winget install --id 找到的套件ID&#10;potrace --version">
+            <button type="button" class="copy-command step-button" data-copy-command="$script=&quot;$env:TEMP\bmptrace-install-potrace.ps1&quot;&#10;Invoke-WebRequest -Uri &quot;https://panggihsieh.github.io/3Dto2D/bmptrace/install/bmptrace-install-potrace.ps1&quot; -OutFile $script&#10;powershell -ExecutionPolicy Bypass -File $script">
               <span class="step-badge">1</span>
               Windows 安裝 Potrace 指令
             </button>
@@ -211,7 +211,7 @@
           <span>請安裝</span>
         </div>
         <div class="actions install-actions">
-          <button type="button" class="copy-command step-button" data-copy-command="winget search potrace&#10;winget install --id 找到的套件ID&#10;potrace --version">
+          <button type="button" class="copy-command step-button" data-copy-command="$script=&quot;$env:TEMP\bmptrace-install-potrace.ps1&quot;&#10;Invoke-WebRequest -Uri &quot;https://panggihsieh.github.io/3Dto2D/bmptrace/install/bmptrace-install-potrace.ps1&quot; -OutFile $script&#10;powershell -ExecutionPolicy Bypass -File $script">
             <span class="step-badge">1</span>
             複製 Windows 安裝 Potrace 指令
           </button>
@@ -231,6 +231,6 @@
     </div>
 
     <script src="vendor/imagetracer_v1.2.6.js"></script>
-    <script src="app.js?v=20260626-3"></script>
+    <script src="app.js?v=20260626-4"></script>
   </body>
 </html>
