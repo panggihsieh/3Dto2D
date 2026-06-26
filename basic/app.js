@@ -155,10 +155,11 @@ function buildInnerBoxPieces(innerLength, innerWidth, innerHeight, params, reser
   const thickness = params.materialThickness;
   const outerLength = innerLength + thickness * 2;
   const outerWidth = innerWidth + thickness * 2;
+  const outerHeight = innerHeight + thickness * 2;
   return buildBoxPieces(
     outerLength,
     outerWidth,
-    innerHeight,
+    outerHeight,
     params,
     reserveJoineryMargin
   );
@@ -278,6 +279,12 @@ function innerEdgeGuidesForRectPiece(name, width, height, params) {
   };
 
   if (["top", "bottom", "floor"].includes(name)) {
+    if (name === "floor" && params.modelType === "gable_house") {
+      return {
+        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
+        vertical: { start: 0, length: height }
+      };
+    }
     return {
       horizontal: { start: thickness, length: params.length },
       vertical: { start: thickness, length: params.width }
@@ -1010,7 +1017,17 @@ function innerGuideForPiece(piece, params) {
     };
   }
 
-  if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(piece.name)) {
+  if (["front", "back"].includes(piece.name)) {
+    return {
+      x: guideX,
+      y: guideY,
+      width: innerLength,
+      height: innerHeight,
+      label: `${formatGuideNumber(innerLength)} x ${formatGuideNumber(innerHeight)}`
+    };
+  }
+
+  if (["left_wall", "right_wall", "roof_left", "roof_right"].includes(piece.name)) {
     return {
       x: guideX,
       y: depth,
@@ -1023,7 +1040,7 @@ function innerGuideForPiece(piece, params) {
   if (["front_gable", "back_gable"].includes(piece.name)) {
     return {
       x: Math.max(0, (piece.width - innerWidth) / 2),
-      y: Math.max(0, (piece.height - innerHeight) / 2),
+      y: Math.max(0, piece.height - depth - innerHeight),
       width: innerWidth,
       height: innerHeight,
       label: `${formatGuideNumber(innerWidth)} x ${formatGuideNumber(innerHeight)}`
@@ -1033,7 +1050,7 @@ function innerGuideForPiece(piece, params) {
   if (["left", "right"].includes(piece.name)) {
     return {
       x: guideX,
-      y: depth,
+      y: guideY,
       width: innerWidth,
       height: innerHeight,
       label: `${formatGuideNumber(innerWidth)} x ${formatGuideNumber(innerHeight)}`
