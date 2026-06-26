@@ -667,6 +667,13 @@ td {
   color: #775d16;
 }
 
+.copy-status a {
+  display: inline-block;
+  margin: 0 4px;
+  color: #0f766e;
+  font-weight: 900;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

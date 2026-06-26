@@ -11,46 +11,7 @@ const FIVE_LAYER_COLORS = [
   "#1d1d1d"
 ];
 
-const WINDOWS_POTRACE_INSTALL_SCRIPT = `# BMPTrace Potrace installer helper
-$ErrorActionPreference = "Stop"
-
-Write-Host "BMPTrace Potrace Install" -ForegroundColor Yellow
-Write-Host ""
-
-$existing = Get-Command potrace -ErrorAction SilentlyContinue
-if ($existing) {
-  Write-Host "Potrace is already available:" -ForegroundColor Green
-  potrace --version
-  Read-Host "Press Enter to close"
-  exit 0
-}
-
-$winget = Get-Command winget -ErrorAction SilentlyContinue
-if (-not $winget) {
-  Write-Host "winget was not found. Please install App Installer from Microsoft Store first." -ForegroundColor Red
-  Read-Host "Press Enter to close"
-  exit 1
-}
-
-Write-Host "Searching winget packages for Potrace..." -ForegroundColor Cyan
-winget search potrace
-Write-Host ""
-Write-Host "Copy the exact Id from the list above, then paste it below." -ForegroundColor Yellow
-$packageId = Read-Host "Potrace package Id"
-
-if ([string]::IsNullOrWhiteSpace($packageId)) {
-  Write-Host "No package Id entered. Nothing was installed." -ForegroundColor Red
-  Read-Host "Press Enter to close"
-  exit 1
-}
-
-winget install --id $packageId -e
-
-Write-Host ""
-Write-Host "Checking Potrace..." -ForegroundColor Cyan
-potrace --version
-Read-Host "Press Enter to close"
-`;
+const WINDOWS_INSTALL_SCRIPT_URL = "install/bmptrace-install-potrace.ps1";
 
 const els = {
   imageInput: document.querySelector("#imageInput"),
@@ -595,18 +556,26 @@ async function openPowerShell() {
 }
 
 function downloadWindowsInstallScript() {
-  const blob = new Blob([WINDOWS_POTRACE_INSTALL_SCRIPT], {
-    type: "text/plain;charset=utf-8"
-  });
-  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = url;
+  link.href = WINDOWS_INSTALL_SCRIPT_URL;
   link.download = "bmptrace-install-potrace.ps1";
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  setCopyStatus("已下載 Windows 安裝腳本。請在下載資料夾用 PowerShell 執行 bmptrace-install-potrace.ps1。", "ok");
+  showScriptDownloadStatus();
+}
+
+function showScriptDownloadStatus() {
+  els.copyStatus.className = "copy-status ok";
+  els.copyStatus.replaceChildren(
+    document.createTextNode("已送出下載。若沒有看到下載項目，請點這裡：")
+  );
+  const link = document.createElement("a");
+  link.href = WINDOWS_INSTALL_SCRIPT_URL;
+  link.download = "bmptrace-install-potrace.ps1";
+  link.textContent = "重新下載 / 另存 bmptrace-install-potrace.ps1";
+  els.copyStatus.appendChild(link);
+  els.copyStatus.appendChild(document.createTextNode("，再用 PowerShell 執行。"));
 }
 
 function fallbackCopyText(text) {
