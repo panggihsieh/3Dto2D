@@ -296,6 +296,13 @@ select {
   background: #ffe8e8;
 }
 
+.install-note {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
