@@ -17,6 +17,7 @@ const state = {
     pending: null,
     pairs: []
   },
+  tagMode: null,
   appliedJoinery: false,
   three: null
 };
@@ -54,6 +55,8 @@ const els = {
   svgUpload: document.querySelector("#svgUpload"),
   downloadCuboidSample: document.querySelector("#downloadCuboidSample"),
   downloadHouseSample: document.querySelector("#downloadHouseSample"),
+  tagTopPiece: document.querySelector("#tagTopPiece"),
+  tagBottomPiece: document.querySelector("#tagBottomPiece"),
   toggleEdgeSelect: document.querySelector("#toggleEdgeSelect"),
   applyEdgePairs: document.querySelector("#applyEdgePairs"),
   clearEdgePairs: document.querySelector("#clearEdgePairs"),
@@ -592,6 +595,22 @@ function showJoinerySuccessIfAllPairsOk() {
 function validateAllPairsForFinalApply() {
   const params = getParams();
   const messages = [];
+  const canUsePresetJoinery = state.importedPreset === "cube_net"
+    && state.edgeSelection.pairs.length === 0
+    && !state.edgeSelection.pending;
+  if (canUsePresetJoinery) {
+    return {
+      ok: true,
+      params,
+      validations: [],
+      messages
+    };
+  }
+
+  if (state.sourceMode === "svg" && state.importedPreset !== "cube_net" && !hasTopBottomTags()) {
+    messages.push("Please tag one piece as top and one piece as bottom before applying joinery.");
+  }
+
   if (state.edgeSelection.pending) {
     messages.push("There is an unfinished first edge. Select the second edge or cancel it before applying.");
   }
@@ -692,12 +711,13 @@ function showJoinerySuccessPopup(params = getParams(), validation = null) {
 function loadImportedPieces(pieces, warnings = [], options = {}) {
   const params = getParams();
   state.sourceMode = "svg";
-  state.importedPieces = prepareImportedPiecesForSelection(pieces, params.partGap);
+  state.importedPieces = prepareImportedPiecesForSelection(offsetImportedPiecesForMaterial(pieces, params, warnings), params.partGap);
   state.importedPreset = options.preset || null;
   state.importedWarnings = warnings;
   state.uiWarnings = [];
   state.edgeSelection.pending = null;
   state.edgeSelection.pairs = [];
+  state.tagMode = null;
   state.appliedJoinery = false;
   state.edgeSelectEnabled = true;
   els.toggleEdgeSelect.setAttribute("aria-pressed", "true");
@@ -708,7 +728,7 @@ function loadImportedPieces(pieces, warnings = [], options = {}) {
 function buildCubeNetPieces(params) {
   const side = params.length || 60;
   const faces = [
-    { name: "bottom_3d", origin: [side, side] },
+    { name: "bottom", origin: [side, side] },
     { name: "back", origin: [side, 0] },
     { name: "left", origin: [0, side] },
     { name: "right", origin: [side * 2, side] },
@@ -736,6 +756,123 @@ function buildCubeNetPieces(params) {
   });
 }
 
+function offsetImportedPiecesForMaterial(pieces, params, warnings = []) {
+  if (params.dimensionMode !== "inner") return pieces;
+
+  const thickness = params.materialThickness;
+  return pieces.map((piece) => {
+    const nextPaths = [];
+    const sourcePaths = [];
+    let usedOffset = false;
+
+    for (const path of piece.paths) {
+      const source = clonePath(path);
+      sourcePaths.push(source);
+
+      const offsetPath = offsetClosedPath(path, thickness);
+      if (offsetPath) {
+        nextPaths.push(offsetPath);
+        usedOffset = true;
+      } else {
+        nextPaths.push(clonePath(path));
+      }
+    }
+
+    if (!usedOffset && piece.paths.some(path => path.closed !== false)) {
+      warnings.push(`${piece.name}: imported outline could not be offset automatically.`);
+    }
+
+    const bounds = getBoundsFromPaths([{ ...piece, x: 0, y: 0, paths: nextPaths }]);
+    return {
+      ...piece,
+      originalName: piece.originalName || piece.name,
+      width: bounds.width,
+      height: bounds.height,
+      paths: nextPaths,
+      sourcePaths
+    };
+  });
+}
+
+function clonePath(path) {
+  const copy = path.map(point => ({ x: point.x, y: point.y }));
+  copy.closed = path.closed !== false;
+  return copy;
+}
+
+function offsetClosedPath(path, amount) {
+  if (path.closed === false || path.length < 3) return null;
+
+  if (path.length === 4) {
+    const rect = offsetRectangularPath(path, amount);
+    if (rect) return rect;
+  }
+
+  return offsetPolygonPath(path, amount);
+}
+
+function offsetRectangularPath(path, amount) {
+  const bounds = getPathBounds(path);
+  const corners = [
+    { x: bounds.minX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.maxY },
+    { x: bounds.minX, y: bounds.maxY }
+  ];
+  const matches = path.every(point => corners.some(corner => samePoint(point, corner)));
+  if (!matches) return null;
+
+  const expanded = [
+    { x: bounds.minX - amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.maxY + amount },
+    { x: bounds.minX - amount, y: bounds.maxY + amount }
+  ];
+  expanded.closed = true;
+  return expanded;
+}
+
+function offsetPolygonPath(path, amount) {
+  const area = signedPolygonArea(path);
+  if (Math.abs(area) < 0.0001) return null;
+
+  const offsetEdges = path.map((start, index) => {
+    const end = path[(index + 1) % path.length];
+    const normal = edgeOutwardNormal(start, end, area);
+    return {
+      start: offsetBy(start, normal, amount),
+      end: offsetBy(end, normal, amount)
+    };
+  });
+
+  const expanded = path.map((_, index) => {
+    const previous = offsetEdges[(index - 1 + offsetEdges.length) % offsetEdges.length];
+    const current = offsetEdges[index];
+    return lineIntersection(previous.start, previous.end, current.start, current.end);
+  });
+
+  if (expanded.some(point => !point)) return null;
+  expanded.closed = true;
+  return expanded;
+}
+
+function lineIntersection(a1, a2, b1, b2) {
+  const dax = a2.x - a1.x;
+  const day = a2.y - a1.y;
+  const dbx = b2.x - b1.x;
+  const dby = b2.y - b1.y;
+  const denominator = dax * dby - day * dbx;
+  if (Math.abs(denominator) < 0.0001) return null;
+
+  const bax = b1.x - a1.x;
+  const bay = b1.y - a1.y;
+  const t = (bax * dby - bay * dbx) / denominator;
+  return {
+    x: a1.x + dax * t,
+    y: a1.y + day * t
+  };
+}
+
 function prepareImportedPiecesForSelection(pieces, gap) {
   const safeGap = Math.max(gap, 1);
   const pieceBounds = pieces.map(piece => getBoundsFromPaths([{ ...piece, x: 0, y: 0 }]));
@@ -754,13 +891,23 @@ function prepareImportedPiecesForSelection(pieces, gap) {
       copy.closed = path.closed !== false;
       return copy;
     });
+    const sourcePaths = (piece.sourcePaths || piece.paths).map(path => {
+      const copy = path.map(point => ({
+        x: point.x - bounds.minX,
+        y: point.y - bounds.minY
+      }));
+      copy.closed = path.closed !== false;
+      return copy;
+    });
     return {
       ...piece,
+      originalName: piece.originalName || piece.name,
       x: bounds.minX + xShift,
       y: bounds.minY + yShift,
       width: bounds.width,
       height: bounds.height,
-      paths
+      paths,
+      sourcePaths
     };
   });
 }
@@ -992,10 +1139,13 @@ function buildBoxPieces(length, width, height, params) {
 
 function buildInnerBoxPieces(innerLength, innerWidth, innerHeight, params) {
   const thickness = params.materialThickness;
+  const outerLength = innerLength + thickness * 2;
+  const outerWidth = innerWidth + thickness * 2;
+  const outerHeight = innerHeight + thickness * 2;
   return buildBoxPieces(
-    innerLength + thickness * 2,
-    innerWidth + thickness * 2,
-    innerHeight,
+    outerLength,
+    outerWidth,
+    outerHeight,
     params
   );
 }
@@ -1089,8 +1239,9 @@ function houseDimensions(params) {
 function rectPiece(name, width, height, params, edges = "eeee") {
   const hasJoinery = /[fF]/.test(edges);
   const margin = hasJoinery ? params.tabDepth : 0;
+  const edgeGuides = innerEdgeGuidesForRectPiece(name, width, height, params);
   const path = hasJoinery
-    ? fingerJointRectPath(margin, margin, width, height, edges, params)
+    ? fingerJointRectPath(margin, margin, width, height, edges, params, edgeGuides)
     : rectPath(0, 0, width, height);
   return {
     name,
@@ -1099,6 +1250,50 @@ function rectPiece(name, width, height, params, edges = "eeee") {
     width: width + margin * 2,
     height: height + margin * 2
   };
+}
+
+function hasTopBottomTags() {
+  const names = new Set((state.importedPieces || []).map(piece => piece.name));
+  return names.has("top") && names.has("bottom");
+}
+
+function innerEdgeGuidesForRectPiece(name, width, height, params) {
+  if (params.dimensionMode !== "inner") return null;
+
+  const thickness = params.materialThickness;
+  const full = {
+    horizontal: { start: 0, length: width },
+    vertical: { start: 0, length: height }
+  };
+
+  if (["top", "bottom", "floor"].includes(name)) {
+    if (name === "floor" && params.modelType === "gable_house") {
+      return {
+        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
+        vertical: { start: 0, length: height }
+      };
+    }
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: { start: thickness, length: params.width }
+    };
+  }
+
+  if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: full.vertical
+    };
+  }
+
+  if (["left", "right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.width },
+      vertical: full.vertical
+    };
+  }
+
+  return full;
 }
 
 function circlePiece(name, radius, params, withSlots = false) {
@@ -1395,13 +1590,13 @@ function addFlexCutSegment(paths, x, y1, y2) {
   paths.push(path);
 }
 
-function fingerJointRectPath(x, y, width, height, edges, params) {
+function fingerJointRectPath(x, y, width, height, edges, params, edgeGuides = null) {
   const points = [];
   const [top = "e", right = "e", bottom = "e", left = "e"] = edges;
-  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params);
-  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params);
-  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params);
-  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params);
+  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params, edgeGuides?.vertical);
+  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params, edgeGuides?.vertical);
   return points;
 }
 
@@ -1439,15 +1634,29 @@ function edgeOutwardNormal(start, end, polygonArea) {
   return normal;
 }
 
-function addFingerEdge(points, start, end, outward, type, params) {
+function addFingerEdge(points, start, end, outward, type, params, guide = null) {
   const length = Math.hypot(end.x - start.x, end.y - start.y);
   const dx = (end.x - start.x) / length;
   const dy = (end.y - start.y) / length;
-  const count = calcFingerCount(length, params);
-  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
-  const inset = Math.max(params.materialThickness, (length - occupied) / 2);
   const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
   const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
+  const baseGuideStart = Math.max(0, Math.min(length, guide?.start ?? 0));
+  const baseGuideLength = Math.max(0, Math.min(length - baseGuideStart, guide?.length ?? length));
+  const baseGuideEnd = baseGuideStart + baseGuideLength;
+  const cornerClearance = direction
+    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth))
+    : 0;
+  const guideStart = baseGuideStart + cornerClearance;
+  const guideEnd = baseGuideEnd - cornerClearance;
+  const guideLength = Math.max(0, guideEnd - guideStart);
+  const count = calcFingerCount(guideLength, params);
+  const occupiedTabs = count * fingerWidth;
+  const fittedSpacing = count > 1
+    ? Math.max(0, (guideLength - occupiedTabs) / (count - 1))
+    : 0;
+  const inset = count > 1
+    ? guideStart
+    : guideStart + Math.max(0, (guideLength - fingerWidth) / 2);
 
   pushPoint(points, start);
 
@@ -1457,9 +1666,9 @@ function addFingerEdge(points, start, end, outward, type, params) {
   }
 
   for (let i = 0; i < count; i += 1) {
-    const tabStart = inset + i * (params.tabWidth + params.tabSpacing);
-    const tabEnd = Math.min(tabStart + fingerWidth, length - params.materialThickness);
-    if (tabEnd <= tabStart || tabStart >= length) continue;
+    const tabStart = inset + i * (fingerWidth + fittedSpacing);
+    const tabEnd = Math.min(tabStart + fingerWidth, guideEnd);
+    if (tabEnd <= tabStart || tabStart >= guideEnd) continue;
 
     const a = along(start, dx, dy, tabStart);
     const b = along(start, dx, dy, tabEnd);
@@ -1566,11 +1775,12 @@ function render(result) {
 
   addSvgStyles();
   renderSourceOverlay();
+  renderOffsetReferenceOverlay();
   const cutGroup = createSvgElement("g", { class: "svg-cut" });
   els.previewSvg.appendChild(cutGroup);
 
   const visiblePieces = showSourceOnly
-    ? []
+    ? result.pieces
     : showJoinerySegmentsOnly
       ? buildSelectedJoineryPieces(result.params)
       : result.pieces;
@@ -1579,7 +1789,7 @@ function render(result) {
       cutGroup.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: "#ff0000",
+        stroke: showSourceOnly ? "#cbd5e1" : "#ff0000",
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
@@ -1589,6 +1799,7 @@ function render(result) {
   }
 
   renderPieceLabels(result);
+  renderTagOverlay(result);
   renderEdgeOverlay(result);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
@@ -2097,14 +2308,20 @@ function renderPieceLabels(result) {
   const group = createSvgElement("g", { class: "piece-label-overlay" });
   let labelCount = 0;
   const labelColor = "#111827";
+  const labelPieces = state.appliedJoinery && state.importedPieces?.length
+    ? state.importedPieces
+    : result.pieces;
 
-  for (const piece of result.pieces) {
+  for (const piece of labelPieces) {
+    const isTopBottomTag = ["top", "bottom"].includes(piece.name);
+    if (state.appliedJoinery && !isTopBottomTag) continue;
     const label = pieceLabel(piece.name);
     if (!label) continue;
     group.appendChild(createSvgElement("text", {
       x: svgNum(piece.x + piece.width / 2),
       y: svgNum(piece.y + piece.height / 2),
       fill: labelColor,
+      class: isTopBottomTag ? "top-bottom-tag-label" : "piece-tag-label",
       "font-family": "Arial, sans-serif",
       "font-size": "6",
       "font-weight": "700",
@@ -2119,6 +2336,61 @@ function renderPieceLabels(result) {
   }
 
   if (labelCount) els.previewSvg.appendChild(group);
+}
+
+function renderTagOverlay(result) {
+  if (
+    state.sourceMode !== "svg"
+    || state.appliedJoinery
+    || !state.tagMode
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "tag-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const [pieceIndex, piece] of state.importedPieces.entries()) {
+    const rect = createSvgElement("rect", {
+      x: svgNum(piece.x),
+      y: svgNum(piece.y),
+      width: svgNum(piece.width),
+      height: svgNum(piece.height),
+      class: "tag-hit",
+      "data-piece": pieceIndex
+    });
+    rect.addEventListener("click", handlePieceTagClick);
+    group.appendChild(rect);
+  }
+}
+
+function handlePieceTagClick(event) {
+  if (!state.tagMode || !state.importedPieces?.length) return;
+  const pieceIndex = Number(event.target.dataset.piece);
+  const role = state.tagMode;
+  if (!["top", "bottom"].includes(role) || !state.importedPieces[pieceIndex]) return;
+
+  state.importedPieces.forEach((piece, index) => {
+    if (index === pieceIndex) {
+      piece.name = role;
+      return;
+    }
+    if (piece.name === role) {
+      piece.name = restoredPieceName(piece, index);
+    }
+  });
+
+  state.tagMode = null;
+  state.uiWarnings = [];
+  state.appliedJoinery = false;
+  updateTagControls();
+  runConversion();
+}
+
+function restoredPieceName(piece, index) {
+  if (piece.originalName && !["top", "bottom"].includes(piece.originalName)) {
+    return piece.originalName;
+  }
+  return `piece_${index + 1}`;
 }
 
 function previewStrokeWidth(params) {
@@ -2154,6 +2426,28 @@ function setPreviewZoom(nextZoom) {
   updatePreviewZoom();
 }
 
+function setTagMode(mode) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length || state.appliedJoinery) return;
+  state.tagMode = state.tagMode === mode ? null : mode;
+  if (state.tagMode) {
+    state.edgeSelectEnabled = false;
+    state.edgeSelection.pending = null;
+    els.toggleEdgeSelect?.setAttribute("aria-pressed", "false");
+    if (els.toggleEdgeSelect) els.toggleEdgeSelect.textContent = "選取接榫邊";
+  }
+  updateTagControls();
+  runConversion();
+}
+
+function updateTagControls() {
+  if (els.tagTopPiece) {
+    els.tagTopPiece.setAttribute("aria-pressed", String(state.tagMode === "top"));
+  }
+  if (els.tagBottomPiece) {
+    els.tagBottomPiece.setAttribute("aria-pressed", String(state.tagMode === "bottom"));
+  }
+}
+
 function pieceLabel(name) {
   const labels = {
     floor: "bottom",
@@ -2186,8 +2480,9 @@ function renderEdgeOverlay(result) {
     const joinerySegmentMode = shouldShowJoinerySegmentsOnly();
     const sourcePreviewMode = sourceOnlyMode || joinerySegmentMode;
     const edgeColor = colorForEdge(edge);
-    const color = sourceOnlyMode || joinerySegmentMode ? (edgeColor ? "#ff0000" : "#111827") : (edgeColor || "#ff0000");
+    const color = sourceOnlyMode || joinerySegmentMode ? (edgeColor ? "#ff0000" : "#cbd5e1") : (edgeColor || "#ff0000");
     const edgeRole = roleForEdge(edge);
+    const shouldDrawVisibleEdge = !joinerySegmentMode;
     const className = [
       "edge-visible",
       isPendingEdge(edge) ? "edge-pending-first" : "",
@@ -2220,7 +2515,7 @@ function renderEdgeOverlay(result) {
       "data-edge": edge.edgeIndex
     });
     hit.addEventListener("click", handleEdgeClick);
-    group.appendChild(visible);
+    if (shouldDrawVisibleEdge) group.appendChild(visible);
     group.appendChild(hit);
 
     if (!isPendingEdge(edge) && edgeRole === "convex") {
@@ -2231,7 +2526,7 @@ function renderEdgeOverlay(result) {
     }
 
     if (isPendingEdge(edge)) {
-      group.appendChild(createEdgeBadge(edge, "1 凸 f", "#111827"));
+      group.appendChild(createEdgeBadge(edge, "1 凸 f", "#ff0000"));
     }
   }
 }
@@ -2239,7 +2534,6 @@ function renderEdgeOverlay(result) {
 function renderSourceOverlay() {
   if (
     state.sourceMode !== "svg"
-    || (!shouldShowJoinerySegmentsOnly() && !shouldShowImportedSourceOnly())
     || !state.importedPieces?.length
   ) return;
 
@@ -2247,15 +2541,41 @@ function renderSourceOverlay() {
   els.previewSvg.appendChild(group);
 
   for (const piece of state.importedPieces) {
-    for (const path of piece.paths) {
+    for (const path of piece.sourcePaths || piece.paths) {
       group.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: "#111827",
-        "stroke-width": 0.55,
+        stroke: "#000000",
+        "stroke-width": 1.25,
         "vector-effect": "non-scaling-stroke"
       }));
     }
+  }
+}
+
+function renderOffsetReferenceOverlay() {
+  if (
+    state.sourceMode !== "svg"
+    || !shouldShowJoinerySegmentsOnly()
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "offset-reference-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const edge of listSelectableEdges()) {
+    if (colorForEdge(edge)) continue;
+    const a = edge.start;
+    const b = edge.end;
+    group.appendChild(createSvgElement("line", {
+      x1: svgNum(a.x),
+      y1: svgNum(a.y),
+      x2: svgNum(b.x),
+      y2: svgNum(b.y),
+      stroke: "#cbd5e1",
+      "stroke-width": 0.8,
+      "vector-effect": "non-scaling-stroke"
+    }));
   }
 }
 
@@ -2395,9 +2715,9 @@ function sameEdge(a, b) {
 }
 
 function colorForEdge(edge) {
-  if (isPendingEdge(edge)) return "#111827";
+  if (isPendingEdge(edge)) return "#ff0000";
   const pair = state.edgeSelection.pairs.find(item => sameEdge(item.first, edge) || sameEdge(item.second, edge));
-  return pair?.color || "";
+  return pair ? "#ff0000" : "";
 }
 
 function roleForEdge(edge) {
@@ -2451,7 +2771,6 @@ function addSvgStyles() {
     }
     .svg-cut path {
       fill: none;
-      stroke: #ff0000;
       stroke-linejoin: miter;
       stroke-linecap: square;
     }
@@ -2851,6 +3170,7 @@ function updateDefaultsForModel() {
   state.importedPreset = null;
   state.edgeSelectEnabled = false;
   state.appliedJoinery = false;
+  state.tagMode = null;
   state.edgeSelection.pending = null;
   els.toggleEdgeSelect.setAttribute("aria-pressed", "false");
   els.toggleEdgeSelect.textContent = "選取接榫邊";
@@ -2909,6 +3229,7 @@ function runConversion() {
   els.statusPill.textContent = "Generating";
   updateFieldVisibility();
   updateDimensionModeControls();
+  updateTagControls();
   const params = getParams();
   updateOuterDimensionStatus(params);
   state.result = state.sourceMode === "svg"
@@ -2956,6 +3277,8 @@ function dxfNum(value) {
 
 els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
+els.tagTopPiece?.addEventListener("click", () => setTagMode("top"));
+els.tagBottomPiece?.addEventListener("click", () => setTagMode("bottom"));
 els.innerDimensionButton?.addEventListener("click", () => {
   if (els.dimensionMode) els.dimensionMode.value = "inner";
   updateDimensionModeControls();
@@ -3012,6 +3335,7 @@ els.toggleEdgeSelect.addEventListener("click", () => {
     );
     return;
   }
+  state.tagMode = null;
   state.edgeSelectEnabled = !state.edgeSelectEnabled;
   state.edgeSelection.pending = null;
   els.toggleEdgeSelect.setAttribute("aria-pressed", String(state.edgeSelectEnabled));
@@ -3030,6 +3354,7 @@ els.applyEdgePairs.addEventListener("click", () => {
   }
   state.appliedJoinery = true;
   state.edgeSelectEnabled = false;
+  state.tagMode = null;
   state.edgeSelection.pending = null;
   els.toggleEdgeSelect.setAttribute("aria-pressed", "false");
   els.toggleEdgeSelect.textContent = "選取接榫邊";
@@ -3040,6 +3365,7 @@ els.applyEdgePairs.addEventListener("click", () => {
 els.clearEdgePairs.addEventListener("click", () => {
   state.edgeSelection.pending = null;
   state.edgeSelection.pairs = [];
+  state.tagMode = null;
   state.appliedJoinery = false;
   runConversion();
 });

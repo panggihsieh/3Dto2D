@@ -40,6 +40,7 @@ https://panggihsieh.github.io/3Dto2D/joint/
 - The first selected edge is always convex `f`; the second selected edge is concave `F`.
 - A pending edge can be clicked again to cancel it. A completed paired edge can be clicked again to delete that pair.
 - Manual pairing changes only the selected pair. It does not automatically apply all cube-net joinery.
+- Gray preview lines are important inner-dimension offset references. Keep unselected gray offset lines visible; only hide the specific gray edge after it has been selected and replaced by a convex/concave joinery preview.
 - The built-in cube net can still use its known correct topology when no manual pairs exist and the cube flow is confirmed.
 - Gable-roof practice SVG labels are intended for spatial matching practice. The joint workflow preserves simple path `id` values and uses them to show labels again after import.
 - Exported production SVG removes temporary edge overlays, source overlays, and preview labels.

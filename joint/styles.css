@@ -433,6 +433,23 @@ button:disabled {
   margin-top: 12px;
 }
 
+.tag-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tag-actions button {
+  color: var(--ink);
+  background: #fffef0;
+}
+
+.tag-actions button[aria-pressed="true"] {
+  color: #111827;
+  border-color: #d97706;
+  background: #fff176;
+}
+
 .sample-actions button {
   color: var(--ink);
   background: #ffffff;
@@ -714,6 +731,38 @@ button:disabled {
   font-size: 5px;
   font-weight: 700;
   pointer-events: none;
+}
+
+.piece-label-overlay .top-bottom-tag-label {
+  fill: #111827;
+  font-weight: 800;
+  animation: topBottomTagPulse 1.05s ease-in-out infinite;
+}
+
+@keyframes topBottomTagPulse {
+  0%,
+  100% {
+    opacity: 0.58;
+    filter: drop-shadow(0 0 0 rgba(217, 119, 6, 0));
+  }
+
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(217, 119, 6, 0.8));
+  }
+}
+
+.tag-overlay .tag-hit {
+  fill: rgba(255, 241, 118, 0.18);
+  stroke: #d97706;
+  stroke-dasharray: 4 3;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.tag-overlay .tag-hit:hover {
+  fill: rgba(255, 241, 118, 0.34);
 }
 
 @keyframes edgePulse {

@@ -44,6 +44,7 @@ https://panggihsieh.github.io/3Dto2D/joint/
 - The first selected edge is treated as convex `f`; the second selected edge is treated as concave `F`.
 - Each selected pair previews immediately. Clicking the same pending edge cancels it; clicking an already paired edge removes that pair.
 - Manual pairing only changes the selected pair. The built-in cube topology is used only when no manual pairs exist and the built-in cube flow is confirmed.
+- Gray preview lines are important inner-dimension offset references. Keep unselected gray offset lines visible; only hide the specific gray edge after it has been selected and replaced by a convex/concave joinery preview.
 - Practice SVG downloads are available for a cuboid and a gable-roof house. The gable-roof practice file includes English position labels such as `bottom`, `left`, `right`, `front`, `back`, `roof left`, and `roof right`.
 - Imported practice SVG paths preserve their `id` values so the joint workflow can display position labels on the preview for spatial matching practice.
 - The joint workflow supports simple SVG `polygon`, `polyline`, and path commands `M`, `L`, `H`, `V`, `Z`. Curves, complex transforms, and illustration-style SVG artwork should be expanded to straight paths before import.
