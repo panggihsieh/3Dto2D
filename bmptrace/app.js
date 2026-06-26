@@ -481,6 +481,7 @@ async function checkToolStatus() {
       cache: "no-store",
       signal: controller.signal
     });
+    if (!response.ok) throw new Error("helper unavailable");
     const result = await response.json();
     const potrace = result.potrace || { found: false };
     if (potrace.found) {
@@ -492,9 +493,8 @@ async function checkToolStatus() {
       openInstallModal();
     }
   } catch (error) {
-    setToolStatus(els.potraceStatus, "尚未連上本機 helper，請安裝 Potrace 或啟動 helper 後重試。", "error");
-    setInstallBadge("未安裝", "error");
-    openInstallModal();
+    setToolStatus(els.potraceStatus, "尚未連上本機 helper，無法由網頁判斷 Potrace 是否已安裝。請用 PowerShell 執行 potrace --version 驗證。", "warn");
+    setInstallBadge("無法判斷", "warn");
   } finally {
     window.clearTimeout(timeoutId);
   }

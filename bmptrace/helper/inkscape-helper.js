@@ -44,6 +44,14 @@ function findInkscape() {
 }
 
 function findPotrace() {
+  const env = process.env;
+  const candidates = [];
+  if (env.LOCALAPPDATA) {
+    candidates.push(path.join(env.LOCALAPPDATA, "Programs", "Potrace", "potrace.exe"));
+  }
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
   return findOnPath(os.platform() === "win32" ? ["potrace.exe"] : ["potrace"]);
 }
 
