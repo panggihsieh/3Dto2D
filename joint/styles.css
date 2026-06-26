@@ -444,7 +444,7 @@ button:disabled {
   border-color: #f97316;
   background: #fff176;
   font-weight: 800;
-  animation: tagButtonPulse 60s ease-in-out infinite;
+  animation: tagButtonBreath 60s ease-in-out infinite;
 }
 
 .tag-actions button[aria-pressed="true"] {
@@ -741,11 +741,12 @@ button:disabled {
   font-weight: 800;
 }
 
-@keyframes tagButtonPulse {
+@keyframes tagButtonBreath {
   0%,
   100% {
-    opacity: 0.86;
+    opacity: 0.9;
     transform: scale(1);
+    background: #fff176;
     box-shadow:
       0 0 0 0 rgba(249, 115, 22, 0),
       0 0 0 rgba(220, 38, 38, 0);
@@ -753,10 +754,11 @@ button:disabled {
 
   50% {
     opacity: 1;
-    transform: scale(1.045);
+    transform: scale(1.025);
+    background: #ffd166;
     box-shadow:
-      0 0 0 7px rgba(249, 115, 22, 0.32),
-      0 0 18px rgba(220, 38, 38, 0.45);
+      0 0 0 6px rgba(249, 115, 22, 0.2),
+      0 0 22px rgba(255, 183, 3, 0.48);
   }
 }
 
