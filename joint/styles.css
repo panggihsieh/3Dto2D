@@ -444,7 +444,7 @@ button:disabled {
   border-color: #f97316;
   background: #fff176;
   font-weight: 800;
-  animation: tagButtonPulse 0.82s ease-in-out infinite;
+  animation: tagButtonPulse 4.1s ease-in-out infinite;
 }
 
 .tag-actions button[aria-pressed="true"] {
