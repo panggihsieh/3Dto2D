@@ -111,6 +111,12 @@ document.querySelectorAll(".download-script").forEach((button) => {
   });
 });
 
+document.querySelectorAll(".recheck-tools").forEach((button) => {
+  button.addEventListener("click", () => {
+    checkToolStatus();
+  });
+});
+
 [
   els.machineWatts,
   els.outputWidthMm,
@@ -536,7 +542,7 @@ async function copyInstallCommand(command) {
     copied = fallbackCopyText(command);
   }
   if (copied) {
-    setCopyStatus("已複製 Windows 安裝指令，請貼到 PowerShell 執行。", "ok");
+    setCopyStatus("已複製指令，請貼到 PowerShell / Terminal 執行。", "ok");
   } else {
     setCopyStatus("已選取備用複製內容，請手動複製後貼到終端機執行。", "warn");
   }

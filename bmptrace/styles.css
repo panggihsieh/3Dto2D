@@ -303,6 +303,11 @@ select {
   line-height: 1.55;
 }
 
+.install-note code {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
