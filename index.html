@@ -185,14 +185,18 @@
 
       .test-entry {
         display: grid;
-        min-height: 96px;
+        justify-self: center;
+        width: 20%;
+        min-width: 72px;
+        min-height: 34px;
         place-items: center;
-        border: 1px solid rgba(255, 138, 0, 0.72);
+        border: 1px solid var(--black);
         border-radius: 8px;
-        color: var(--orange);
-        background: var(--black);
+        color: var(--black);
+        background: var(--orange);
         text-decoration: none;
-        box-shadow: 0 0 16px rgba(255, 138, 0, 0.22);
+        box-shadow: 0 8px 18px rgba(255, 138, 0, 0.22);
+        animation: testEntryBlink 2.4s ease-in-out infinite;
         transition:
           transform 90ms ease,
           border-color 180ms ease,
@@ -202,7 +206,7 @@
       .test-entry:hover,
       .test-entry:focus-visible {
         border-color: var(--orange-soft);
-        box-shadow: 0 0 22px rgba(255, 138, 0, 0.32);
+        box-shadow: 0 10px 22px rgba(255, 138, 0, 0.28);
         transform: translateY(-2px);
         outline: none;
       }
@@ -212,9 +216,28 @@
       }
 
       .test-entry strong {
-        color: var(--orange);
-        font-size: clamp(1.45rem, 2.6vw, 2.1rem);
+        color: inherit;
+        font-size: clamp(0.78rem, 1vw, 0.95rem);
         font-weight: 900;
+      }
+
+      @keyframes testEntryBlink {
+        0%,
+        100% {
+          box-shadow: 0 6px 14px rgba(255, 138, 0, 0.18);
+          opacity: 0.86;
+        }
+
+        50% {
+          box-shadow: 0 8px 20px rgba(255, 138, 0, 0.42);
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .test-entry {
+          animation: none;
+        }
       }
 
       .control-panel {
@@ -341,7 +364,7 @@
             </section>
 
             <a class="test-entry" href="bmptrace/" target="_blank" rel="noopener">
-              <strong>測試中</strong>
+              <strong>測試區</strong>
             </a>
           </aside>
         </div>
