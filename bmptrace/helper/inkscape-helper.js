@@ -80,7 +80,7 @@ $target = Start-Process -FilePath "powershell.exe" -ArgumentList @(
   "-NoExit",
   "-NoProfile",
   "-Command",
-  "$Host.UI.RawUI.WindowTitle='BMPTrace Potrace Install'; Write-Host '已開啟 BMPTrace Potrace 安裝 PowerShell。請貼上網頁剛複製的安裝命令後按 Enter。' -ForegroundColor Yellow"
+  "try { $Host.UI.RawUI.WindowTitle='BMPTrace Potrace Install'; $Host.UI.RawUI.BufferSize = New-Object Management.Automation.Host.Size(82, 60); $Host.UI.RawUI.WindowSize = New-Object Management.Automation.Host.Size(82, 8) } catch {}; Write-Host 'BMPTrace Potrace Install'; Write-Host '請貼上網頁剛複製的安裝命令後按 Enter。' -ForegroundColor Yellow"
 ) -WindowStyle Normal -PassThru
 $signature = '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);'
 Add-Type -MemberDefinition $signature -Name NativeWindow -Namespace Win32
@@ -89,10 +89,10 @@ for ($i = 0; $i -lt 40 -and ($null -eq $target -or $target.MainWindowHandle -eq 
   $target = Get-Process -Id $target.Id -ErrorAction SilentlyContinue
 }
 if ($target -and $target.MainWindowHandle -ne 0) {
-  [Win32.NativeWindow]::SetWindowPos($target.MainWindowHandle, [IntPtr]::new(-1), 0, 0, 0, 0, 0x0001 -bor 0x0002 -bor 0x0040) | Out-Null
+  [Win32.NativeWindow]::SetWindowPos($target.MainWindowHandle, [IntPtr]::new(-1), 80, 80, 760, 220, 0x0040) | Out-Null
   [Win32.NativeWindow]::SetForegroundWindow($target.MainWindowHandle) | Out-Null
   Start-Sleep -Milliseconds 400
-  [Win32.NativeWindow]::SetWindowPos($target.MainWindowHandle, [IntPtr]::new(-2), 0, 0, 0, 0, 0x0001 -bor 0x0002 -bor 0x0040) | Out-Null
+  [Win32.NativeWindow]::SetWindowPos($target.MainWindowHandle, [IntPtr]::new(-2), 80, 80, 760, 220, 0x0040) | Out-Null
 }
 `;
   const child = spawn("powershell.exe", [

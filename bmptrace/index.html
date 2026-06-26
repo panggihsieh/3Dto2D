@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FLUX Machine Z-Axis Gradient Output Workshop</title>
+    <title>Z-Axis Gradient Lab</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="shell">
       <header class="brand">
         <div>
-          <h1>FLUX Machine Z-Axis Gradient Output Workshop</h1>
+          <h1>Z-Axis Gradient Lab</h1>
         </div>
         <span class="status-pill" id="statusText">待上傳</span>
       </header>
@@ -171,7 +171,10 @@
       <section class="bottom-tools">
         <div class="panel">
           <div class="section-head">
-            <h2>Potrace 安裝檢查</h2>
+            <h2 class="install-title">
+              Potrace 安裝檢查
+              <span class="install-badge warn" id="potraceInstallBadge">檢查中</span>
+            </h2>
             <span>安裝指令</span>
           </div>
           <div class="actions install-actions">
@@ -179,16 +182,20 @@
               <span class="step-badge">1</span>
               Windows 安裝 Potrace 指令
             </button>
-            <button type="button" class="open-powershell step-button">
+            <button type="button" class="download-script step-button">
               <span class="step-badge">2</span>
+              下載 Windows 安裝腳本
+            </button>
+            <button type="button" class="open-powershell step-button">
+              <span class="step-badge">3</span>
               開啟 PowerShell
             </button>
             <button type="button" class="copy-command step-button" data-copy-command="brew install potrace&#10;potrace --version">
-              <span class="step-badge">3</span>
+              <span class="step-badge">4</span>
               macOS 安裝 Potrace 指令
             </button>
             <button type="button" class="copy-command step-button" data-copy-command="sudo apt update&#10;sudo apt install potrace&#10;potrace --version">
-              <span class="step-badge">4</span>
+              <span class="step-badge">5</span>
               Ubuntu 安裝 Potrace 指令
             </button>
           </div>
@@ -200,7 +207,7 @@
     <div class="modal-backdrop" id="installModal" hidden>
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="installModalTitle">
         <div class="section-head">
-          <h2 id="installModalTitle">尚未偵測到 Potrace，請開啟命令列 PowerShell（按鈕）複製貼上安裝命令</h2>
+          <h2 id="installModalTitle">尚未偵測到 Potrace，請下載 Windows 安裝腳本，或開啟 PowerShell 貼上安裝命令</h2>
           <span>請安裝</span>
         </div>
         <div class="actions install-actions">
@@ -208,8 +215,12 @@
             <span class="step-badge">1</span>
             複製 Windows 安裝 Potrace 指令
           </button>
-          <button type="button" class="open-powershell step-button">
+          <button type="button" class="download-script step-button">
             <span class="step-badge">2</span>
+            下載 Windows 安裝腳本
+          </button>
+          <button type="button" class="open-powershell step-button">
+            <span class="step-badge">3</span>
             開啟 PowerShell
           </button>
         </div>

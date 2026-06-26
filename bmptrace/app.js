@@ -11,6 +11,47 @@ const FIVE_LAYER_COLORS = [
   "#1d1d1d"
 ];
 
+const WINDOWS_POTRACE_INSTALL_SCRIPT = `# BMPTrace Potrace installer helper
+$ErrorActionPreference = "Stop"
+
+Write-Host "BMPTrace Potrace Install" -ForegroundColor Yellow
+Write-Host ""
+
+$existing = Get-Command potrace -ErrorAction SilentlyContinue
+if ($existing) {
+  Write-Host "Potrace is already available:" -ForegroundColor Green
+  potrace --version
+  Read-Host "Press Enter to close"
+  exit 0
+}
+
+$winget = Get-Command winget -ErrorAction SilentlyContinue
+if (-not $winget) {
+  Write-Host "winget was not found. Please install App Installer from Microsoft Store first." -ForegroundColor Red
+  Read-Host "Press Enter to close"
+  exit 1
+}
+
+Write-Host "Searching winget packages for Potrace..." -ForegroundColor Cyan
+winget search potrace
+Write-Host ""
+Write-Host "Copy the exact Id from the list above, then paste it below." -ForegroundColor Yellow
+$packageId = Read-Host "Potrace package Id"
+
+if ([string]::IsNullOrWhiteSpace($packageId)) {
+  Write-Host "No package Id entered. Nothing was installed." -ForegroundColor Red
+  Read-Host "Press Enter to close"
+  exit 1
+}
+
+winget install --id $packageId -e
+
+Write-Host ""
+Write-Host "Checking Potrace..." -ForegroundColor Cyan
+potrace --version
+Read-Host "Press Enter to close"
+`;
+
 const els = {
   imageInput: document.querySelector("#imageInput"),
   loadSample: document.querySelector("#loadSample"),
@@ -25,6 +66,7 @@ const els = {
   traceScans: document.querySelector("#traceScans"),
   checkTools: document.querySelector("#checkTools"),
   potraceStatus: document.querySelector("#potraceStatus"),
+  potraceInstallBadge: document.querySelector("#potraceInstallBadge"),
   installModal: document.querySelector("#installModal"),
   closeInstallModal: document.querySelector("#closeInstallModal"),
   downloadSvg: document.querySelector("#downloadSvg"),
@@ -99,6 +141,12 @@ document.querySelectorAll(".copy-command").forEach((button) => {
 document.querySelectorAll(".open-powershell").forEach((button) => {
   button.addEventListener("click", async () => {
     await openPowerShell();
+  });
+});
+
+document.querySelectorAll(".download-script").forEach((button) => {
+  button.addEventListener("click", () => {
+    downloadWindowsInstallScript();
   });
 });
 
@@ -458,6 +506,7 @@ function renderPowerTable() {
 
 async function checkToolStatus() {
   setToolStatus(els.potraceStatus, "正在檢查 Potrace...", "warn");
+  setInstallBadge("檢查中", "warn");
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 1500);
   try {
@@ -469,12 +518,15 @@ async function checkToolStatus() {
     const potrace = result.potrace || { found: false };
     if (potrace.found) {
       setToolStatus(els.potraceStatus, `已找到 Potrace：${potrace.path}`, "ok");
+      setInstallBadge("已安裝", "ok");
     } else {
       setToolStatus(els.potraceStatus, "尚未偵測到 Potrace。", "error");
+      setInstallBadge("未安裝", "error");
       openInstallModal();
     }
   } catch (error) {
     setToolStatus(els.potraceStatus, "尚未連上本機 helper，請安裝 Potrace 或啟動 helper 後重試。", "error");
+    setInstallBadge("未安裝", "error");
     openInstallModal();
   } finally {
     window.clearTimeout(timeoutId);
@@ -484,6 +536,11 @@ async function checkToolStatus() {
 function setToolStatus(element, message, level) {
   element.textContent = message;
   element.className = `tool-status ${level}`;
+}
+
+function setInstallBadge(message, level) {
+  els.potraceInstallBadge.textContent = message;
+  els.potraceInstallBadge.className = `install-badge ${level}`;
 }
 
 function openInstallModal() {
@@ -535,6 +592,21 @@ async function openPowerShell() {
   } catch (error) {
     setCopyStatus("無法由網頁直接開啟 PowerShell，請手動開啟 PowerShell 後貼上命令。", "warn");
   }
+}
+
+function downloadWindowsInstallScript() {
+  const blob = new Blob([WINDOWS_POTRACE_INSTALL_SCRIPT], {
+    type: "text/plain;charset=utf-8"
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "bmptrace-install-potrace.ps1";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setCopyStatus("已下載 Windows 安裝腳本。請在下載資料夾用 PowerShell 執行 bmptrace-install-potrace.ps1。", "ok");
 }
 
 function fallbackCopyText(text) {
