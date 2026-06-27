@@ -13,7 +13,7 @@ const FIVE_LAYER_COLORS = [
 
 const WINDOWS_INSTALL_SCRIPT_URL = "install/bmptrace-install-potrace.ps1";
 const SVG_LAYER_TRANSFER_KEY = "bmptrace.latestSvgForLayerInspector";
-const DEFAULT_PREVIEW_SCALE = 0.8;
+const DEFAULT_PREVIEW_SCALE = 1;
 const PREVIEW_SCALE_STEP = 0.1;
 const MIN_PREVIEW_SCALE = 0.2;
 const MAX_PREVIEW_SCALE = 4;
