@@ -735,16 +735,20 @@ function layerTone(layerIndex, layerCount) {
 }
 
 function layerLabel(layerIndex, settings) {
-  const colors = layerColors(settings.traceScans);
   const layer = `L${pad2(layerIndex + 1)}`;
-  const power = powerForLayer(layerIndex, settings).toFixed(1).replace(".", "p");
-  return `${layer}_${layerTone(layerIndex, settings.traceScans)}_gray_${colors[layerIndex].slice(1)}_${power}pct_FLUX_${settings.machineWatts}W`;
+  const power = formatLayerNumber(powerForLayer(layerIndex, settings));
+  const speed = formatLayerNumber(speedForLayer(layerIndex, settings));
+  return `${layer}_${layerTone(layerIndex, settings.traceScans)}_gray_${power}%w_${speed}mm/s`;
 }
 
 function layerId(layerIndex, settings) {
   return layerLabel(layerIndex, settings)
     .replace("#", "color_")
     .replace(/[^A-Za-z0-9_:-]/g, "_");
+}
+
+function formatLayerNumber(value) {
+  return Number(value).toFixed(1).replace(/\.0$/, "");
 }
 
 function updateMetrics(settings, sampled, layerRuns, tracePaths) {

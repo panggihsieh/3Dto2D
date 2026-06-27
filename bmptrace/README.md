@@ -60,8 +60,8 @@ Prefer importing the exported SVG by color in Beam Studio. The colors are graysc
 Each layer uses a fixed grayscale fill and a readable layer name such as:
 
 ```text
-L01_lightest_gray_b3b3b3_8p0pct_FLUX_30W
-L05_darkest_gray_1d1d1d_40p0pct_FLUX_30W
+L01_lightest_gray_8%w_100mm/s
+L05_darkest_gray_40%w_100mm/s
 ```
 
 Beam Studio may preserve SVG layer names, but automatic power assignment from SVG names or metadata should not be assumed. Use the exported CSV table to set the matching grayscale layers in Beam Studio.

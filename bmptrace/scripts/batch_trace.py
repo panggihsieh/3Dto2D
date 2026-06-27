@@ -123,11 +123,16 @@ def extract_paths(svg_path):
     return paths
 
 
-def layer_label(index, machine_watts, power):
+def layer_label(index, _machine_watts, power):
     layer = f"L{index + 1:02d}"
     tone = "lightest" if index == 0 else "darkest" if index == LAYER_COUNT - 1 else f"tone_{index + 1:02d}"
-    power_label = f"{power:.1f}".replace(".", "p")
-    return f"{layer}_{tone}_gray_{COLORS[index].lstrip('#')}_{power_label}pct_FLUX_{machine_watts:g}W"
+    power_label = format_layer_number(power)
+    speed_label = format_layer_number(DEFAULT_SPEED)
+    return f"{layer}_{tone}_gray_{power_label}%w_{speed_label}mm/s"
+
+
+def format_layer_number(value):
+    return f"{value:.1f}".removesuffix(".0")
 
 
 def write_svg(output_path, image, traced_layers, args):
