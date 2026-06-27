@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Z-Axis Gradient Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260627-1">
+    <link rel="stylesheet" href="styles.css?v=20260627-2">
   </head>
   <body>
     <main class="shell">
@@ -181,35 +181,27 @@
             </h2>
             <span>安裝指令</span>
           </div>
-          <p class="install-note">Potrace 是開源的點陣圖轉 SVG 向量輪廓工具，只處理影像轉檔，不會控制雷切機。Windows 安裝完成後請關閉 PowerShell、重新開啟，再用 <code>potrace --version</code> 驗證；若顯示 <code>potrace 1.16</code> 即成功。遠端網頁若沒有連到本機 helper，請用手動驗證確認。</p>
+          <p class="install-note">Potrace 是開源的點陣圖轉 SVG 向量輪廓工具，只處理影像轉檔，不會控制雷切機。Windows 請先按「安裝 Potrace」，完成後關閉 PowerShell、重新開啟，再用「驗證安裝」確認；若顯示 <code>potrace 1.16</code> 即成功。</p>
           <div class="actions install-actions">
             <button type="button" class="copy-command step-button" data-copy-command="$script=&quot;$env:TEMP\bmptrace-install-potrace.ps1&quot;&#10;Invoke-WebRequest -Uri &quot;https://panggihsieh.github.io/3Dto2D/bmptrace/install/bmptrace-install-potrace.ps1&quot; -OutFile $script&#10;powershell -ExecutionPolicy Bypass -File $script">
               <span class="step-badge">1</span>
-              複製 Windows 官方安裝指令
-            </button>
-            <button type="button" class="download-script step-button">
-              <span class="step-badge">2</span>
-              下載 Windows 官方安裝腳本
+              安裝 Potrace
             </button>
             <button type="button" class="copy-command step-button" data-copy-command="potrace --version">
-              <span class="step-badge">3</span>
-              複製驗證指令
+              <span class="step-badge">2</span>
+              驗證安裝
             </button>
             <button type="button" class="recheck-tools step-button">
-              <span class="step-badge">4</span>
-              重新檢查工具
-            </button>
-            <button type="button" class="open-powershell step-button">
-              <span class="step-badge">5</span>
-              開啟 PowerShell（可選）
+              <span class="step-badge">3</span>
+              重新檢查
             </button>
             <button type="button" class="copy-command step-button" data-copy-command="brew install potrace&#10;potrace --version">
-              <span class="step-badge">6</span>
-              macOS 安裝 Potrace 指令
+              <span class="step-badge">4</span>
+              macOS 指令
             </button>
             <button type="button" class="copy-command step-button" data-copy-command="sudo apt update&#10;sudo apt install potrace&#10;potrace --version">
-              <span class="step-badge">7</span>
-              Ubuntu 安裝 Potrace 指令
+              <span class="step-badge">5</span>
+              Ubuntu 指令
             </button>
           </div>
           <div class="copy-status" id="copyStatus" aria-live="polite"></div>
@@ -220,29 +212,21 @@
     <div class="modal-backdrop" id="installModal" hidden>
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="installModalTitle">
         <div class="section-head">
-          <h2 id="installModalTitle">尚未偵測到 Potrace，請下載 Windows 官方安裝腳本，或複製指令到 PowerShell 執行</h2>
+          <h2 id="installModalTitle">尚未偵測到 Potrace，請用三步驟完成 Windows 安裝與驗證</h2>
           <span>請安裝</span>
         </div>
         <div class="actions install-actions">
           <button type="button" class="copy-command step-button" data-copy-command="$script=&quot;$env:TEMP\bmptrace-install-potrace.ps1&quot;&#10;Invoke-WebRequest -Uri &quot;https://panggihsieh.github.io/3Dto2D/bmptrace/install/bmptrace-install-potrace.ps1&quot; -OutFile $script&#10;powershell -ExecutionPolicy Bypass -File $script">
             <span class="step-badge">1</span>
-            複製 Windows 官方安裝指令
-          </button>
-          <button type="button" class="download-script step-button">
-            <span class="step-badge">2</span>
-            下載 Windows 官方安裝腳本
+            安裝 Potrace
           </button>
           <button type="button" class="copy-command step-button" data-copy-command="potrace --version">
-            <span class="step-badge">3</span>
-            複製驗證指令
+            <span class="step-badge">2</span>
+            驗證安裝
           </button>
           <button type="button" class="recheck-tools step-button">
-            <span class="step-badge">4</span>
-            重新檢查工具
-          </button>
-          <button type="button" class="open-powershell step-button">
-            <span class="step-badge">5</span>
-            開啟 PowerShell（可選）
+            <span class="step-badge">3</span>
+            重新檢查
           </button>
         </div>
         <div class="actions modal-actions">
@@ -252,6 +236,6 @@
     </div>
 
     <script src="vendor/imagetracer_v1.2.6.js"></script>
-    <script src="app.js?v=20260627-1"></script>
+    <script src="app.js?v=20260627-2"></script>
   </body>
 </html>
