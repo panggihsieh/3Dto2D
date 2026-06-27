@@ -41,7 +41,6 @@ const els = {
   layerInspectorFrame: document.querySelector("#layerInspectorFrame"),
   downloadSvg: document.querySelector("#downloadSvg"),
   openLayerInspector: document.querySelector("#openLayerInspector"),
-  downloadCsv: document.querySelector("#downloadCsv"),
   downloadFallback: document.querySelector("#downloadFallback"),
   powerTable: document.querySelector("#powerTable"),
   profileSummary: document.querySelector("#profileSummary"),
@@ -181,10 +180,6 @@ els.openLayerInspector.addEventListener("click", () => {
   openLayerInspector(`${safeBaseName()}.svg`, buildSvgDocument());
 });
 
-els.downloadCsv.addEventListener("click", () => {
-  exposeDownload(`${safeBaseName()}_beam_studio_power_table.csv`, buildPowerCsv(), "text/csv;charset=utf-8", "csv");
-});
-
 async function loadImageFile(file) {
   const dataUrl = await readFileAsDataUrl(file);
   const image = await loadImage(dataUrl);
@@ -219,7 +214,6 @@ function buildPreview({ resetZoom = false } = {}) {
   updateMetrics(settings, sampled, layerRuns, tracePaths);
   els.downloadSvg.disabled = false;
   els.openLayerInspector.disabled = false;
-  els.downloadCsv.disabled = false;
   els.sourcePreview.src = state.imageUrl;
   els.sourceInset.hidden = false;
   els.emptyState.hidden = true;
