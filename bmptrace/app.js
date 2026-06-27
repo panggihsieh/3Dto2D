@@ -36,6 +36,9 @@ const els = {
   topPotraceBadge: document.querySelector("#topPotraceBadge"),
   installModal: document.querySelector("#installModal"),
   closeInstallModal: document.querySelector("#closeInstallModal"),
+  layerInspectorModal: document.querySelector("#layerInspectorModal"),
+  closeLayerInspectorModal: document.querySelector("#closeLayerInspectorModal"),
+  layerInspectorFrame: document.querySelector("#layerInspectorFrame"),
   downloadSvg: document.querySelector("#downloadSvg"),
   openLayerInspector: document.querySelector("#openLayerInspector"),
   downloadCsv: document.querySelector("#downloadCsv"),
@@ -97,6 +100,14 @@ els.closeInstallModal.addEventListener("click", () => {
 
 els.installModal.addEventListener("click", (event) => {
   if (event.target === els.installModal) closeInstallModal();
+});
+
+els.closeLayerInspectorModal.addEventListener("click", () => {
+  closeLayerInspectorModal();
+});
+
+els.layerInspectorModal.addEventListener("click", (event) => {
+  if (event.target === els.layerInspectorModal) closeLayerInspectorModal();
 });
 
 document.querySelectorAll(".tab-button").forEach((button) => {
@@ -569,6 +580,16 @@ function closeInstallModal() {
   els.installModal.hidden = true;
 }
 
+function openLayerInspectorModal() {
+  els.layerInspectorFrame.src = `../svglayers/?from=bmptrace&embed=1&v=${Date.now()}`;
+  els.layerInspectorModal.hidden = false;
+}
+
+function closeLayerInspectorModal() {
+  els.layerInspectorModal.hidden = true;
+  els.layerInspectorFrame.removeAttribute("src");
+}
+
 function activateTab(tabId) {
   if (!tabId) return;
   document.querySelectorAll(".tab-button").forEach((button) => {
@@ -876,11 +897,7 @@ function openLayerInspector(name, content) {
     setCopyStatus("SVG 已下載，但檔案太大無法自動送到圖層檢視器。請在圖層檢視器手動上傳 SVG。", "warn");
     return;
   }
-  const inspector = window.open("../svglayers/?from=bmptrace", "_blank");
-  if (inspector) inspector.opener = null;
-  if (!inspector) {
-    setCopyStatus("SVG 已下載。若未自動開啟圖層檢視器，請點下方「開啟 SVG 圖層檢視器」。", "warn");
-  }
+  openLayerInspectorModal();
 }
 
 function csvCell(value) {
