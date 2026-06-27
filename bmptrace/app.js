@@ -37,6 +37,7 @@ const els = {
   installModal: document.querySelector("#installModal"),
   closeInstallModal: document.querySelector("#closeInstallModal"),
   downloadSvg: document.querySelector("#downloadSvg"),
+  openLayerInspector: document.querySelector("#openLayerInspector"),
   downloadCsv: document.querySelector("#downloadCsv"),
   downloadFallback: document.querySelector("#downloadFallback"),
   powerTable: document.querySelector("#powerTable"),
@@ -164,6 +165,11 @@ els.downloadSvg.addEventListener("click", () => {
   exposeDownload(`${safeBaseName()}.svg`, buildSvgDocument(), "image/svg+xml", "svg");
 });
 
+els.openLayerInspector.addEventListener("click", () => {
+  if (!state.sampled) return;
+  openLayerInspector(`${safeBaseName()}.svg`, buildSvgDocument());
+});
+
 els.downloadCsv.addEventListener("click", () => {
   exposeDownload(`${safeBaseName()}_beam_studio_power_table.csv`, buildPowerCsv(), "text/csv;charset=utf-8", "csv");
 });
@@ -201,6 +207,7 @@ function buildPreview({ resetZoom = false } = {}) {
   if (resetZoom) setPreviewScale(DEFAULT_PREVIEW_SCALE);
   updateMetrics(settings, sampled, layerRuns, tracePaths);
   els.downloadSvg.disabled = false;
+  els.openLayerInspector.disabled = false;
   els.downloadCsv.disabled = false;
   els.sourcePreview.src = state.imageUrl;
   els.sourceInset.hidden = false;
@@ -855,14 +862,6 @@ function renderDownloadFallback() {
     link.rel = "noopener";
     link.textContent = isSvg ? "開啟 / 另存 SVG" : "開啟 / 另存功率表 CSV";
     els.downloadFallback.appendChild(link);
-    if (isSvg) {
-      const inspectLink = document.createElement("a");
-      inspectLink.href = "../svglayers/?from=bmptrace";
-      inspectLink.target = "_blank";
-      inspectLink.rel = "noopener";
-      inspectLink.textContent = "開啟 SVG 圖層檢視器";
-      els.downloadFallback.appendChild(inspectLink);
-    }
   });
 }
 
