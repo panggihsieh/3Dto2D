@@ -17,6 +17,8 @@ const els = {
   hideAll: document.querySelector("#hideAll")
 };
 
+const SVG_LAYER_TRANSFER_KEY = "bmptrace.latestSvgForLayerInspector";
+
 const state = {
   svg: null,
   layers: [],
@@ -78,6 +80,8 @@ els.viewer.addEventListener("pointerup", () => {
   state.dragging = false;
 });
 
+loadTransferredSvg();
+
 function loadSvgText(text, fileName) {
   const doc = new DOMParser().parseFromString(text, "image/svg+xml");
   const parseError = doc.querySelector("parsererror");
@@ -98,6 +102,20 @@ function loadSvgText(text, fileName) {
   setStatus("已載入");
   renderLayers();
   resetView();
+}
+
+function loadTransferredSvg() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("from") !== "bmptrace") return;
+  try {
+    const raw = localStorage.getItem(SVG_LAYER_TRANSFER_KEY);
+    if (!raw) return;
+    const transfer = JSON.parse(raw);
+    if (!transfer?.content) return;
+    loadSvgText(transfer.content, transfer.name || "bmptrace-export.svg");
+  } catch (error) {
+    setStatus("無法載入剛下載的 SVG，請手動上傳");
+  }
 }
 
 function sanitizeSvg(svg) {

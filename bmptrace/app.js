@@ -12,6 +12,7 @@ const FIVE_LAYER_COLORS = [
 ];
 
 const WINDOWS_INSTALL_SCRIPT_URL = "install/bmptrace-install-potrace.ps1";
+const SVG_LAYER_TRANSFER_KEY = "bmptrace.latestSvgForLayerInspector";
 
 const els = {
   imageInput: document.querySelector("#imageInput"),
@@ -803,6 +804,7 @@ function exposeDownload(name, content, type, key) {
   link.click();
   link.remove();
   renderDownloadFallback();
+  if (key === "svg") openLayerInspector(name, content);
 }
 
 function renderDownloadFallback() {
@@ -823,7 +825,33 @@ function renderDownloadFallback() {
     link.rel = "noopener";
     link.textContent = isSvg ? "開啟 / 另存 SVG" : "開啟 / 另存功率表 CSV";
     els.downloadFallback.appendChild(link);
+    if (isSvg) {
+      const inspectLink = document.createElement("a");
+      inspectLink.href = "../svglayers/?from=bmptrace";
+      inspectLink.target = "_blank";
+      inspectLink.rel = "noopener";
+      inspectLink.textContent = "開啟 SVG 圖層檢視器";
+      els.downloadFallback.appendChild(inspectLink);
+    }
   });
+}
+
+function openLayerInspector(name, content) {
+  try {
+    localStorage.setItem(SVG_LAYER_TRANSFER_KEY, JSON.stringify({
+      name,
+      content,
+      savedAt: Date.now()
+    }));
+  } catch (error) {
+    setCopyStatus("SVG 已下載，但檔案太大無法自動送到圖層檢視器。請在圖層檢視器手動上傳 SVG。", "warn");
+    return;
+  }
+  const inspector = window.open("../svglayers/?from=bmptrace", "_blank");
+  if (inspector) inspector.opener = null;
+  if (!inspector) {
+    setCopyStatus("SVG 已下載。若未自動開啟圖層檢視器，請點下方「開啟 SVG 圖層檢視器」。", "warn");
+  }
 }
 
 function csvCell(value) {
