@@ -141,6 +141,15 @@
         line-height: 1.6;
       }
 
+      .option p + p {
+        margin-top: 10px;
+      }
+
+      .option .note-line {
+        color: var(--orange-soft);
+        font-weight: 800;
+      }
+
       .btn-steam {
         align-self: end;
         justify-self: center;
@@ -257,7 +266,7 @@
     <main>
       <section class="home" aria-labelledby="homeTitle">
         <header>
-          <h1 id="homeTitle" class="highlight-title">JointCraft Lab</h1>
+          <h1 id="homeTitle" class="highlight-title">雷雕實驗室</h1>
         </header>
 
         <div class="workbench">
@@ -266,28 +275,29 @@
               <div>
                 <p>可切換沒有接榫與接榫後兩種狀態，適合檢視內建幾何展開後的凹凸契合。</p>
               </div>
-              <span class="btn-steam">展示區</span>
+              <span class="btn-steam">接榫展示區</span>
             </a>
 
             <a class="option" href="joint/" target="_blank" rel="noopener">
               <div>
                 <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
               </div>
-              <span class="btn-steam">上傳區</span>
+              <span class="btn-steam">接榫製作區</span>
             </a>
 
             <a class="option" href="bmptrace/" target="_blank" rel="noopener">
               <div>
+                <p class="note-line">本地需安裝 Potrace 開源軟體。</p>
                 <p>將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。</p>
               </div>
-              <span class="btn-steam">漸層區</span>
+              <span class="btn-steam">漸層一鍵生</span>
             </a>
 
             <a class="option" href="svglayers/" target="_blank" rel="noopener">
               <div>
                 <p>上傳 SVG 後檢視圖層名稱、切換圖層顯示，並用縮放功能確認向量細節。</p>
               </div>
-              <span class="btn-steam">檢圖區</span>
+              <span class="btn-steam">漸層檢視區</span>
             </a>
           </div>
 
