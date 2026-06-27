@@ -66,6 +66,55 @@
         text-align: center;
       }
 
+      .language-switcher {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 10;
+      }
+
+      .language-switcher label {
+        display: block;
+      }
+
+      .language-switcher span {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .language-switcher select {
+        min-height: 40px;
+        border: 1px solid rgba(255, 138, 0, 0.65);
+        border-radius: 6px;
+        padding: 8px 36px 8px 12px;
+        color: var(--orange);
+        background:
+          linear-gradient(45deg, transparent 50%, var(--orange) 50%),
+          linear-gradient(135deg, var(--orange) 50%, transparent 50%),
+          var(--black);
+        background-position:
+          calc(100% - 17px) 17px,
+          calc(100% - 12px) 17px,
+          100% 0;
+        background-repeat: no-repeat;
+        background-size: 5px 5px, 5px 5px, 2.5rem 100%;
+        box-shadow: 0 0 16px rgba(255, 138, 0, 0.18);
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 800;
+        appearance: none;
+      }
+
+      .language-switcher select:focus-visible {
+        border-color: var(--orange-soft);
+        outline: 2px solid var(--steam-blue);
+        outline-offset: 2px;
+      }
+
       /* High-contrast workshop labels requested for the landing page. */
       .highlight-title,
       .highlight-heading {
@@ -255,6 +304,17 @@
           bottom: 10px;
         }
 
+        .language-switcher {
+          position: static;
+          justify-self: end;
+          width: min(210px, 100%);
+          margin: 0 0 14px auto;
+        }
+
+        .language-switcher select {
+          width: 100%;
+        }
+
         .options,
         .field-grid {
           grid-template-columns: 1fr;
@@ -263,69 +323,196 @@
     </style>
   </head>
   <body>
+    <div class="language-switcher">
+      <label>
+        <span data-i18n="languageLabel">語言</span>
+        <select id="languageSelect" aria-label="語言">
+          <option value="zh-Hant">zh-hant (中文)</option>
+          <option value="en">en(英文)</option>
+          <option value="de">de(德文)</option>
+          <option value="de-AT">de-AT(奧地利文)</option>
+        </select>
+      </label>
+    </div>
     <main>
       <section class="home" aria-labelledby="homeTitle">
         <header>
-          <h1 id="homeTitle" class="highlight-title">雷雕實驗室</h1>
+          <h1 id="homeTitle" class="highlight-title" data-i18n="homeTitle">雷雕實驗室</h1>
         </header>
 
         <div class="workbench">
           <div class="options">
             <a class="option" href="basic/" target="_blank" rel="noopener">
               <div>
-                <p>可切換沒有接榫與接榫後兩種狀態，適合檢視內建幾何展開後的凹凸契合。</p>
+                <p data-i18n="basicDescription">可切換沒有接榫與接榫後兩種狀態，適合檢視內建幾何展開後的凹凸契合。</p>
               </div>
-              <span class="btn-steam">接榫展示區</span>
+              <span class="btn-steam" data-i18n="basicButton">接榫展示區</span>
             </a>
 
             <a class="option" href="joint/" target="_blank" rel="noopener">
               <div>
-                <p>純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
+                <p data-i18n="jointDescription">純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。</p>
               </div>
-              <span class="btn-steam">接榫製作區</span>
+              <span class="btn-steam" data-i18n="jointButton">接榫製作區</span>
             </a>
 
             <a class="option" href="bmptrace/" target="_blank" rel="noopener">
               <div>
-                <p class="note-line">本地需安裝 Potrace 開源軟體。</p>
-                <p>將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。</p>
+                <p class="note-line" data-i18n="bmptraceNote">本地需安裝 Potrace 開源軟體。</p>
+                <p data-i18n="bmptraceDescription">將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。</p>
               </div>
-              <span class="btn-steam">漸層一鍵生</span>
+              <span class="btn-steam" data-i18n="bmptraceButton">漸層一鍵生</span>
             </a>
 
             <a class="option" href="svglayers/" target="_blank" rel="noopener">
               <div>
-                <p>上傳 SVG 後檢視圖層名稱、切換圖層顯示，並用縮放功能確認向量細節。</p>
+                <p data-i18n="svglayersDescription">上傳 SVG 後檢視圖層名稱、切換圖層顯示，並用縮放功能確認向量細節。</p>
               </div>
-              <span class="btn-steam">漸層檢視區</span>
+              <span class="btn-steam" data-i18n="svglayersButton">漸層檢視區</span>
             </a>
           </div>
 
-          <section class="control-panel" aria-label="工程資料預覽">
-            <h2 class="panel-title">練習參數快照</h2>
-            <p>快速預覽材料與接榫參數，實際輸出仍在各工具頁面中調整。</p>
+          <section class="control-panel" aria-label="工程資料預覽" data-i18n-aria-label="controlAria">
+            <h2 class="panel-title" data-i18n="controlTitle">練習參數快照</h2>
+            <p data-i18n="controlDescription">快速預覽材料與接榫參數，實際輸出仍在各工具頁面中調整。</p>
             <div class="field-grid">
               <label>
-                材料厚度 mm
-                <input type="text" value="3.0" aria-label="材料厚度 mm">
+                <span data-i18n="materialThickness">材料厚度 mm</span>
+                <input type="text" value="3.0" aria-label="材料厚度 mm" data-i18n-aria-label="materialThickness">
               </label>
               <label>
-                Kerf mm
+                <span data-i18n="kerf">Kerf mm</span>
                 <input type="text" value="0.15" aria-label="Kerf mm">
               </label>
               <label>
-                接榫寬度 mm
-                <input type="text" value="10" aria-label="接榫寬度 mm">
+                <span data-i18n="tabWidth">接榫寬度 mm</span>
+                <input type="text" value="10" aria-label="接榫寬度 mm" data-i18n-aria-label="tabWidth">
               </label>
               <label>
-                接榫深度 mm
-                <input type="text" value="3" aria-label="接榫深度 mm">
+                <span data-i18n="tabDepth">接榫深度 mm</span>
+                <input type="text" value="3" aria-label="接榫深度 mm" data-i18n-aria-label="tabDepth">
               </label>
             </div>
           </section>
         </div>
       </section>
-      <a class="credit" href="bmptrace/" target="_blank" rel="noopener">@大南國小 邦基老師</a>
+      <a class="credit" href="https://www.youtube.com/watch?v=ajS14K2Bd28&amp;list=PLOpaxws6B-0QGvgA3LF9dzdTRRb6PtHp7" target="_blank" rel="noopener">@大南國小 邦基老師</a>
     </main>
+    <script>
+      const translations = {
+        "zh-Hant": {
+          documentTitle: "3D to 2D SVG Tools",
+          languageLabel: "語言",
+          controlAria: "工程資料預覽",
+          homeTitle: "雷雕實驗室",
+          basicDescription: "可切換沒有接榫與接榫後兩種狀態，適合檢視內建幾何展開後的凹凸契合。",
+          basicButton: "接榫展示區",
+          jointDescription: "純粹接榫功能。上傳 SVG，選取一對邊，產生 f/F 互補接榫輪廓。",
+          jointButton: "接榫製作區",
+          bmptraceNote: "本地需安裝 Potrace 開源軟體。",
+          bmptraceDescription: "將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。",
+          bmptraceButton: "漸層一鍵生",
+          svglayersDescription: "上傳 SVG 後檢視圖層名稱、切換圖層顯示，並用縮放功能確認向量細節。",
+          svglayersButton: "漸層檢視區",
+          controlTitle: "練習參數快照",
+          controlDescription: "快速預覽材料與接榫參數，實際輸出仍在各工具頁面中調整。",
+          materialThickness: "材料厚度 mm",
+          kerf: "Kerf mm",
+          tabWidth: "接榫寬度 mm",
+          tabDepth: "接榫深度 mm"
+        },
+        en: {
+          documentTitle: "3D to 2D SVG Tools",
+          languageLabel: "Language",
+          controlAria: "Engineering data preview",
+          homeTitle: "Laser Lab",
+          basicDescription: "Switch between plain and joined states to inspect how the built-in unfolded geometry fits together.",
+          basicButton: "Joinery Demo",
+          jointDescription: "A focused joinery tool. Upload an SVG, select a pair of edges, and generate matching f/F finger-joint outlines.",
+          jointButton: "Joinery Builder",
+          bmptraceNote: "Potrace open-source software must be installed locally.",
+          bmptraceDescription: "Convert images into grayscale layered SVGs for FLUX / Beam Studio gradient engraving tests and power tables.",
+          bmptraceButton: "Gradient Maker",
+          svglayersDescription: "Upload an SVG to inspect layer names, toggle layer visibility, and zoom in to check vector details.",
+          svglayersButton: "Layer Inspector",
+          controlTitle: "Practice Parameter Snapshot",
+          controlDescription: "Preview material and joinery parameters quickly; final output is still adjusted inside each tool page.",
+          materialThickness: "Material thickness mm",
+          kerf: "Kerf mm",
+          tabWidth: "Tab width mm",
+          tabDepth: "Tab depth mm"
+        },
+        de: {
+          documentTitle: "3D-zu-2D-SVG-Werkzeuge",
+          languageLabel: "Sprache",
+          controlAria: "Vorschau der technischen Daten",
+          homeTitle: "Laserlabor",
+          basicDescription: "Wechseln Sie zwischen Zustand ohne und mit Zapfen, um die Passung der integrierten Abwicklung zu prüfen.",
+          basicButton: "Zapfen-Demo",
+          jointDescription: "Ein reines Zapfenwerkzeug. Laden Sie eine SVG hoch, wählen Sie ein Kantenpaar und erzeugen Sie passende f/F-Zapfenkonturen.",
+          jointButton: "Zapfen erstellen",
+          bmptraceNote: "Die Open-Source-Software Potrace muss lokal installiert sein.",
+          bmptraceDescription: "Wandeln Sie Bilder in graustufige SVG-Ebenen für FLUX / Beam Studio Gravurtests und Leistungstabellen um.",
+          bmptraceButton: "Verlauf erstellen",
+          svglayersDescription: "Laden Sie eine SVG hoch, prüfen Sie Ebenennamen, schalten Sie Ebenen ein oder aus und zoomen Sie in Vektordetails.",
+          svglayersButton: "Ebenen prüfen",
+          controlTitle: "Parameter-Schnappschuss",
+          controlDescription: "Schnelle Vorschau von Material- und Zapfenparametern; die Ausgabe wird in den einzelnen Werkzeugseiten angepasst.",
+          materialThickness: "Materialstärke mm",
+          kerf: "Schnittfuge mm",
+          tabWidth: "Zapfenbreite mm",
+          tabDepth: "Zapfentiefe mm"
+        },
+        "de-AT": {
+          documentTitle: "3D-zu-2D-SVG-Werkzeuge",
+          languageLabel: "Sprache",
+          controlAria: "Vorschau der technischen Daten",
+          homeTitle: "Laserwerkstatt",
+          basicDescription: "Wechseln Sie zwischen Zustand ohne und mit Zapfen, um die Passung der integrierten Abwicklung zu kontrollieren.",
+          basicButton: "Zapfen-Demo",
+          jointDescription: "Ein kompaktes Zapfenwerkzeug. Laden Sie eine SVG hoch, wählen Sie ein Kantenpaar und erzeugen Sie passende f/F-Zapfenkonturen.",
+          jointButton: "Zapfen bauen",
+          bmptraceNote: "Die Open-Source-Software Potrace muss lokal installiert sein.",
+          bmptraceDescription: "Wandeln Sie Bilder in graustufige SVG-Ebenen für FLUX / Beam Studio Gravurtests und Leistungstabellen um.",
+          bmptraceButton: "Verlauf erzeugen",
+          svglayersDescription: "Laden Sie eine SVG hoch, prüfen Sie Ebenennamen, blenden Sie Ebenen ein oder aus und zoomen Sie in Vektordetails.",
+          svglayersButton: "Ebenen prüfen",
+          controlTitle: "Parameter-Überblick",
+          controlDescription: "Schnelle Vorschau von Material- und Zapfenparametern; die Ausgabe wird in den jeweiligen Werkzeugseiten angepasst.",
+          materialThickness: "Materialstärke mm",
+          kerf: "Schnittfuge mm",
+          tabWidth: "Zapfenbreite mm",
+          tabDepth: "Zapfentiefe mm"
+        }
+      };
+
+      const languageSelect = document.querySelector("#languageSelect");
+      const defaultLanguage = "zh-Hant";
+
+      function applyLanguage(language) {
+        const dictionary = translations[language] || translations[defaultLanguage];
+        document.documentElement.lang = language;
+        document.title = dictionary.documentTitle;
+
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const key = element.dataset.i18n;
+          if (dictionary[key]) element.textContent = dictionary[key];
+        });
+
+        document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+          const key = element.dataset.i18nAriaLabel;
+          if (dictionary[key]) element.setAttribute("aria-label", dictionary[key]);
+        });
+
+        languageSelect.value = translations[language] ? language : defaultLanguage;
+        localStorage.setItem("homeLanguage", languageSelect.value);
+      }
+
+      languageSelect.addEventListener("change", (event) => {
+        applyLanguage(event.target.value);
+      });
+
+      applyLanguage(localStorage.getItem("homeLanguage") || defaultLanguage);
+    </script>
   </body>
 </html>

@@ -1,0 +1,58 @@
+.language-switcher {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+}
+
+.language-switcher label {
+  display: block;
+}
+
+.language-switcher span {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.language-switcher select {
+  min-height: 36px;
+  max-width: 210px;
+  border: 1px solid #b9c2cc;
+  border-radius: 7px;
+  padding: 7px 34px 7px 10px;
+  color: #1d2329;
+  background:
+    linear-gradient(45deg, transparent 50%, #687380 50%),
+    linear-gradient(135deg, #687380 50%, transparent 50%),
+    #ffffff;
+  background-position:
+    calc(100% - 16px) 15px,
+    calc(100% - 11px) 15px,
+    100% 0;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px, 2.4rem 100%;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.14);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  appearance: none;
+}
+
+.language-switcher select:focus-visible {
+  outline: 2px solid #0b6bcb;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .language-switcher {
+    position: sticky;
+    top: 8px;
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 8px 0;
+  }
+}
