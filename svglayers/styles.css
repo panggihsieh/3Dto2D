@@ -279,6 +279,25 @@ input[type="file"] {
   line-height: 1.5;
 }
 
+.manual-panel {
+  margin-top: 18px;
+}
+
+.manual-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.manual-list li::marker {
+  color: var(--orange);
+  font-weight: 900;
+}
+
 @media (max-width: 1120px) {
   .layout {
     grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);

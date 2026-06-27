@@ -585,6 +585,21 @@ select {
   font-size: 0.72rem;
 }
 
+.manual-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.manual-list li::marker {
+  color: var(--orange);
+  font-weight: 900;
+}
+
 .preview-frame {
   position: relative;
   display: grid;
