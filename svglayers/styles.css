@@ -298,6 +298,11 @@ input[type="file"] {
   font-weight: 900;
 }
 
+.manual-warning {
+  color: #d60000;
+  font-weight: 900;
+}
+
 @media (max-width: 1120px) {
   .layout {
     grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);
