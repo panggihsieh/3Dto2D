@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Z-Axis Gradient Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260626-10">
+    <link rel="stylesheet" href="styles.css?v=20260627-1">
   </head>
   <body>
     <main class="shell">
-      <div class="floating-tool-status warn" id="topPotraceBadge" aria-live="polite">
+      <div class="floating-tool-status warn" id="topPotraceBadge" aria-live="polite" hidden>
         <span class="status-dot"></span>
         <span>Potrace：檢查中</span>
       </div>
@@ -181,7 +181,7 @@
             </h2>
             <span>安裝指令</span>
           </div>
-          <p class="install-note">Potrace 是開源的點陣圖轉 SVG 向量輪廓工具，只處理影像轉檔，不會控制雷切機。Windows 安裝完成後請關閉 PowerShell、重新開啟，再用 <code>potrace --version</code> 驗證；若顯示 <code>potrace 1.16</code> 即成功。遠端網頁若沒有連到本機 helper，會顯示「無法判斷」。</p>
+          <p class="install-note">Potrace 是開源的點陣圖轉 SVG 向量輪廓工具，只處理影像轉檔，不會控制雷切機。Windows 安裝完成後請關閉 PowerShell、重新開啟，再用 <code>potrace --version</code> 驗證；若顯示 <code>potrace 1.16</code> 即成功。遠端網頁若沒有連到本機 helper，請用手動驗證確認。</p>
           <div class="actions install-actions">
             <button type="button" class="copy-command step-button" data-copy-command="$script=&quot;$env:TEMP\bmptrace-install-potrace.ps1&quot;&#10;Invoke-WebRequest -Uri &quot;https://panggihsieh.github.io/3Dto2D/bmptrace/install/bmptrace-install-potrace.ps1&quot; -OutFile $script&#10;powershell -ExecutionPolicy Bypass -File $script">
               <span class="step-badge">1</span>
@@ -252,6 +252,6 @@
     </div>
 
     <script src="vendor/imagetracer_v1.2.6.js"></script>
-    <script src="app.js?v=20260626-10"></script>
+    <script src="app.js?v=20260627-1"></script>
   </body>
 </html>

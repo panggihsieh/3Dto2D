@@ -475,6 +475,7 @@ function renderPowerTable() {
 async function checkToolStatus() {
   setToolStatus(els.potraceStatus, "正在檢查 Potrace...", "warn");
   setInstallBadge("檢查中", "warn");
+  setTopPotraceBadge("檢查中", "warn", true);
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 1500);
   try {
@@ -488,14 +489,17 @@ async function checkToolStatus() {
     if (potrace.found) {
       setToolStatus(els.potraceStatus, `已找到 Potrace：${potrace.path}`, "ok");
       setInstallBadge("已安裝", "ok");
+      setTopPotraceBadge("已安裝", "ok", true);
     } else {
       setToolStatus(els.potraceStatus, "尚未偵測到 Potrace。", "error");
       setInstallBadge("未安裝", "error");
+      setTopPotraceBadge("未安裝", "error", true);
       openInstallModal();
     }
   } catch (error) {
-    setToolStatus(els.potraceStatus, "尚未連上本機 helper，無法由網頁判斷 Potrace 是否已安裝。請用 PowerShell 執行 potrace --version 驗證。", "warn");
-    setInstallBadge("無法判斷", "warn");
+    setToolStatus(els.potraceStatus, "尚未連上本機 helper。請用 PowerShell 執行 potrace --version 手動驗證。", "warn");
+    setInstallBadge("手動驗證", "warn");
+    setTopPotraceBadge("", "warn", false);
   } finally {
     window.clearTimeout(timeoutId);
   }
@@ -509,8 +513,14 @@ function setToolStatus(element, message, level) {
 function setInstallBadge(message, level) {
   els.potraceInstallBadge.textContent = message;
   els.potraceInstallBadge.className = `install-badge ${level}`;
+}
+
+function setTopPotraceBadge(message, level, visible) {
+  els.topPotraceBadge.hidden = !visible;
   els.topPotraceBadge.className = `floating-tool-status ${level}`;
-  els.topPotraceBadge.querySelector("span:last-child").textContent = `Potrace：${message}`;
+  if (visible) {
+    els.topPotraceBadge.querySelector("span:last-child").textContent = `Potrace：${message}`;
+  }
 }
 
 function openInstallModal() {
