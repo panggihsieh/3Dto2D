@@ -277,13 +277,36 @@ select {
   flex-wrap: wrap;
 }
 
+.export-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .export-actions button,
 .install-actions button {
   flex: 1 1 140px;
 }
 
+.export-actions button {
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: clamp(0.78rem, 1.2vw, 0.98rem);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.export-actions button:not(:disabled) {
+  color: var(--orange);
+  background: var(--black);
+}
+
+.export-actions .breathing-button:not(:disabled) {
+  color: var(--black);
+  background: var(--orange);
+}
+
 .breathing-button:not(:disabled) {
-  animation: buttonBreath 1.35s ease-in-out infinite;
+  animation: buttonBreath 1.8s ease-in-out infinite;
 }
 
 .step-button {
@@ -356,13 +379,13 @@ select {
 @keyframes buttonBreath {
   0%,
   100% {
-    border-color: rgba(255, 138, 0, 0.62);
+    filter: brightness(1);
     box-shadow: 0 0 0 rgba(255, 138, 0, 0);
   }
 
   50% {
-    border-color: var(--orange);
-    box-shadow: 0 0 18px rgba(255, 138, 0, 0.42);
+    filter: brightness(1.08);
+    box-shadow: 0 0 10px rgba(255, 138, 0, 0.28);
   }
 }
 
