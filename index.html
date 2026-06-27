@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="notranslate" translate="no">
   <head>
     <meta charset="utf-8">
+    <meta name="google" content="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>3D to 2D SVG Tools</title>
     <style>
@@ -492,6 +493,9 @@
       function applyLanguage(language) {
         const dictionary = translations[language] || translations[defaultLanguage];
         document.documentElement.lang = language;
+        document.documentElement.classList.add("notranslate");
+        document.documentElement.setAttribute("translate", "no");
+        document.body.setAttribute("translate", "no");
         document.title = dictionary.documentTitle;
 
         document.querySelectorAll("[data-i18n]").forEach((element) => {

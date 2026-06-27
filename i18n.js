@@ -85,26 +85,27 @@
       text: {
         ".eyebrow": ["Basic mode", "Basic mode", "Basismodus", "Basismodus"],
         "h1": ["基本切割展開", "Basic Cut Layout", "Einfache Schnittabwicklung", "Einfache Schnittabwicklung"],
+        "#statusPill": ["Ready", "Ready", "Bereit", "Bereit"],
         "#modelTitle": ["模型", "Model", "Modell", "Modell"],
-        "label[for='modelType'] span": ["模型類型", "Model type", "Modelltyp", "Modelltyp"],
+        "label:has(#modelType) span": ["模型類型", "Model type", "Modelltyp", "Modelltyp"],
         "#modelType option[value='cuboid']": ["長方體", "Cuboid", "Quader", "Quader"],
         "#modelType option[value='cube']": ["正立方體", "Cube", "Würfel", "Würfel"],
         "#modelType option[value='gable_house']": ["雙斜屋頂小屋", "Gable-roof house", "Haus mit Satteldach", "Haus mit Satteldach"],
         "#sizeTitle": ["尺寸 mm", "Size mm", "Maße mm", "Maße mm"],
         "#innerDimensionButton": ["內尺寸", "Inner size", "Innenmaß", "Innenmaß"],
         "#dimensionModeStatus": ["目前：內尺寸(長寬高為內部尺寸)", "Current: inner size (L/W/H are internal dimensions)", "Aktuell: Innenmaß (L/B/H sind Innenmaße)", "Aktuell: Innenmaß (L/B/H sind Innenmaße)"],
-        "label[for='length'] span": ["長度", "Length", "Länge", "Länge"],
-        "label[for='width'] span": ["寬度", "Width", "Breite", "Breite"],
-        "label[for='height'] span": ["高度", "Height", "Höhe", "Höhe"],
-        "label[for='wallHeight'] span": ["牆高", "Wall height", "Wandhöhe", "Wandhöhe"],
-        "label[for='roofHeight'] span": ["屋頂高", "Roof height", "Dachhöhe", "Dachhöhe"],
+        "label:has(#length) span": ["長度", "Length", "Länge", "Länge"],
+        "label:has(#width) span": ["寬度", "Width", "Breite", "Breite"],
+        "label:has(#height) span": ["高度", "Height", "Höhe", "Höhe"],
+        "label:has(#wallHeight) span": ["牆高", "Wall height", "Wandhöhe", "Wandhöhe"],
+        "label:has(#roofHeight) span": ["屋頂高", "Roof height", "Dachhöhe", "Dachhöhe"],
         "#outerDimensionStatus": ["外尺寸：-- × -- × -- mm", "Outer size: -- x -- x -- mm", "Außenmaß: -- x -- x -- mm", "Außenmaß: -- x -- x -- mm"],
         "#materialTitle": ["材料與輸出", "Material and Output", "Material und Ausgabe", "Material und Ausgabe"],
-        "label[for='materialThickness'] span": ["材料厚度", "Material thickness", "Materialstärke", "Materialstärke"],
-        "label[for='kerfWidth'] span": ["Kerf", "Kerf", "Schnittfuge", "Schnittfuge"],
-        "label[for='partGap'] span": ["零件間距", "Part gap", "Teileabstand", "Teileabstand"],
-        "label[for='segments'] span": ["圓弧段數", "Arc segments", "Bogensegmente", "Bogensegmente"],
-        "label[for='projectName'] span": ["專案名稱", "Project name", "Projektname", "Projektname"],
+        "label:has(#materialThickness) span": ["材料厚度", "Material thickness", "Materialstärke", "Materialstärke"],
+        "label:has(#kerfWidth) span": ["Kerf", "Kerf", "Schnittfuge", "Schnittfuge"],
+        "label:has(#partGap) span": ["零件間距", "Part gap", "Teileabstand", "Teileabstand"],
+        "label:has(#segments) span": ["圓弧段數", "Arc segments", "Bogensegmente", "Bogensegmente"],
+        "label:has(#projectName) span": ["專案名稱", "Project name", "Projektname", "Projektname"],
         "#joineryModeButton": ["顯示接榫後", "Show with joinery", "Mit Zapfen anzeigen", "Mit Zapfen anzeigen"],
         "#joineryModeStatus": ["目前：沒有接榫", "Current: no joinery", "Aktuell: ohne Zapfen", "Aktuell: ohne Zapfen"],
         "#downloadsTitle": ["輸出", "Export", "Ausgabe", "Ausgabe"],
@@ -119,7 +120,7 @@
         ".legend .dimension": ["黑色：內尺寸", "Black: inner size", "Schwarz: Innenmaß", "Schwarz: Innenmaß"],
         ".legend .cut": ["紅色：切割區", "Red: cut area", "Rot: Schnittbereich", "Rot: Schnittbereich"],
         "#zoomResetButton": ["Reset", "Reset", "Zurücksetzen", "Zurücksetzen"],
-        ".notice-panel h2": ["提示", "Notices", "Hinweise", "Hinweise"]
+        ".warnings h2": ["提示", "Notices", "Hinweise", "Hinweise"]
       },
       attr: {
         ".controls": { "aria-label": ["Basic 2D layout controls", "Basic 2D layout controls", "Steuerung für einfache 2D-Abwicklung", "Steuerung für einfache 2D-Abwicklung"] },
@@ -143,8 +144,9 @@
       text: {
         ".eyebrow": ["Joint standalone tool", "Joint standalone tool", "Eigenständiges Zapfenwerkzeug", "Eigenständiges Zapfenwerkzeug"],
         "h1": ["SVG 接榫選邊", "SVG Edge Joinery", "SVG-Kantenverzapfung", "SVG-Kantenverzapfung"],
+        "#statusPill": ["Ready", "Ready", "Bereit", "Bereit"],
         "#svgImportTitle": ["SVG 接榫選邊", "SVG Edge Joinery", "SVG-Kantenverzapfung", "SVG-Kantenverzapfung"],
-        "label[for='svgUpload'] span": ["匯入 SVG", "Import SVG", "SVG importieren", "SVG importieren"],
+        "label:has(#svgUpload) span": ["匯入 SVG", "Import SVG", "SVG importieren", "SVG importieren"],
         "#downloadCuboidSample": ["下載長方體練習 SVG", "Download cuboid practice SVG", "Quader-Übungs-SVG laden", "Quader-Übungs-SVG laden"],
         "#downloadHouseSample": ["下載斜頂房屋練習 SVG", "Download gable house practice SVG", "Satteldach-Übungs-SVG laden", "Satteldach-Übungs-SVG laden"],
         "#tagTopPiece": ["Top tag", "Top tag", "Top markieren", "Top markieren"],
@@ -155,22 +157,22 @@
         "#sizeTitle": ["尺寸 mm", "Size mm", "Maße mm", "Maße mm"],
         "#innerDimensionButton": ["內尺寸", "Inner size", "Innenmaß", "Innenmaß"],
         "#dimensionModeStatus": ["目前：內尺寸(長寬高為內部尺寸)", "Current: inner size (L/W/H are internal dimensions)", "Aktuell: Innenmaß (L/B/H sind Innenmaße)", "Aktuell: Innenmaß (L/B/H sind Innenmaße)"],
-        "label[for='length'] span": ["長度", "Length", "Länge", "Länge"],
-        "label[for='width'] span": ["寬度", "Width", "Breite", "Breite"],
-        "label[for='height'] span": ["高度", "Height", "Höhe", "Höhe"],
-        "label[for='radius'] span": ["半徑", "Radius", "Radius", "Radius"],
-        "label[for='wallHeight'] span": ["牆高", "Wall height", "Wandhöhe", "Wandhöhe"],
-        "label[for='roofHeight'] span": ["屋頂高", "Roof height", "Dachhöhe", "Dachhöhe"],
+        "label:has(#length) span": ["長度", "Length", "Länge", "Länge"],
+        "label:has(#width) span": ["寬度", "Width", "Breite", "Breite"],
+        "label:has(#height) span": ["高度", "Height", "Höhe", "Höhe"],
+        "label:has(#radius) span": ["半徑", "Radius", "Radius", "Radius"],
+        "label:has(#wallHeight) span": ["牆高", "Wall height", "Wandhöhe", "Wandhöhe"],
+        "label:has(#roofHeight) span": ["屋頂高", "Roof height", "Dachhöhe", "Dachhöhe"],
         "#outerDimensionStatus": ["外尺寸：-- × -- × -- mm", "Outer size: -- x -- x -- mm", "Außenmaß: -- x -- x -- mm", "Außenmaß: -- x -- x -- mm"],
         "#joineryTitle": ["材料與接榫", "Material and Joinery", "Material und Zapfen", "Material und Zapfen"],
-        "label[for='materialThickness'] span": ["材料厚度", "Material thickness", "Materialstärke", "Materialstärke"],
-        "label[for='kerfWidth'] span": ["Kerf", "Kerf", "Schnittfuge", "Schnittfuge"],
-        "label[for='tabWidth'] span": ["接榫寬度", "Tab width", "Zapfenbreite", "Zapfenbreite"],
-        "label[for='tabDepth'] span": ["接榫深度", "Tab depth", "Zapfentiefe", "Zapfentiefe"],
-        "label[for='tabSpacing'] span": ["接榫間距", "Tab spacing", "Zapfenabstand", "Zapfenabstand"],
-        "label[for='partGap'] span": ["零件間距", "Part gap", "Teileabstand", "Teileabstand"],
-        "label[for='segments'] span": ["圓弧段數", "Arc segments", "Bogensegmente", "Bogensegmente"],
-        "label[for='projectName'] span": ["專案名稱", "Project name", "Projektname", "Projektname"],
+        "label:has(#materialThickness) span": ["材料厚度", "Material thickness", "Materialstärke", "Materialstärke"],
+        "label:has(#kerfWidth) span": ["Kerf", "Kerf", "Schnittfuge", "Schnittfuge"],
+        "label:has(#tabWidth) span": ["接榫寬度", "Tab width", "Zapfenbreite", "Zapfenbreite"],
+        "label:has(#tabDepth) span": ["接榫深度", "Tab depth", "Zapfentiefe", "Zapfentiefe"],
+        "label:has(#tabSpacing) span": ["接榫間距", "Tab spacing", "Zapfenabstand", "Zapfenabstand"],
+        "label:has(#partGap) span": ["零件間距", "Part gap", "Teileabstand", "Teileabstand"],
+        "label:has(#segments) span": ["圓弧段數", "Arc segments", "Bogensegmente", "Bogensegmente"],
+        "label:has(#projectName) span": ["專案名稱", "Project name", "Projektname", "Projektname"],
         "label:has(#joineryToggle) span": ["產生 f/F 互補接榫", "Generate matching f/F joinery", "Passende f/F-Zapfen erzeugen", "Passende f/F-Zapfen erzeugen"],
         "#downloadsTitle": ["輸出", "Export", "Ausgabe", "Ausgabe"],
         ".red-only-note": ["(限紅線)", "(red lines only)", "(nur rote Linien)", "(nur rote Linien)"],
@@ -183,7 +185,7 @@
         ".manual-list li:nth-child(5)": ["確認預覽中的紅線與接榫方向正確後，下載 SVG 或 DXF。", "Confirm the red preview lines and joint direction, then download SVG or DXF.", "Prüfen Sie rote Vorschau-Linien und Zapfenrichtung und laden Sie SVG oder DXF herunter.", "Prüfen Sie rote Vorschau-Linien und Zapfenrichtung und laden Sie SVG oder DXF herunter."],
         ".legend .source": ["原始SVG展開圖", "Original SVG layout", "Originale SVG-Abwicklung", "Originale SVG-Abwicklung"],
         "#zoomResetButton": ["Reset", "Reset", "Zurücksetzen", "Zurücksetzen"],
-        ".notice-panel h2": ["提示", "Notices", "Hinweise", "Hinweise"]
+        ".warnings h2": ["提示", "Notices", "Hinweise", "Hinweise"]
       },
       attr: {
         ".controls": { "aria-label": ["SVG joinery controls", "SVG joinery controls", "Steuerung für SVG-Zapfen", "Steuerung für SVG-Zapfen"] },
@@ -209,28 +211,28 @@
         ".top-tool-badge span:last-child": ["Potrace：檢查中", "Potrace: checking", "Potrace: Prüfung läuft", "Potrace: Prüfung läuft"],
         "h1": ["Z-Axis Gradient Lab", "Z-Axis Gradient Lab", "Z-Achsen-Verlaufslabor", "Z-Achsen-Verlaufslabor"],
         "#statusText": ["待上傳", "Waiting for upload", "Wartet auf Upload", "Wartet auf Upload"],
-        ".input-panel .section-head h2": ["Input", "Input", "Eingabe", "Eingabe"],
-        ".input-panel .section-head span": ["彩色去背圖片", "Color image with background removed", "Farbbild mit entferntem Hintergrund", "Farbbild mit entferntem Hintergrund"],
-        "label[for='imageInput'] span": ["上傳 PNG / JPG / WebP / SVG", "Upload PNG / JPG / WebP / SVG", "PNG / JPG / WebP / SVG hochladen", "PNG / JPG / WebP / SVG hochladen"],
+        ".input-column > .section-head h2": ["Input", "Input", "Eingabe", "Eingabe"],
+        ".input-column > .section-head span": ["彩色去背圖片", "Color image with background removed", "Farbbild mit entferntem Hintergrund", "Farbbild mit entferntem Hintergrund"],
+        "label:has(#imageInput) span": ["上傳 PNG / JPG / WebP / SVG", "Upload PNG / JPG / WebP / SVG", "PNG / JPG / WebP / SVG hochladen", "PNG / JPG / WebP / SVG hochladen"],
         "#loadSample": ["載入老虎範例", "Load tiger sample", "Tiger-Beispiel laden", "Tiger-Beispiel laden"],
         "#traceTab .section-head h2": ["Bitmap Trace", "Bitmap Trace", "Bitmap-Trace", "Bitmap-Trace"],
         "#traceTab .section-head span": ["內建灰階", "Built-in grayscale", "Integrierte Graustufen", "Integrierte Graustufen"],
-        "label[for='traceScans'] span": ["掃描數", "Scan count", "Scan-Anzahl", "Scan-Anzahl"],
+        "label:has(#traceScans) span": ["掃描數", "Scan count", "Scan-Anzahl", "Scan-Anzahl"],
         "#traceScans option[value='5']": ["5 層", "5 layers", "5 Ebenen", "5 Ebenen"],
         "#traceScans option[value='7']": ["7 層", "7 layers", "7 Ebenen", "7 Ebenen"],
         "#traceScans option[value='12']": ["12 層", "12 layers", "12 Ebenen", "12 Ebenen"],
         "#traceScans option[value='24']": ["24 層", "24 layers", "24 Ebenen", "24 Ebenen"],
         "#fluxTab .section-head h2": ["FLUX Output", "FLUX Output", "FLUX-Ausgabe", "FLUX-Ausgabe"],
         "#fluxTab .section-head span": ["功率設定", "Power settings", "Leistungseinstellungen", "Leistungseinstellungen"],
-        "label[for='machineWatts'] span": ["機型額定功率", "Machine rated power", "Nennleistung der Maschine", "Nennleistung der Maschine"],
-        "label[for='outputWidthMm'] span": ["輸出寬度 mm", "Output width mm", "Ausgabebreite mm", "Ausgabebreite mm"],
-        "label[for='minPower'] span": ["最低功率 %", "Minimum power %", "Minimale Leistung %", "Minimale Leistung %"],
-        "label[for='maxPower'] span": ["最高功率 %", "Maximum power %", "Maximale Leistung %", "Maximale Leistung %"],
-        "label[for='speedMm'] span": ["速度 mm/s", "Speed mm/s", "Geschwindigkeit mm/s", "Geschwindigkeit mm/s"],
-        "label[for='outputMode'] span": ["輸出模式", "Output mode", "Ausgabemodus", "Ausgabemodus"],
+        "label:has(#machineWatts) span": ["機型額定功率", "Machine rated power", "Nennleistung der Maschine", "Nennleistung der Maschine"],
+        "label:has(#outputWidthMm) span": ["輸出寬度 mm", "Output width mm", "Ausgabebreite mm", "Ausgabebreite mm"],
+        "label:has(#minPower) span": ["最低功率 %", "Minimum power %", "Minimale Leistung %", "Minimale Leistung %"],
+        "label:has(#maxPower) span": ["最高功率 %", "Maximum power %", "Maximale Leistung %", "Maximale Leistung %"],
+        "label:has(#engraveSpeed) span": ["速度 mm/s", "Speed mm/s", "Geschwindigkeit mm/s", "Geschwindigkeit mm/s"],
+        "label:has(#outputMode) span": ["輸出模式", "Output mode", "Ausgabemodus", "Ausgabemodus"],
         "#outputMode option[value='trace']": ["平滑 Trace 分層", "Smooth trace layers", "Geglättete Trace-Ebenen", "Geglättete Trace-Ebenen"],
         "#outputMode option[value='rect']": ["快速矩形分層", "Fast rectangle layers", "Schnelle Rechteck-Ebenen", "Schnelle Rechteck-Ebenen"],
-        "label[for='projectName'] span": ["專案名稱", "Project name", "Projektname", "Projektname"],
+        "label:has(#projectName) span": ["專案名稱", "Project name", "Projektname", "Projektname"],
         "#toolsTab .section-head h2": ["工具狀態", "Tool status", "Werkzeugstatus", "Werkzeugstatus"],
         "#checkTools": ["重新檢查工具", "Recheck tools", "Werkzeuge erneut prüfen", "Werkzeuge erneut prüfen"],
         ".manual-panel h2": ["使用者簡易操作手冊", "Quick User Guide", "Kurzanleitung", "Kurzanleitung"],
@@ -240,21 +242,29 @@
         ".manual-list li:nth-child(4)": ["檢查中央預覽；可用 +、-、rest 調整檢視倍率，不影響輸出尺寸。", "Check the center preview; use +, -, and rest to change view zoom without changing output size.", "Prüfen Sie die Vorschau; mit +, - und rest ändern Sie nur die Ansicht, nicht die Ausgabegröße.", "Prüfen Sie die Vorschau; mit +, - und rest ändern Sie nur die Ansicht, nicht die Ausgabegröße."],
         ".manual-list li:nth-child(5)": ["按「開啟圖層檢視器」檢查分層，確認後再下載 SVG 匯入 Beam Studio。", "Open the layer inspector to check layers, then download the SVG for Beam Studio.", "Öffnen Sie den Ebenenprüfer, kontrollieren Sie die Ebenen und laden Sie danach die SVG für Beam Studio herunter.", "Öffnen Sie den Ebenenprüfer, kontrollieren Sie die Ebenen und laden Sie danach die SVG für Beam Studio herunter."],
         "#imageMetric": ["未載入圖片", "No image loaded", "Kein Bild geladen", "Kein Bild geladen"],
+        "#emptyState": ["上傳彩色去背圖片後會依掃描數產生灰階 trace 分離圖層", "Upload a color image with background removed to generate separated grayscale trace layers.", "Laden Sie ein freigestelltes Farbbild hoch, um getrennte Graustufen-Trace-Ebenen zu erzeugen.", "Laden Sie ein freigestelltes Farbbild hoch, um getrennte Graustufen-Trace-Ebenen zu erzeugen."],
         "#resetView": ["rest", "reset", "Zurücksetzen", "Zurücksetzen"],
         "figcaption": ["原始彩色", "Original color", "Originalfarbe", "Originalfarbe"],
-        ".export-panel .section-head h2": ["匯出", "Export", "Export", "Export"],
+        ".export-column > .section-head:first-child h2": ["匯出", "Export", "Export", "Export"],
         "#layerSummary": ["5 灰階 / 5 層", "5 grayscale / 5 layers", "5 Graustufen / 5 Ebenen", "5 Graustufen / 5 Ebenen"],
         "#openLayerInspector": ["開啟圖層檢視器", "Open layer inspector", "Ebenenprüfer öffnen", "Ebenenprüfer öffnen"],
         "#downloadSvg": ["下載 SVG", "Download SVG", "SVG herunterladen", "SVG herunterladen"],
-        ".power-panel .section-head h2": ["功率對照", "Power Table", "Leistungstabelle", "Leistungstabelle"],
+        ".section-head:has(> #profileSummary) h2": ["功率對照", "Power Table", "Leistungstabelle", "Leistungstabelle"],
         "th:nth-child(2)": ["灰階", "Grayscale", "Graustufe", "Graustufe"],
-        ".layer-settings-panel .section-head h2": ["圖層參數", "Layer Parameters", "Ebenenparameter", "Ebenenparameter"],
+        ".section-head:has(+ #legend) h2": ["圖層參數", "Layer Parameters", "Ebenenparameter", "Ebenenparameter"],
         ".install-title": ["Potrace 安裝檢查", "Potrace installation check", "Potrace-Installationsprüfung", "Potrace-Installationsprüfung"],
         "#potraceInstallBadge": ["檢查中", "Checking", "Prüfung läuft", "Prüfung läuft"],
-        ".install-panel .section-head > span": ["安裝指令", "Install commands", "Installationsbefehle", "Installationsbefehle"],
-        ".copy-command:nth-of-type(1)": ["1安裝 Potrace", "1Install Potrace", "1Potrace installieren", "1Potrace installieren"],
+        ".section-head:has(.install-title) > span": ["安裝指令", "Install commands", "Installationsbefehle", "Installationsbefehle"],
+        ".install-actions .step-button:nth-child(1)": ["1 安裝 Potrace", "1 Install Potrace", "1 Potrace installieren", "1 Potrace installieren"],
+        ".install-actions .step-button:nth-child(2)": ["2 驗證安裝", "2 Verify installation", "2 Installation prüfen", "2 Installation prüfen"],
+        ".install-actions .step-button:nth-child(3)": ["3 重新檢查", "3 Recheck", "3 Erneut prüfen", "3 Erneut prüfen"],
+        ".install-actions .step-button:nth-child(4)": ["4 macOS 指令", "4 macOS command", "4 macOS-Befehl", "4 macOS-Befehl"],
+        ".install-actions .step-button:nth-child(5)": ["5 Ubuntu 指令", "5 Ubuntu command", "5 Ubuntu-Befehl", "5 Ubuntu-Befehl"],
         "#installModalTitle": ["尚未偵測到 Potrace，請用三步驟完成 Windows 安裝與驗證", "Potrace was not detected. Complete Windows installation and verification in three steps.", "Potrace wurde nicht erkannt. Schließen Sie Installation und Prüfung unter Windows in drei Schritten ab.", "Potrace wurde nicht erkannt. Schließen Sie Installation und Prüfung unter Windows in drei Schritten ab."],
-        ".install-modal .modal-card > span": ["請安裝", "Please install", "Bitte installieren", "Bitte installieren"],
+        "#installModal .section-head > span": ["請安裝", "Please install", "Bitte installieren", "Bitte installieren"],
+        ".install-modal .step-button:nth-of-type(1)": ["1 安裝 Potrace", "1 Install Potrace", "1 Potrace installieren", "1 Potrace installieren"],
+        ".install-modal .step-button:nth-of-type(2)": ["2 驗證安裝", "2 Verify installation", "2 Installation prüfen", "2 Installation prüfen"],
+        ".install-modal .step-button:nth-of-type(3)": ["3 重新檢查", "3 Recheck", "3 Erneut prüfen", "3 Erneut prüfen"],
         "#closeInstallModal": ["稍後再說", "Later", "Später", "Später"],
         "#layerInspectorModalTitle": ["SVG 圖層檢視器", "SVG Layer Inspector", "SVG-Ebenenprüfer", "SVG-Ebenenprüfer"],
         "#closeLayerInspectorModal": ["關閉", "Close", "Schließen", "Schließen"]
@@ -289,10 +299,8 @@
       },
       text: {
         "h1": ["SVG Layer Inspector", "SVG Layer Inspector", "SVG-Ebenenprüfer", "SVG-Ebenenprüfer"],
-        "#statusText": ["待載入", "Waiting", "Wartet", "Wartet"],
         ".side-panel .section-head h2": ["SVG 檔案", "SVG File", "SVG-Datei", "SVG-Datei"],
-        "#fileMeta": ["未選擇", "No file selected", "Keine Datei gewählt", "Keine Datei gewählt"],
-        "label[for='svgInput'] span": ["上傳 SVG", "Upload SVG", "SVG hochladen", "SVG hochladen"],
+        "label:has(#svgInput) span": ["上傳 SVG", "Upload SVG", "SVG hochladen", "SVG hochladen"],
         "#loadSample": ["載入範例", "Load sample", "Beispiel laden", "Beispiel laden"],
         "#fitView": ["置中", "Fit view", "Ansicht einpassen", "Ansicht einpassen"],
         ".zoom-panel h2": ["縮放", "Zoom", "Zoom", "Zoom"],
@@ -329,6 +337,7 @@
     "選取接榫邊": { en: "Select joint edges", de: "Zapfenkanten wählen", "de-AT": "Zapfenkanten wählen" },
     "結束選邊": { en: "Finish edge selection", de: "Kantenauswahl beenden", "de-AT": "Kantenauswahl beenden" },
     "尚未建立接榫配對。": { en: "No joinery pairs yet.", de: "Noch keine Zapfenpaare.", "de-AT": "Noch keine Zapfenpaare." },
+    "已載入正立方體展開圖；確認後會使用內建正確接榫拓撲輸出。": { en: "Cube layout loaded. After confirmation, the built-in correct joinery topology will be used.", de: "Würfelabwicklung geladen. Nach Bestätigung wird die integrierte korrekte Zapfentopologie verwendet.", "de-AT": "Würfelabwicklung geladen. Nach Bestätigung wird die integrierte korrekte Zapfentopologie verwendet." },
     "請再點選第二條邊建立凹槽 F。": { en: "Click a second edge to create the concave F side.", de: "Klicken Sie eine zweite Kante für die konkave F-Seite.", "de-AT": "Klicken Sie eine zweite Kante für die konkave F-Seite." },
     "尚未完成配對。": { en: "Pairing is not complete yet.", de: "Paarung ist noch nicht abgeschlossen.", "de-AT": "Paarung ist noch nicht abgeschlossen." },
     "刪除": { en: "Delete", de: "Löschen", "de-AT": "Löschen" },
@@ -337,12 +346,19 @@
     "檢查中": { en: "Checking", de: "Prüfung läuft", "de-AT": "Prüfung läuft" },
     "已安裝": { en: "Installed", de: "Installiert", "de-AT": "Installiert" },
     "未安裝": { en: "Not installed", de: "Nicht installiert", "de-AT": "Nicht installiert" },
+    "Potrace：檢查中": { en: "Potrace: checking", de: "Potrace: Prüfung läuft", "de-AT": "Potrace: Prüfung läuft" },
+    "Potrace：已安裝": { en: "Potrace: installed", de: "Potrace: installiert", "de-AT": "Potrace: installiert" },
+    "Potrace：未安裝": { en: "Potrace: not installed", de: "Potrace: nicht installiert", "de-AT": "Potrace: nicht installiert" },
+    "正在檢查 Potrace...": { en: "Checking Potrace...", de: "Potrace wird geprüft...", "de-AT": "Potrace wird geprüft..." },
+    "已找到 Potrace": { en: "Potrace found", de: "Potrace gefunden", "de-AT": "Potrace gefunden" },
+    "尚未偵測到 Potrace。": { en: "Potrace was not detected.", de: "Potrace wurde nicht erkannt.", "de-AT": "Potrace wurde nicht erkannt." },
     "手動驗證": { en: "Manual check", de: "Manuelle Prüfung", "de-AT": "Manuelle Prüfung" },
     "待上傳": { en: "Waiting for upload", de: "Wartet auf Upload", "de-AT": "Wartet auf Upload" },
     "已建立": { en: "Created", de: "Erstellt", "de-AT": "Erstellt" },
     "未載入圖片": { en: "No image loaded", de: "Kein Bild geladen", "de-AT": "Kein Bild geladen" },
     "待載入": { en: "Waiting", de: "Wartet", "de-AT": "Wartet" },
     "已載入": { en: "Loaded", de: "Geladen", "de-AT": "Geladen" },
+    "未選擇": { en: "No file selected", de: "Keine Datei gewählt", "de-AT": "Keine Datei gewählt" },
     "SVG 解析失敗": { en: "SVG parse failed", de: "SVG-Analyse fehlgeschlagen", "de-AT": "SVG-Analyse fehlgeschlagen" },
     "無法載入剛下載的 SVG，請手動上傳": { en: "Could not load the downloaded SVG. Please upload it manually.", de: "Die geladene SVG konnte nicht geöffnet werden. Bitte manuell hochladen.", "de-AT": "Die geladene SVG konnte nicht geöffnet werden. Bitte manuell hochladen." },
     "此 SVG 沒有可辨識的群組圖層。": { en: "This SVG has no recognizable group layers.", de: "Diese SVG enthält keine erkennbaren Gruppenebenen.", "de-AT": "Diese SVG enthält keine erkennbaren Gruppenebenen." }
@@ -380,7 +396,19 @@
 
   function setText(selector, values, index) {
     document.querySelectorAll(selector).forEach((element) => {
-      element.textContent = values[index] ?? values[0];
+      const text = values[index] ?? values[0];
+      if (element.classList.contains("step-button")) {
+        const match = text.match(/^(\d+)\s*(.*)$/);
+        if (match) {
+          element.replaceChildren();
+          const badge = document.createElement("span");
+          badge.className = "step-badge";
+          badge.textContent = match[1];
+          element.append(badge, ` ${match[2]}`);
+          return;
+        }
+      }
+      element.textContent = text;
     });
   }
 
@@ -399,7 +427,6 @@
   }
 
   function translateExact(language) {
-    if (language === defaultLanguage) return;
     const skipTags = new Set(["SCRIPT", "STYLE", "TEXTAREA", "OPTION"]);
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const textNodes = [];
@@ -408,18 +435,64 @@
       if (skipTags.has(node.parentElement?.tagName)) continue;
       const raw = node.nodeValue;
       const trimmed = raw.trim();
-      const translated = exactText[trimmed]?.[language];
-      if (!translated) continue;
-      node.nodeValue = raw.replace(trimmed, translated);
+      let translated = "";
+      for (const [source, values] of Object.entries(exactText)) {
+        const knownValues = [source, ...Object.values(values)];
+        if (!knownValues.includes(trimmed)) continue;
+        translated = language === defaultLanguage ? source : values[language] || source;
+        break;
+      }
+      if (translated) node.nodeValue = raw.replace(trimmed, translated);
     }
   }
 
+  function translateDynamicPatterns(language) {
+    const modelLabels = {
+      "長方體": { en: "Cuboid", de: "Quader", "de-AT": "Quader" },
+      "正立方體": { en: "Cube", de: "Würfel", "de-AT": "Würfel" },
+      "雙斜屋頂房子": { en: "Gable-roof house", de: "Haus mit Satteldach", "de-AT": "Haus mit Satteldach" },
+      "柔性盒子5": { en: "Flex box 5", de: "Flexbox 5", "de-AT": "Flexbox 5" },
+      "圓柱體": { en: "Cylinder", de: "Zylinder", "de-AT": "Zylinder" }
+    };
+    const summary = document.querySelector("#summaryText");
+    if (summary && language !== defaultLanguage) {
+      Object.entries(modelLabels).forEach(([source, values]) => {
+        summary.textContent = summary.textContent.replace(source, values[language] || source);
+      });
+    }
+
+    document.querySelectorAll("#potraceStatus, .top-tool-badge span:last-child").forEach((element) => {
+      const text = element.textContent.trim();
+      if (language === defaultLanguage) {
+        if (/Potrace: (installed|installiert)/i.test(text)) element.textContent = "Potrace：已安裝";
+        if (/Potrace: (not installed|nicht installiert)/i.test(text)) element.textContent = "Potrace：未安裝";
+        return;
+      }
+      if (text.startsWith("已找到 Potrace：")) {
+        const path = text.slice("已找到 Potrace：".length);
+        element.textContent = language === "en" ? `Potrace found: ${path}` : `Potrace gefunden: ${path}`;
+      }
+      if (text === "Potrace：已安裝") element.textContent = language === "en" ? "Potrace: installed" : "Potrace: installiert";
+      if (text === "Potrace：未安裝") element.textContent = language === "en" ? "Potrace: not installed" : "Potrace: nicht installiert";
+    });
+  }
+
   function applyLanguage(language) {
+    window.__applyingI18n = true;
     const key = pageKey();
     const page = pages[key];
     const safeLanguage = shared[language] ? language : defaultLanguage;
     const index = langIndex(safeLanguage);
     document.documentElement.lang = safeLanguage;
+    document.documentElement.classList.add("notranslate");
+    document.documentElement.setAttribute("translate", "no");
+    document.body.setAttribute("translate", "no");
+    if (!document.querySelector("meta[name='google'][content='notranslate']")) {
+      const meta = document.createElement("meta");
+      meta.name = "google";
+      meta.content = "notranslate";
+      document.head.append(meta);
+    }
     document.querySelector("[data-i18n-language-label]")?.replaceChildren(shared[safeLanguage].language);
     document.querySelector("#languageSelect")?.setAttribute("aria-label", shared[safeLanguage].language);
     if (page?.title) document.title = page.title[safeLanguage] || page.title[defaultLanguage];
@@ -428,16 +501,19 @@
     Object.entries(page?.html || {}).forEach(([selector, values]) => setHtml(selector, values, index));
     Object.entries(page?.attr || {}).forEach(([selector, attrs]) => setAttributes(selector, attrs, index));
     translateExact(safeLanguage);
+    translateDynamicPatterns(safeLanguage);
 
     const select = document.querySelector("#languageSelect");
     if (select) select.value = safeLanguage;
     localStorage.setItem("homeLanguage", safeLanguage);
+    window.__applyingI18n = false;
   }
 
   function boot() {
     ensureSwitcher();
     const select = document.querySelector("#languageSelect");
     const language = localStorage.getItem("homeLanguage") || defaultLanguage;
+    window.applyCurrentLanguage = () => applyLanguage(select?.value || language);
     applyLanguage(language);
     select?.addEventListener("change", (event) => applyLanguage(event.target.value));
     setTimeout(() => applyLanguage(select?.value || language), 300);

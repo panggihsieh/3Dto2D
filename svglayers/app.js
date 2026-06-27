@@ -227,6 +227,7 @@ function applyTransform() {
 
 function setStatus(text) {
   els.statusText.textContent = text;
+  setTimeout(() => window.applyCurrentLanguage?.(), 0);
 }
 
 function parseSvgLength(value) {
@@ -254,7 +255,7 @@ function sampleSvgDocument(imageUrl) {
     <image href="${imageUrl}" x="22" y="12" width="76" height="42" preserveAspectRatio="xMidYMid meet"/>
   </g>
   <g id="L05_darkest_gray_40_w_100mm_s" inkscape:groupmode="layer" inkscape:label="L05_darkest_gray_40%w_100mm/s">
-    <circle cx="60" cy="55" r="12" fill="#1d1d1d"/>
+    <rect x="22" y="60" width="76" height="6" rx="2" fill="#1d1d1d"/>
   </g>
 </svg>`;
 }
