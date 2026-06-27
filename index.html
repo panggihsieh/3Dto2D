@@ -91,7 +91,7 @@
 
       .options {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 18px;
       }
 
@@ -225,6 +225,13 @@
         outline: none;
       }
 
+      @media (max-width: 980px) {
+        .options,
+        .field-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
       @media (max-width: 620px) {
         main {
           padding: 16px;
@@ -237,6 +244,11 @@
         .credit {
           right: 12px;
           bottom: 10px;
+        }
+
+        .options,
+        .field-grid {
+          grid-template-columns: 1fr;
         }
       }
     </style>
@@ -269,6 +281,13 @@
                 <p>將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。</p>
               </div>
               <span class="btn-steam">漸層區</span>
+            </a>
+
+            <a class="option" href="svglayers/" target="_blank" rel="noopener">
+              <div>
+                <p>上傳 SVG 後檢視圖層名稱、切換圖層顯示，並用縮放功能確認向量細節。</p>
+              </div>
+              <span class="btn-steam">檢圖區</span>
             </a>
           </div>
 
