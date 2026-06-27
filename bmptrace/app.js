@@ -13,6 +13,10 @@ const FIVE_LAYER_COLORS = [
 
 const WINDOWS_INSTALL_SCRIPT_URL = "install/bmptrace-install-potrace.ps1";
 const SVG_LAYER_TRANSFER_KEY = "bmptrace.latestSvgForLayerInspector";
+const DEFAULT_PREVIEW_SCALE = 0.8;
+const PREVIEW_SCALE_STEP = 0.1;
+const MIN_PREVIEW_SCALE = 0.2;
+const MAX_PREVIEW_SCALE = 4;
 
 const els = {
   imageInput: document.querySelector("#imageInput"),
@@ -46,6 +50,9 @@ const els = {
   imageMetric: document.querySelector("#imageMetric"),
   svgMetric: document.querySelector("#svgMetric"),
   cellMetric: document.querySelector("#cellMetric"),
+  zoomOut: document.querySelector("#zoomOut"),
+  zoomIn: document.querySelector("#zoomIn"),
+  zoomMetric: document.querySelector("#zoomMetric"),
   resetView: document.querySelector("#resetView"),
   legend: document.querySelector("#legend"),
   copyStatus: document.querySelector("#copyStatus")
@@ -60,11 +67,13 @@ const state = {
   sampled: null,
   layerRuns: [],
   tracePaths: [],
+  previewScale: DEFAULT_PREVIEW_SCALE,
   fallbackUrls: {}
 };
 
 renderPowerTable();
 renderLegend();
+applyPreviewScale();
 checkToolStatus();
 
 els.imageInput.addEventListener("change", async () => {
@@ -138,8 +147,16 @@ document.querySelectorAll(".recheck-tools").forEach((button) => {
   input.addEventListener("change", onSettingsChange);
 });
 
+els.zoomOut.addEventListener("click", () => {
+  setPreviewScale(state.previewScale - PREVIEW_SCALE_STEP);
+});
+
+els.zoomIn.addEventListener("click", () => {
+  setPreviewScale(state.previewScale + PREVIEW_SCALE_STEP);
+});
+
 els.resetView.addEventListener("click", () => {
-  if (state.image) buildPreview();
+  setPreviewScale(DEFAULT_PREVIEW_SCALE);
 });
 
 els.downloadSvg.addEventListener("click", () => {
@@ -159,7 +176,7 @@ async function loadImageFile(file) {
   state.imageUrl = dataUrl;
   state.sourceWidth = image.naturalWidth;
   state.sourceHeight = image.naturalHeight;
-  buildPreview();
+  buildPreview({ resetZoom: true });
 }
 
 async function loadImageUrl(url, name) {
@@ -169,10 +186,10 @@ async function loadImageUrl(url, name) {
   state.imageUrl = url;
   state.sourceWidth = image.naturalWidth;
   state.sourceHeight = image.naturalHeight;
-  buildPreview();
+  buildPreview({ resetZoom: true });
 }
 
-function buildPreview() {
+function buildPreview({ resetZoom = false } = {}) {
   const settings = readSettings();
   const sampled = sampleImage(state.image, settings.sampleWidth, settings);
   const layerRuns = buildLayerRuns(sampled, settings.traceScans);
@@ -181,6 +198,7 @@ function buildPreview() {
   state.layerRuns = layerRuns;
   state.tracePaths = tracePaths;
   drawPreviewSvg(settings, sampled, layerRuns, tracePaths);
+  if (resetZoom) setPreviewScale(DEFAULT_PREVIEW_SCALE);
   updateMetrics(settings, sampled, layerRuns, tracePaths);
   els.downloadSvg.disabled = false;
   els.downloadCsv.disabled = false;
@@ -188,6 +206,18 @@ function buildPreview() {
   els.sourceInset.hidden = false;
   els.emptyState.hidden = true;
   els.statusText.textContent = "已建立";
+}
+
+function setPreviewScale(scale) {
+  state.previewScale = clamp(scale, MIN_PREVIEW_SCALE, MAX_PREVIEW_SCALE);
+  applyPreviewScale();
+}
+
+function applyPreviewScale() {
+  els.previewSvg.style.setProperty("--preview-scale", state.previewScale.toFixed(2));
+  els.zoomMetric.textContent = `${Math.round(state.previewScale * 100)}%`;
+  els.zoomOut.disabled = state.previewScale <= MIN_PREVIEW_SCALE;
+  els.zoomIn.disabled = state.previewScale >= MAX_PREVIEW_SCALE;
 }
 
 function sampleImage(image, targetWidth, settings) {

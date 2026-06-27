@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Z-Axis Gradient Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260627-3">
+    <link rel="stylesheet" href="styles.css?v=20260627-4">
   </head>
   <body>
     <main class="shell">
@@ -122,7 +122,12 @@
               <span id="svgMetric">5 layers</span>
               <span id="cellMetric">0 paths</span>
             </div>
-            <button id="resetView" type="button">重建預覽</button>
+            <div class="zoom-controls" aria-label="Preview zoom controls">
+              <button id="zoomOut" type="button" aria-label="Zoom out">-</button>
+              <span id="zoomMetric" aria-live="polite">80%</span>
+              <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+              <button id="resetView" type="button">rest</button>
+            </div>
           </div>
 
           <div class="preview-frame">
