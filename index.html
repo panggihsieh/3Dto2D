@@ -86,13 +86,12 @@
 
       .workbench {
         display: grid;
-        grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
         gap: 18px;
       }
 
       .options {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 18px;
       }
 
@@ -109,7 +108,7 @@
 
       .option {
         display: grid;
-        min-height: 280px;
+        min-height: 250px;
         padding: 24px;
         color: inherit;
         text-decoration: none;
@@ -178,70 +177,8 @@
         transform: scale(0.98);
       }
 
-      .side-stack {
-        display: grid;
-        gap: 18px;
-      }
-
-      .test-entry {
-        display: grid;
-        justify-self: center;
-        width: 20%;
-        min-width: 72px;
-        min-height: 34px;
-        place-items: center;
-        border: 2px solid var(--black);
-        border-radius: 8px;
-        color: var(--black);
-        background: var(--orange);
-        text-decoration: none;
-        box-shadow: 0 8px 18px rgba(255, 138, 0, 0.22);
-        animation: testEntryBlink 2.4s ease-in-out infinite;
-        transition:
-          transform 90ms ease,
-          border-color 180ms ease,
-          box-shadow 180ms ease;
-      }
-
-      .test-entry:hover,
-      .test-entry:focus-visible {
-        border-color: var(--orange-soft);
-        box-shadow: 0 10px 22px rgba(255, 138, 0, 0.28);
-        transform: translateY(-2px);
-        outline: none;
-      }
-
-      .test-entry:active {
-        transform: scale(0.98);
-      }
-
-      .test-entry strong {
-        color: inherit;
-        font-size: clamp(0.78rem, 1vw, 0.95rem);
-        font-weight: 900;
-      }
-
-      @keyframes testEntryBlink {
-        0%,
-        100% {
-          box-shadow: 0 6px 14px rgba(255, 138, 0, 0.18);
-          opacity: 0.86;
-        }
-
-        50% {
-          box-shadow: 0 8px 20px rgba(255, 138, 0, 0.42);
-          opacity: 1;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .test-entry {
-          animation: none;
-        }
-      }
-
       .control-panel {
-        padding: 18px;
+        padding: 14px 16px;
       }
 
       .panel-title {
@@ -253,9 +190,9 @@
 
       .field-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 10px;
-        margin-top: 14px;
+        margin-top: 10px;
       }
 
       label {
@@ -288,13 +225,6 @@
         outline: none;
       }
 
-      @media (max-width: 980px) {
-        .workbench,
-        .options {
-          grid-template-columns: 1fr;
-        }
-      }
-
       @media (max-width: 620px) {
         main {
           padding: 16px;
@@ -302,10 +232,6 @@
 
         .highlight-title {
           font-size: clamp(1.9rem, 11vw, 3.1rem);
-        }
-
-        .field-grid {
-          grid-template-columns: 1fr;
         }
 
         .credit {
@@ -337,36 +263,37 @@
               </div>
               <span class="btn-steam">上傳區</span>
             </a>
+
+            <a class="option" href="bmptrace/" target="_blank" rel="noopener">
+              <div>
+                <p>將圖片轉成灰階分層 SVG，搭配 FLUX / Beam Studio 做漸層雕刻測試與功率表輸出。</p>
+              </div>
+              <span class="btn-steam">Grayscale</span>
+            </a>
           </div>
 
-          <aside class="side-stack" aria-label="工程資料預覽">
-            <section class="control-panel">
-              <h2 class="panel-title">練習參數快照</h2>
-              <p>預留給後續物件導向 JavaScript 控制器綁定。</p>
-              <div class="field-grid">
-                <label>
-                  材料厚度 mm
-                  <input type="text" value="3.0" aria-label="材料厚度 mm">
-                </label>
-                <label>
-                  Kerf mm
-                  <input type="text" value="0.15" aria-label="Kerf mm">
-                </label>
-                <label>
-                  接榫寬度 mm
-                  <input type="text" value="10" aria-label="接榫寬度 mm">
-                </label>
-                <label>
-                  接榫深度 mm
-                  <input type="text" value="3" aria-label="接榫深度 mm">
-                </label>
-              </div>
-            </section>
-
-            <a class="test-entry" href="bmptrace/" target="_blank" rel="noopener">
-              <strong>測試區</strong>
-            </a>
-          </aside>
+          <section class="control-panel" aria-label="工程資料預覽">
+            <h2 class="panel-title">練習參數快照</h2>
+            <p>快速預覽材料與接榫參數，實際輸出仍在各工具頁面中調整。</p>
+            <div class="field-grid">
+              <label>
+                材料厚度 mm
+                <input type="text" value="3.0" aria-label="材料厚度 mm">
+              </label>
+              <label>
+                Kerf mm
+                <input type="text" value="0.15" aria-label="Kerf mm">
+              </label>
+              <label>
+                接榫寬度 mm
+                <input type="text" value="10" aria-label="接榫寬度 mm">
+              </label>
+              <label>
+                接榫深度 mm
+                <input type="text" value="3" aria-label="接榫深度 mm">
+              </label>
+            </div>
+          </section>
         </div>
       </section>
       <a class="credit" href="bmptrace/" target="_blank" rel="noopener">@大南國小 邦基老師</a>
