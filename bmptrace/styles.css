@@ -510,6 +510,8 @@ select {
 
 .preview-frame {
   position: relative;
+  display: grid;
+  place-items: center;
   min-height: 360px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -568,7 +570,8 @@ select {
   height: 100%;
   min-height: 360px;
   display: block;
-  padding-top: 96px;
+  transform: scale(0.7);
+  transform-origin: center;
 }
 
 .empty-state {
