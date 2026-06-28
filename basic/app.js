@@ -100,6 +100,7 @@ function buildResult(params) {
   const bounds = getBoundsFromPieces(laidOut);
   warnings.push(...modelWarnings(params));
   warnings.push(...joineryValidationMessages(params));
+  warnings.push(...offsetReferenceValidationMessages(laidOut, params));
 
   return { pieces: laidOut, bounds, warnings, params };
 }
@@ -136,6 +137,22 @@ function modelWarnings(params) {
     warnings.push("雙斜屋頂第一版採外蓋式屋頂與簡化卡榫定位。");
   }
   return warnings;
+}
+
+function offsetReferenceValidationMessages(pieces, params) {
+  if (params.dimensionMode !== "inner") return [];
+  if (!["cube", "cuboid", "gable_house"].includes(params.modelType)) return [];
+
+  const guides = pieces
+    .map((piece) => innerGuideForPiece(piece, params))
+    .filter(Boolean);
+  const innerPathCount = guides.reduce((sum, guide) => sum + guidePathCount(guide), 0);
+  const offsetPathCount = guides.reduce((sum, guide) => sum + guidePathCount(guide), 0);
+  const thickness = formatGuideNumber(params.materialThickness);
+  if (innerPathCount === offsetPathCount) {
+    return [`offset 驗算：${innerPathCount} 個內尺寸圖形都有 +${thickness}mm 灰色參考線`];
+  }
+  return [`offset 驗算：${offsetPathCount}/${innerPathCount} 個灰色參考線，請檢查遺漏`];
 }
 
 function joineryValidationMessages(params) {
@@ -1118,15 +1135,10 @@ function renderOffsetReferenceGuides(result) {
     const guide = innerGuideForPiece(piece, result.params);
     if (!guide) continue;
     const offset = result.params.materialThickness;
-    group.appendChild(createSvgElement("path", {
-      d: rectPathD(
-        piece.x + guide.x - offset,
-        piece.y + guide.y - offset,
-        guide.width + offset * 2,
-        guide.height + offset * 2
-      )
-    }));
-    guideCount += 1;
+    for (const pathD of guidePathDs(piece, guide, offset)) {
+      group.appendChild(createSvgElement("path", { d: pathD }));
+      guideCount += 1;
+    }
   }
   if (guideCount) els.previewSvg.appendChild(group);
 }
@@ -1139,9 +1151,9 @@ function renderInnerDimensionGuides(result) {
   for (const piece of result.pieces) {
     const guide = innerGuideForPiece(piece, result.params);
     if (!guide) continue;
-    group.appendChild(createSvgElement("path", {
-      d: rectPathD(piece.x + guide.x, piece.y + guide.y, guide.width, guide.height)
-    }));
+    for (const pathD of guidePathDs(piece, guide, 0)) {
+      group.appendChild(createSvgElement("path", { d: pathD }));
+    }
     group.appendChild(createSvgElement("text", {
       x: svgNum(piece.x + guide.x + guide.width / 2),
       y: svgNum(piece.y + guide.y + guide.height / 2 + dimensionTextOffset(guide))
@@ -1197,11 +1209,14 @@ function innerGuideForPiece(piece, params) {
   }
 
   if (["front_gable", "back_gable"].includes(piece.name)) {
+    const y = Math.max(0, piece.height - depth - innerHeight);
     return {
       x: guideWidthX,
-      y: Math.max(0, piece.height - depth - innerHeight),
+      y,
       width: innerWidth,
       height: innerHeight,
+      shape: "gable",
+      apexY: Math.max(0, y - params.roofHeight + params.materialThickness * 2),
       label: `${formatGuideNumber(innerWidth)} x ${formatGuideNumber(innerHeight)}`
     };
   }
@@ -1217,6 +1232,43 @@ function innerGuideForPiece(piece, params) {
   }
 
   return null;
+}
+
+function guidePathCount(guide) {
+  return guide ? 1 : 0;
+}
+
+function guidePathDs(piece, guide, offset = 0) {
+  if (guide.shape === "gable") {
+    return [gableGuidePathD(piece, guide, offset)];
+  }
+  return [
+    rectPathD(
+      piece.x + guide.x - offset,
+      piece.y + guide.y - offset,
+      guide.width + offset * 2,
+      guide.height + offset * 2
+    )
+  ];
+}
+
+function gableGuidePathD(piece, guide, offset = 0) {
+  const x = piece.x + guide.x;
+  const y = piece.y + guide.y;
+  const left = x - offset;
+  const right = x + guide.width + offset;
+  const bottom = y + guide.height + offset;
+  const wallTop = y + offset;
+  const apexX = x + guide.width / 2;
+  const apexY = piece.y + guide.apexY - offset;
+  return [
+    `M ${svgNum(left)} ${svgNum(bottom)}`,
+    `L ${svgNum(right)} ${svgNum(bottom)}`,
+    `L ${svgNum(right)} ${svgNum(wallTop)}`,
+    `L ${svgNum(apexX)} ${svgNum(apexY)}`,
+    `L ${svgNum(left)} ${svgNum(wallTop)}`,
+    "Z"
+  ].join(" ");
 }
 
 function rectPathD(x, y, width, height) {
