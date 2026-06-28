@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="204mm" height="132mm" viewBox="0 0 204 132">
+  <title>Basic cube template</title>
+  <g id="CUT">
+    <path id="top" d="M 0 0 L 60 0 L 60 60 L 0 60 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="bottom" d="M 72 0 L 132 0 L 132 60 L 72 60 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="front" d="M 144 0 L 204 0 L 204 60 L 144 60 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="back" d="M 0 72 L 60 72 L 60 132 L 0 132 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="left" d="M 72 72 L 132 72 L 132 132 L 72 132 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="right" d="M 144 72 L 204 72 L 204 132 L 144 132 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+  </g>
+</svg>
+

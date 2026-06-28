@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Function Draw Check</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar">
+        <header>
+          <p class="eyebrow">function/</p>
+          <h1>Draw / Check</h1>
+        </header>
+
+        <div class="mode-tabs" role="tablist" aria-label="Function mode">
+          <button id="checkMode" type="button" class="active" aria-pressed="true">Check</button>
+          <button id="drawMode" type="button" aria-pressed="false">Draw</button>
+        </div>
+
+        <section class="panel">
+          <label>
+            <span>範本</span>
+            <select id="sampleSelect"></select>
+          </label>
+          <div class="actions pipeline-actions" aria-label="Function pipeline">
+            <button id="runButton" type="button">Run</button>
+            <button id="drawButton" type="button">Draw</button>
+            <button id="checkButton" type="button">Check</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>參數</h2>
+          <label>
+            <span>材料厚度</span>
+            <input id="materialThickness" type="number" min="0.1" step="0.1" value="3">
+          </label>
+          <label>
+            <span>接榫深度</span>
+            <input id="tabDepth" type="number" min="0.1" step="0.1" value="3">
+          </label>
+          <label>
+            <span>接榫寬度</span>
+            <input id="tabWidth" type="number" min="0.1" step="0.1" value="10">
+          </label>
+          <label>
+            <span>接榫間距</span>
+            <input id="tabSpacing" type="number" min="0" step="0.1" value="8">
+          </label>
+          <label>
+            <span>Kerf</span>
+            <input id="kerfWidth" type="number" min="0" step="0.01" value="0.15">
+          </label>
+        </section>
+
+        <section class="panel compact">
+          <h2>圖層</h2>
+          <p><span class="swatch black"></span>黑線：內尺寸</p>
+          <p><span class="swatch gray"></span>灰線：整體 offset</p>
+          <p><span class="swatch red"></span>紅線：draw 函數輸出</p>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="toolbar">
+          <div>
+            <strong id="modeTitle">Check</strong>
+            <span id="sampleTitle">basic_cube.svg</span>
+          </div>
+          <div class="toolbar-actions">
+            <div class="stats">
+              <span><strong id="pathCount">0</strong> paths</span>
+              <span><strong id="okCount">0</strong> ok</span>
+              <span><strong id="failCount">0</strong> fail</span>
+            </div>
+            <div class="zoom-controls" aria-label="Preview zoom controls">
+              <button id="zoomOutButton" type="button" title="Zoom out" aria-label="Zoom out">-</button>
+              <span id="zoomLevel">100%</span>
+              <button id="zoomInButton" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+              <button id="zoomResetButton" type="button" title="Reset zoom" aria-label="Reset zoom">Reset</button>
+            </div>
+            <button id="redOnlyButton" class="red-only-button" type="button" aria-pressed="false">只顯示紅線</button>
+          </div>
+        </div>
+
+        <div class="preview-wrap">
+          <svg id="previewSvg" role="img" aria-label="Draw and check preview"></svg>
+        </div>
+
+        <section class="results">
+          <h2>結果</h2>
+          <div id="resultList"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="auto-joinery.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

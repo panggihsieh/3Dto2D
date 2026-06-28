@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="500mm" height="192mm" viewBox="0 0 500 192">
+  <title>Gable house practice SVG</title>
+  <g id="CUT">
+    <path id="floor" d="M 0 0 L 126 0 L 126 86 L 0 86 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="left_wall" d="M 138 0 L 264 0 L 264 55 L 138 55 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="right_wall" d="M 276 0 L 402 0 L 402 55 L 276 55 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="front_gable" d="M 414 90 L 500 90 L 500 35 L 457 0 L 414 35 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="back_gable" d="M 0 192 L 86 192 L 86 137 L 43 102 L 0 137 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="roof_left" d="M 98 102 L 224 102 L 224 157.471 L 98 157.471 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+    <path id="roof_right" d="M 236 102 L 362 102 L 362 157.471 L 236 157.471 Z" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>
+  </g>
+  <g id="LABELS">
+    <text x="63" y="43" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">bottom</text>
+    <text x="201" y="27.5" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">left</text>
+    <text x="339" y="27.5" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">right</text>
+    <text x="457" y="45" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">front</text>
+    <text x="43" y="147" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">back</text>
+    <text x="161" y="129.735" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">roof left</text>
+    <text x="299" y="129.735" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">roof right</text>
+  </g>
+</svg>
+
