@@ -374,14 +374,6 @@
   };
 
   function switcherHost() {
-    const toolbar = document.querySelector(".workspace .toolbar");
-    if (toolbar) {
-      const zoomControls = toolbar.querySelector(".zoom-controls");
-      const legend = toolbar.querySelector(".legend");
-      return { element: toolbar, before: zoomControls, after: legend };
-    }
-    const brand = document.querySelector(".brand");
-    if (brand) return { element: brand };
     return document.body;
   }
 

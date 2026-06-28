@@ -375,10 +375,6 @@ button:disabled {
   color: #111827;
 }
 
-.legend .offset {
-  color: #94a3b8;
-}
-
 .legend .score {
   color: var(--score);
 }

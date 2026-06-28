@@ -273,40 +273,34 @@ function innerEdgeGuidesForRectPiece(name, width, height, params) {
   if (params.dimensionMode !== "inner") return null;
 
   const thickness = params.materialThickness;
-  const edgeGuide = (start, length) => ({
-    start,
-    length,
-    convexFromInnerLine: true,
-    depthFromMaterialThickness: true
-  });
   const full = {
-    horizontal: edgeGuide(0, width),
-    vertical: edgeGuide(0, height)
+    horizontal: { start: 0, length: width },
+    vertical: { start: 0, length: height }
   };
 
   if (["top", "bottom", "floor"].includes(name)) {
     if (name === "floor" && params.modelType === "gable_house") {
       return {
-        horizontal: edgeGuide(Math.max(0, (width - params.width - thickness * 2) / 2), params.width + thickness * 2),
-        vertical: edgeGuide(0, height)
+        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
+        vertical: { start: 0, length: height }
       };
     }
     return {
-      horizontal: edgeGuide(thickness, params.length),
-      vertical: edgeGuide(thickness, params.width)
+      horizontal: { start: thickness, length: params.length },
+      vertical: { start: thickness, length: params.width }
     };
   }
 
   if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(name)) {
     return {
-      horizontal: edgeGuide(thickness, params.length),
+      horizontal: { start: thickness, length: params.length },
       vertical: full.vertical
     };
   }
 
   if (["left", "right"].includes(name)) {
     return {
-      horizontal: edgeGuide(thickness, params.width),
+      horizontal: { start: thickness, length: params.width },
       vertical: full.vertical
     };
   }
@@ -657,19 +651,12 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
   const dx = (end.x - start.x) / length;
   const dy = (end.y - start.y) / length;
   const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
-  const depth = guide?.depthFromMaterialThickness ? params.materialThickness : params.tabDepth;
-  const baseStart = type === "f" && guide?.convexFromInnerLine
-    ? offsetBy(start, outward, -depth)
-    : start;
-  const baseEnd = type === "f" && guide?.convexFromInnerLine
-    ? offsetBy(end, outward, -depth)
-    : end;
   const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
   const baseGuideStart = Math.max(0, Math.min(length, guide?.start ?? 0));
   const baseGuideLength = Math.max(0, Math.min(length - baseGuideStart, guide?.length ?? length));
   const baseGuideEnd = baseGuideStart + baseGuideLength;
   const cornerClearance = direction
-    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, depth, params.tabWidth))
+    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth))
     : 0;
   const guideStart = baseGuideStart + cornerClearance;
   const guideEnd = baseGuideEnd - cornerClearance;
@@ -683,10 +670,10 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
     ? guideStart
     : guideStart + Math.max(0, (guideLength - fingerWidth) / 2);
 
-  pushPoint(points, baseStart);
+  pushPoint(points, start);
 
   if (!direction || count <= 0) {
-    pushPoint(points, baseEnd);
+    pushPoint(points, end);
     return;
   }
 
@@ -695,17 +682,17 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
     const tabEnd = Math.min(tabStart + fingerWidth, guideEnd);
     if (tabEnd <= tabStart || tabStart >= guideEnd) continue;
 
-    const a = along(baseStart, dx, dy, tabStart);
-    const b = along(baseStart, dx, dy, tabEnd);
-    const ao = offsetBy(a, outward, depth * direction);
-    const bo = offsetBy(b, outward, depth * direction);
+    const a = along(start, dx, dy, tabStart);
+    const b = along(start, dx, dy, tabEnd);
+    const ao = offsetBy(a, outward, params.tabDepth * direction);
+    const bo = offsetBy(b, outward, params.tabDepth * direction);
     pushPoint(points, a);
     pushPoint(points, ao);
     pushPoint(points, bo);
     pushPoint(points, b);
   }
 
-  pushPoint(points, baseEnd);
+  pushPoint(points, end);
 }
 
 function calcFingerCount(length, params) {
@@ -893,9 +880,7 @@ function render(result) {
   updatePreviewZoom();
 
   addSvgStyles();
-  const cutGroup = createSvgElement("g", {
-    class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
-  });
+  const cutGroup = createSvgElement("g", { class: "svg-cut" });
   els.previewSvg.appendChild(cutGroup);
 
   for (const piece of result.pieces) {
@@ -903,11 +888,11 @@ function render(result) {
       cutGroup.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: result.params.generateJoinery ? "#ff0000" : "#cbd5e1",
+        stroke: "#ff0000",
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
-        "stroke-width": result.params.generateJoinery ? previewStrokeWidth(result.params) : 0.8
+        "stroke-width": previewStrokeWidth(result.params)
       }));
     }
   }
@@ -956,13 +941,6 @@ function addSvgStyles() {
       stroke: #ff0000;
       stroke-linejoin: miter;
       stroke-linecap: square;
-    }
-    .offset-reference-preview path {
-      fill: none;
-      stroke: #cbd5e1;
-      stroke-linejoin: miter;
-      stroke-linecap: square;
-      stroke-dasharray: 4 3;
     }
     .piece-label-overlay text {
       fill: #ff0000;
