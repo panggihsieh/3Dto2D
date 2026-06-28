@@ -893,7 +893,9 @@ function render(result) {
   updatePreviewZoom();
 
   addSvgStyles();
-  const cutGroup = createSvgElement("g", { class: "svg-cut" });
+  const cutGroup = createSvgElement("g", {
+    class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
+  });
   els.previewSvg.appendChild(cutGroup);
 
   for (const piece of result.pieces) {
@@ -901,11 +903,11 @@ function render(result) {
       cutGroup.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: "#ff0000",
+        stroke: result.params.generateJoinery ? "#ff0000" : "#cbd5e1",
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
-        "stroke-width": previewStrokeWidth(result.params)
+        "stroke-width": result.params.generateJoinery ? previewStrokeWidth(result.params) : 0.8
       }));
     }
   }
@@ -954,6 +956,13 @@ function addSvgStyles() {
       stroke: #ff0000;
       stroke-linejoin: miter;
       stroke-linecap: square;
+    }
+    .offset-reference-preview path {
+      fill: none;
+      stroke: #cbd5e1;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+      stroke-dasharray: 4 3;
     }
     .piece-label-overlay text {
       fill: #ff0000;
