@@ -305,7 +305,7 @@
         "#fitView": ["置中", "Fit view", "Ansicht einpassen", "Ansicht einpassen"],
         ".zoom-panel h2": ["縮放", "Zoom", "Zoom", "Zoom"],
         "#manualTitle": ["使用者簡易操作手冊", "Quick User Guide", "Kurzanleitung", "Kurzanleitung"],
-        ".manual-list li:nth-child(1)": ["上傳 SVG，或按「載入範例」快速查看圖層效果。", "Upload an SVG or press Load sample to preview layer behavior.", "Laden Sie eine SVG hoch oder drücken Sie Beispiel laden, um Ebenen schnell zu prüfen.", "Laden Sie eine SVG hoch oder drücken Sie Beispiel laden, um Ebenen schnell zu prüfen."],
+        ".manual-list li:nth-child(1)": ["上傳 SVG，或按「載入樣本」快速查看圖層效果。", "Upload an SVG or press Load sample to preview layer behavior.", "Laden Sie eine SVG hoch oder drücken Sie Beispiel laden, um Ebenen schnell zu prüfen.", "Laden Sie eine SVG hoch oder drücken Sie Beispiel laden, um Ebenen schnell zu prüfen."],
         ".manual-list li:nth-child(2)": ["中間畫布可拖曳檢視，使用縮放滑桿或 +、- 調整比例。", "Drag the center canvas and use the zoom slider or + / - to adjust scale.", "Ziehen Sie die mittlere Arbeitsfläche und ändern Sie den Maßstab mit Regler oder + / -.", "Ziehen Sie die mittlere Arbeitsfläche und ändern Sie den Maßstab mit Regler oder + / -."],
         ".manual-list li:nth-child(3)": ["請特別注意：圖層名稱就是雷雕機圖層功率 % 與速度的參數控制量。", "Important: layer names are the parameter controls for laser power % and speed.", "Wichtig: Ebenennamen steuern Laserleistung in % und Geschwindigkeit.", "Wichtig: Ebenennamen steuern Laserleistung in % und Geschwindigkeit."],
         ".manual-list li:nth-child(4)": ["右側清單會列出 SVG 圖層；勾選可顯示或隱藏單一圖層。", "The right list shows SVG layers; use checkboxes to show or hide each layer.", "Die rechte Liste zeigt SVG-Ebenen; per Checkbox blenden Sie einzelne Ebenen ein oder aus.", "Die rechte Liste zeigt SVG-Ebenen; per Checkbox blenden Sie einzelne Ebenen ein oder aus."],
@@ -313,6 +313,7 @@
         ".manual-list li:nth-child(6)": ["檢查圖層名稱與可見性後，再回到原工具下載或修正 SVG。", "After checking names and visibility, return to the original tool to download or fix the SVG.", "Nach Prüfung von Namen und Sichtbarkeit kehren Sie zum Werkzeug zurück, um die SVG zu laden oder zu korrigieren.", "Nach Prüfung von Namen und Sichtbarkeit kehren Sie zum Werkzeug zurück, um die SVG zu laden oder zu korrigieren."],
         "#emptyState": ["上傳 SVG 後可檢視圖層名稱、顯示狀態與縮放", "Upload an SVG to inspect layer names, visibility, and zoom.", "Laden Sie eine SVG hoch, um Ebenennamen, Sichtbarkeit und Zoom zu prüfen.", "Laden Sie eine SVG hoch, um Ebenennamen, Sichtbarkeit und Zoom zu prüfen."],
         ".layer-panel .section-head h2": ["圖層", "Layers", "Ebenen", "Ebenen"],
+        "#layerDepthNote": ["功率調高、速率調慢則刻得深；以灰階雕刻為例，深色區用功率 35%、速率 120 mm/s 刻出凹陷感。", "Higher power and slower speed engrave deeper; for grayscale engraving, dark areas can use 35% power at 120 mm/s to create a recessed effect.", "Mehr Leistung und geringere Geschwindigkeit gravieren tiefer; bei Graustufengravur können dunkle Bereiche mit 35 % Leistung und 120 mm/s eine Vertiefung erzeugen.", "Mehr Leistung und geringere Geschwindigkeit gravieren tiefer; bei Graustufengravur können dunkle Bereiche mit 35 % Leistung und 120 mm/s eine Vertiefung erzeugen."],
         "#showAll": ["全部顯示", "Show all", "Alle anzeigen", "Alle anzeigen"],
         "#hideAll": ["全部隱藏", "Hide all", "Alle ausblenden", "Alle ausblenden"]
       },

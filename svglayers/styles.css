@@ -160,6 +160,17 @@ input[type="file"] {
   flex: 1 1 120px;
 }
 
+.layer-note {
+  margin: 10px 0 0;
+  border-left: 3px solid var(--orange);
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #fff7e8;
+  color: #263241;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .zoom-panel {
   margin-top: 18px;
 }

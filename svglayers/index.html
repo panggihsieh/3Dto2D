@@ -5,7 +5,7 @@
     <meta name="google" content="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SVG Layer Inspector</title>
-    <link rel="stylesheet" href="styles.css?v=20260628-5">
+    <link rel="stylesheet" href="styles.css?v=20260628-6">
     <link rel="stylesheet" href="../i18n.css?v=20260628-8">
   </head>
   <body>
@@ -48,7 +48,7 @@
               <span>Layer</span>
             </div>
             <ol class="manual-list">
-              <li>上傳 SVG，或按「載入範例」快速查看圖層效果。</li>
+              <li>上傳 SVG，或按「載入樣本」快速查看圖層效果。</li>
               <li>中間畫布可拖曳檢視，使用縮放滑桿或 +、- 調整比例。</li>
               <li class="manual-warning">請特別注意：圖層名稱就是雷雕機圖層功率 % 與速度的參數控制量。</li>
               <li>右側清單會列出 SVG 圖層；勾選可顯示或隱藏單一圖層。</li>
@@ -72,6 +72,7 @@
             <h2>圖層</h2>
             <span id="layerCount">0 layers</span>
           </div>
+          <p class="layer-note" id="layerDepthNote">功率調高、速率調慢則刻得深；以灰階雕刻為例，深色區用功率 35%、速率 120 mm/s 刻出凹陷感。</p>
           <div class="layer-actions">
             <button id="showAll" type="button">全部顯示</button>
             <button id="hideAll" type="button">全部隱藏</button>
@@ -82,6 +83,6 @@
     </main>
 
     <script src="app.js?v=20260628-4"></script>
-    <script src="../i18n.js?v=20260628-7"></script>
+    <script src="../i18n.js?v=20260628-8"></script>
   </body>
 </html>
