@@ -1,6 +1,7 @@
 const els = {
   svgInput: document.querySelector("#svgInput"),
   loadSample: document.querySelector("#loadSample"),
+  loadFluxSample: document.querySelector("#loadFluxSample"),
   fitView: document.querySelector("#fitView"),
   zoomOut: document.querySelector("#zoomOut"),
   zoomIn: document.querySelector("#zoomIn"),
@@ -45,6 +46,12 @@ els.loadSample.addEventListener("click", async () => {
   const dataUrl = await readBlobAsDataUrl(blob);
   const sampleSvg = sampleSvgDocument(dataUrl);
   await loadSvgText(sampleSvg, "sample-layer-check.svg");
+});
+
+els.loadFluxSample.addEventListener("click", async () => {
+  const response = await fetch("samples/flux_gradient.svg", { cache: "no-store" });
+  if (!response.ok) return;
+  await loadSvgText(await response.text(), "flux_gradient.svg");
 });
 
 els.fitView.addEventListener("click", resetView);
