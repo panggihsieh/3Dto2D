@@ -99,6 +99,7 @@ function buildResult(params) {
   const laidOut = layoutModelPieces(pieces, params);
   const bounds = getBoundsFromPieces(laidOut);
   warnings.push(...modelWarnings(params));
+  warnings.push(...joineryValidationMessages(params));
 
   return { pieces: laidOut, bounds, warnings, params };
 }
@@ -135,6 +136,120 @@ function modelWarnings(params) {
     warnings.push("雙斜屋頂第一版採外蓋式屋頂與簡化卡榫定位。");
   }
   return warnings;
+}
+
+function joineryValidationMessages(params) {
+  if (params.modelType !== "gable_house" || !params.generateJoinery) return [];
+
+  const checks = validateHouseJoinery(params);
+  const failures = checks.filter((check) => !check.ok);
+  const summary = failures.length
+    ? `接榫驗算：${checks.length} 組中有 ${failures.length} 組不通過`
+    : `接榫驗算：${checks.length} 組全部通過`;
+
+  return [
+    summary,
+    ...checks.map((check) => {
+      const status = check.ok ? "OK" : "FAIL";
+      const reason = check.ok ? "" : `；原因：${check.reason}`;
+      return `${status} ${check.name}：類型 ${check.a.type}/${check.b.type}，凹凸數量 ${check.a.count}/${check.b.count}，接合長度 ${formatGuideNumber(check.a.guideLength)}/${formatGuideNumber(check.b.guideLength)}${reason}`;
+    })
+  ];
+}
+
+function validateHouseJoinery(params) {
+  const dimensions = houseDimensions(params);
+  const roofSlopeLength = Math.hypot(dimensions.width / 2, params.roofHeight);
+  const floorEdges = "ffff";
+  const wallEdges = "FfFf";
+  const roofLeftEdges = "ffff";
+  const roofRightEdges = "Ffff";
+  const gableEdges = "FFFFF";
+
+  const edge = (piece, edgeName, type, guideLength) => ({
+    piece,
+    edgeName,
+    type,
+    guideLength,
+    count: countForJoineryGuide(guideLength, type, params)
+  });
+
+  const rectEdge = (piece, edgeName, edges, width, height, guideLengths = {}) => {
+    const edgeIndex = { top: 0, right: 1, bottom: 2, left: 3 }[edgeName];
+    const baseLength = edgeName === "top" || edgeName === "bottom" ? width : height;
+    return edge(piece, edgeName, edges[edgeIndex], guideLengths[edgeName] ?? baseLength);
+  };
+
+  const floor = (edgeName) => rectEdge("Bottom", edgeName, floorEdges, dimensions.length, dimensions.width, {
+    top: params.length,
+    right: dimensions.width,
+    bottom: params.length,
+    left: dimensions.width
+  });
+  const leftWall = (edgeName) => rectEdge("Left", edgeName, wallEdges, dimensions.length, params.wallHeight, {
+    top: params.length,
+    bottom: params.length
+  });
+  const rightWall = (edgeName) => rectEdge("Right", edgeName, wallEdges, dimensions.length, params.wallHeight, {
+    top: params.length,
+    bottom: params.length
+  });
+  const roofLeft = (edgeName) => rectEdge("Roof L", edgeName, roofLeftEdges, dimensions.length, roofSlopeLength, {
+    top: params.length,
+    bottom: params.length
+  });
+  const roofRight = (edgeName) => rectEdge("Roof R", edgeName, roofRightEdges, dimensions.length, roofSlopeLength, {
+    top: params.length,
+    bottom: params.length
+  });
+  const gable = (piece, edgeName, edgeIndex, guideLength) => edge(piece, edgeName, gableEdges[edgeIndex], guideLength);
+
+  const gableBottom = dimensions.width;
+  const gableSide = params.wallHeight;
+  const gableSlope = roofSlopeLength;
+  const pairs = [
+    ["Bottom.top <-> Left.bottom", floor("top"), leftWall("bottom")],
+    ["Bottom.bottom <-> Right.bottom", floor("bottom"), rightWall("bottom")],
+    ["Bottom.left <-> Front.bottom", floor("left"), gable("Front", "bottom", 0, gableBottom)],
+    ["Bottom.right <-> Back.bottom", floor("right"), gable("Back", "bottom", 0, gableBottom)],
+    ["Left.left <-> Front.left", leftWall("left"), gable("Front", "left wall", 4, gableSide)],
+    ["Left.right <-> Back.left", leftWall("right"), gable("Back", "left wall", 4, gableSide)],
+    ["Right.left <-> Front.right", rightWall("left"), gable("Front", "right wall", 1, gableSide)],
+    ["Right.right <-> Back.right", rightWall("right"), gable("Back", "right wall", 1, gableSide)],
+    ["Roof L.top <-> Roof R.top", roofLeft("top"), roofRight("top")],
+    ["Roof L.left <-> Front.left roof", roofLeft("left"), gable("Front", "left roof", 3, gableSlope)],
+    ["Roof L.right <-> Back.left roof", roofLeft("right"), gable("Back", "left roof", 3, gableSlope)],
+    ["Roof R.left <-> Front.right roof", roofRight("left"), gable("Front", "right roof", 2, gableSlope)],
+    ["Roof R.right <-> Back.right roof", roofRight("right"), gable("Back", "right roof", 2, gableSlope)]
+  ];
+
+  return pairs.map(([name, a, b]) => {
+    const complementary = isComplementary(a.type, b.type);
+    const sameCount = a.count === b.count;
+    const sameLength = Math.abs(a.guideLength - b.guideLength) < 0.001;
+    const reasons = [];
+    if (!complementary) reasons.push("凹凸方向不是互補");
+    if (!sameCount) reasons.push("凹凸數量不同");
+    if (!sameLength) reasons.push("接合長度不同");
+    return {
+      name,
+      a,
+      b,
+      ok: complementary && sameCount && sameLength,
+      reason: reasons.join("; ")
+    };
+  });
+}
+
+function countForJoineryGuide(length, type, params) {
+  const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
+  if (!direction) return 0;
+  const cornerClearance = Math.min(length / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth));
+  return calcFingerCount(Math.max(0, length - cornerClearance * 2), params);
+}
+
+function isComplementary(a, b) {
+  return (a === "f" && b === "F") || (a === "F" && b === "f");
 }
 
 function buildBoxPieces(length, width, height, params, reserveJoineryMargin = false) {
@@ -280,6 +395,12 @@ function innerEdgeGuidesForRectPiece(name, width, height, params) {
   };
 
   if (["top", "bottom", "floor"].includes(name)) {
+    if (name === "floor" && params.modelType === "gable_house") {
+      return {
+        horizontal: { start: thickness, length: params.length },
+        vertical: { start: 0, length: height }
+      };
+    }
     return {
       horizontal: { start: thickness, length: params.length },
       vertical: { start: thickness, length: params.width }
