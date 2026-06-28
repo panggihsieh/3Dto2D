@@ -5,19 +5,11 @@
 
 body > .language-switcher {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 86px;
+  right: 24px;
   display: flex;
   justify-content: flex-end;
-  padding: 8px 16px;
-  background: rgba(244, 246, 248, 0.96);
-  border-bottom: 1px solid #d9dee5;
-  backdrop-filter: blur(6px);
-}
-
-body:has(> .language-switcher) {
-  padding-top: 53px;
+  padding: 0;
 }
 
 .language-switcher label {
@@ -81,6 +73,7 @@ body:has(> .language-switcher) {
 
 @media (max-width: 760px) {
   body > .language-switcher {
-    padding: 8px;
+    top: 12px;
+    right: 12px;
   }
 }
