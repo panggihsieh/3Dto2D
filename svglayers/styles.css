@@ -162,12 +162,13 @@ input[type="file"] {
 
 .layer-note {
   margin: 10px 0 0;
-  border-left: 3px solid var(--orange);
+  border: 2px solid var(--black);
   padding: 8px 10px;
   border-radius: 4px;
-  background: #fff7e8;
-  color: #263241;
+  background: var(--orange);
+  color: var(--black);
   font-size: 0.9rem;
+  font-weight: 900;
   line-height: 1.5;
 }
 
