@@ -273,34 +273,40 @@ function innerEdgeGuidesForRectPiece(name, width, height, params) {
   if (params.dimensionMode !== "inner") return null;
 
   const thickness = params.materialThickness;
+  const edgeGuide = (start, length) => ({
+    start,
+    length,
+    convexFromInnerLine: true,
+    depthFromMaterialThickness: true
+  });
   const full = {
-    horizontal: { start: 0, length: width },
-    vertical: { start: 0, length: height }
+    horizontal: edgeGuide(0, width),
+    vertical: edgeGuide(0, height)
   };
 
   if (["top", "bottom", "floor"].includes(name)) {
     if (name === "floor" && params.modelType === "gable_house") {
       return {
-        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
-        vertical: { start: 0, length: height }
+        horizontal: edgeGuide(Math.max(0, (width - params.width - thickness * 2) / 2), params.width + thickness * 2),
+        vertical: edgeGuide(0, height)
       };
     }
     return {
-      horizontal: { start: thickness, length: params.length },
-      vertical: { start: thickness, length: params.width }
+      horizontal: edgeGuide(thickness, params.length),
+      vertical: edgeGuide(thickness, params.width)
     };
   }
 
   if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(name)) {
     return {
-      horizontal: { start: thickness, length: params.length },
+      horizontal: edgeGuide(thickness, params.length),
       vertical: full.vertical
     };
   }
 
   if (["left", "right"].includes(name)) {
     return {
-      horizontal: { start: thickness, length: params.width },
+      horizontal: edgeGuide(thickness, params.width),
       vertical: full.vertical
     };
   }
@@ -651,12 +657,19 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
   const dx = (end.x - start.x) / length;
   const dy = (end.y - start.y) / length;
   const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
+  const depth = guide?.depthFromMaterialThickness ? params.materialThickness : params.tabDepth;
+  const baseStart = type === "f" && guide?.convexFromInnerLine
+    ? offsetBy(start, outward, -depth)
+    : start;
+  const baseEnd = type === "f" && guide?.convexFromInnerLine
+    ? offsetBy(end, outward, -depth)
+    : end;
   const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
   const baseGuideStart = Math.max(0, Math.min(length, guide?.start ?? 0));
   const baseGuideLength = Math.max(0, Math.min(length - baseGuideStart, guide?.length ?? length));
   const baseGuideEnd = baseGuideStart + baseGuideLength;
   const cornerClearance = direction
-    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth))
+    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, depth, params.tabWidth))
     : 0;
   const guideStart = baseGuideStart + cornerClearance;
   const guideEnd = baseGuideEnd - cornerClearance;
@@ -670,10 +683,10 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
     ? guideStart
     : guideStart + Math.max(0, (guideLength - fingerWidth) / 2);
 
-  pushPoint(points, start);
+  pushPoint(points, baseStart);
 
   if (!direction || count <= 0) {
-    pushPoint(points, end);
+    pushPoint(points, baseEnd);
     return;
   }
 
@@ -682,17 +695,17 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
     const tabEnd = Math.min(tabStart + fingerWidth, guideEnd);
     if (tabEnd <= tabStart || tabStart >= guideEnd) continue;
 
-    const a = along(start, dx, dy, tabStart);
-    const b = along(start, dx, dy, tabEnd);
-    const ao = offsetBy(a, outward, params.tabDepth * direction);
-    const bo = offsetBy(b, outward, params.tabDepth * direction);
+    const a = along(baseStart, dx, dy, tabStart);
+    const b = along(baseStart, dx, dy, tabEnd);
+    const ao = offsetBy(a, outward, depth * direction);
+    const bo = offsetBy(b, outward, depth * direction);
     pushPoint(points, a);
     pushPoint(points, ao);
     pushPoint(points, bo);
     pushPoint(points, b);
   }
 
-  pushPoint(points, end);
+  pushPoint(points, baseEnd);
 }
 
 function calcFingerCount(length, params) {
