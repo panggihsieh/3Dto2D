@@ -280,12 +280,6 @@ function innerEdgeGuidesForRectPiece(name, width, height, params) {
   };
 
   if (["top", "bottom", "floor"].includes(name)) {
-    if (name === "floor" && params.modelType === "gable_house") {
-      return {
-        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
-        vertical: { start: 0, length: height }
-      };
-    }
     return {
       horizontal: { start: thickness, length: params.length },
       vertical: { start: thickness, length: params.width }
