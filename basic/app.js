@@ -226,16 +226,15 @@ function buildHousePieces(params) {
   const roofSlopeLength = Math.hypot(dimensions.width / 2, params.roofHeight);
   const floorEdges = params.generateJoinery ? "ffff" : "eeee";
   const wallEdges = params.generateJoinery ? "FFFF" : "eeee";
-  const roofLeftEdges = params.generateJoinery ? "ffff" : "eeee";
-  const roofRightEdges = params.generateJoinery ? "Ffff" : "eeee";
+  const roofEdges = params.generateJoinery ? "ffff" : "eeee";
   return [
     rectPiece("floor", dimensions.length, dimensions.width, params, floorEdges),
     rectPiece("left_wall", dimensions.length, params.wallHeight, params, wallEdges),
     rectPiece("right_wall", dimensions.length, params.wallHeight, params, wallEdges),
     gablePiece("front_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
     gablePiece("back_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
-    rectPiece("roof_left", dimensions.length, roofSlopeLength, params, roofLeftEdges),
-    rectPiece("roof_right", dimensions.length, roofSlopeLength, params, roofRightEdges)
+    rectPiece("roof_left", dimensions.length, roofSlopeLength, params, roofEdges),
+    rectPiece("roof_right", dimensions.length, roofSlopeLength, params, roofEdges)
   ];
 }
 
