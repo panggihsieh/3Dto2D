@@ -375,7 +375,8 @@
   };
 
   function switcherHost() {
-    const toolbar = document.querySelector(".workspace .toolbar");
+    const key = pageKey();
+    const toolbar = key === "basic" ? document.querySelector(".workspace .toolbar") : null;
     if (toolbar) {
       const legend = toolbar.querySelector(".legend");
       if (legend) return { element: toolbar, after: legend };
