@@ -118,7 +118,8 @@
         ".manual-list li:nth-child(4)": ["需要接榫時按「顯示接榫後」，預覽會更新紅色切割線。", "Press \"Show with joinery\" when joints are needed; the red cut preview updates.", "Drücken Sie „Mit Zapfen anzeigen“, wenn Verbindungen benötigt werden; die roten Schnittlinien werden aktualisiert.", "Drücken Sie „Mit Zapfen anzeigen“, wenn Verbindungen benötigt werden; die roten Schnittlinien werden aktualisiert."],
         ".manual-list li:nth-child(5)": ["檢查右側預覽與提示，確認沒有警告後下載 SVG 或 DXF。", "Check the preview and notices, then download SVG or DXF when there are no warnings.", "Prüfen Sie Vorschau und Hinweise und laden Sie SVG oder DXF herunter, wenn keine Warnungen vorliegen.", "Prüfen Sie Vorschau und Hinweise und laden Sie SVG oder DXF herunter, wenn keine Warnungen vorliegen."],
         ".legend .dimension": ["黑色：內尺寸", "Black: inner size", "Schwarz: Innenmaß", "Schwarz: Innenmaß"],
-        ".legend .cut": ["紅色：切割區", "Red: cut area", "Rot: Schnittbereich", "Rot: Schnittbereich"],
+        ".legend .offset": ["灰色：offset 線條", "Gray: offset lines", "Grau: Offset-Linien", "Grau: Offset-Linien"],
+        ".legend .cut": ["紅色：接榫後切割線", "Red: cut lines after joinery", "Rot: Schnittlinien nach Zapfen", "Rot: Schnittlinien nach Zapfen"],
         "#zoomResetButton": ["Reset", "Reset", "Zurücksetzen", "Zurücksetzen"],
         ".warnings h2": ["提示", "Notices", "Hinweise", "Hinweise"]
       },

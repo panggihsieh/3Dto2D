@@ -880,7 +880,9 @@ function render(result) {
   updatePreviewZoom();
 
   addSvgStyles();
-  const cutGroup = createSvgElement("g", { class: "svg-cut" });
+  const cutGroup = createSvgElement("g", {
+    class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
+  });
   els.previewSvg.appendChild(cutGroup);
 
   for (const piece of result.pieces) {
@@ -888,7 +890,7 @@ function render(result) {
       cutGroup.appendChild(createSvgElement("path", {
         d: pathToD(path, piece.x, piece.y),
         fill: "none",
-        stroke: "#ff0000",
+        stroke: result.params.generateJoinery ? "#ff0000" : "#94a3b8",
         "stroke-linejoin": "miter",
         "stroke-linecap": "square",
         "vector-effect": "non-scaling-stroke",
@@ -939,6 +941,12 @@ function addSvgStyles() {
     .svg-cut path {
       fill: none;
       stroke: #ff0000;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+    }
+    .offset-reference-preview path {
+      fill: none;
+      stroke: #94a3b8;
       stroke-linejoin: miter;
       stroke-linecap: square;
     }
