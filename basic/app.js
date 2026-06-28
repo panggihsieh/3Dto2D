@@ -1015,6 +1015,7 @@ function render(result) {
     }
   }
   renderPieceLabels(result.pieces);
+  renderOffsetReferenceGuides(result);
   renderInnerDimensionGuides(result);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
@@ -1094,8 +1095,40 @@ function addSvgStyles() {
       dominant-baseline: middle;
       pointer-events: none;
     }
+    .offset-dimension-guides path {
+      fill: none;
+      stroke: #94a3b8;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+      vector-effect: non-scaling-stroke;
+      stroke-width: 1;
+      pointer-events: none;
+    }
   `;
   els.previewSvg.appendChild(style);
+}
+
+function renderOffsetReferenceGuides(result) {
+  if (result.params.dimensionMode !== "inner") return;
+  if (!["cube", "cuboid", "gable_house"].includes(result.params.modelType)) return;
+
+  const group = createSvgElement("g", { class: "offset-dimension-guides" });
+  let guideCount = 0;
+  for (const piece of result.pieces) {
+    const guide = innerGuideForPiece(piece, result.params);
+    if (!guide) continue;
+    const offset = result.params.materialThickness;
+    group.appendChild(createSvgElement("path", {
+      d: rectPathD(
+        piece.x + guide.x - offset,
+        piece.y + guide.y - offset,
+        guide.width + offset * 2,
+        guide.height + offset * 2
+      )
+    }));
+    guideCount += 1;
+  }
+  if (guideCount) els.previewSvg.appendChild(group);
 }
 
 function renderInnerDimensionGuides(result) {
