@@ -374,10 +374,14 @@
 
   function switcherHost() {
     const toolbar = document.querySelector(".workspace .toolbar");
-    if (!toolbar) return document.body;
-    const zoomControls = toolbar.querySelector(".zoom-controls");
-    const legend = toolbar.querySelector(".legend");
-    return { toolbar, before: zoomControls, after: legend };
+    if (toolbar) {
+      const zoomControls = toolbar.querySelector(".zoom-controls");
+      const legend = toolbar.querySelector(".legend");
+      return { element: toolbar, before: zoomControls, after: legend };
+    }
+    const brand = document.querySelector(".brand");
+    if (brand) return { element: brand };
+    return document.body;
   }
 
   function ensureSwitcher() {
@@ -405,9 +409,9 @@
     } else if (host.after) {
       host.after.insertAdjacentElement("afterend", wrapper);
     } else if (host.before) {
-      host.toolbar.insertBefore(wrapper, host.before);
+      host.element.insertBefore(wrapper, host.before);
     } else {
-      host.toolbar.append(wrapper);
+      host.element.append(wrapper);
     }
   }
 

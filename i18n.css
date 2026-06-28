@@ -54,6 +54,14 @@ body > .language-switcher {
   min-width: 180px;
 }
 
+.brand .language-switcher {
+  margin-left: auto;
+}
+
+.brand .language-switcher select {
+  min-width: 180px;
+}
+
 .language-switcher select:focus-visible {
   outline: 2px solid #0b6bcb;
   outline-offset: 2px;
