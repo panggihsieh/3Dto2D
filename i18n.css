@@ -70,10 +70,9 @@ body > .language-switcher {
 
 @media (max-width: 760px) {
   body > .language-switcher {
-    position: sticky;
     top: 8px;
     display: flex;
     justify-content: flex-end;
-    padding: 8px 8px 0;
+    padding: 0;
   }
 }
