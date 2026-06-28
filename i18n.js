@@ -373,6 +373,7 @@
   };
 
   function ensureSwitcher() {
+    document.body.classList.add("has-language-switcher");
     if (document.querySelector("#languageSelect")) return;
     const wrapper = document.createElement("div");
     wrapper.className = "language-switcher";
