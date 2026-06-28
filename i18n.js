@@ -375,6 +375,11 @@
   };
 
   function switcherHost() {
+    const toolbar = document.querySelector(".workspace .toolbar");
+    if (toolbar) {
+      const legend = toolbar.querySelector(".legend");
+      if (legend) return { element: toolbar, after: legend };
+    }
     return document.body;
   }
 

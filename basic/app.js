@@ -1007,18 +1007,20 @@ function dimensionTextOffset(guide) {
 }
 
 function innerGuideForPiece(piece, params) {
-  const thickness = params.materialThickness;
   const depth = params.tabDepth;
   const innerLength = params.length;
   const innerWidth = params.width;
   const innerHeight = ["cube", "cuboid"].includes(params.modelType) ? params.height : params.wallHeight;
-  const guideX = depth + thickness;
-  const guideY = depth + thickness;
+  const centerInset = (outerSize, innerSize) => Math.max(0, (outerSize - innerSize) / 2);
+  const guideX = centerInset(piece.width, innerLength);
+  const guideY = centerInset(piece.height, innerHeight);
+  const guideWidthX = centerInset(piece.width, innerWidth);
+  const guideWidthY = centerInset(piece.height, innerWidth);
 
   if (["top", "bottom", "floor"].includes(piece.name)) {
     return {
       x: guideX,
-      y: guideY,
+      y: guideWidthY,
       width: innerLength,
       height: innerWidth,
       label: `${formatGuideNumber(innerLength)} x ${formatGuideNumber(innerWidth)}`
@@ -1038,7 +1040,7 @@ function innerGuideForPiece(piece, params) {
   if (["left_wall", "right_wall", "roof_left", "roof_right"].includes(piece.name)) {
     return {
       x: guideX,
-      y: depth,
+      y: guideY,
       width: innerLength,
       height: innerHeight,
       label: `${formatGuideNumber(innerLength)} x ${formatGuideNumber(innerHeight)}`
@@ -1047,7 +1049,7 @@ function innerGuideForPiece(piece, params) {
 
   if (["front_gable", "back_gable"].includes(piece.name)) {
     return {
-      x: Math.max(0, (piece.width - innerWidth) / 2),
+      x: guideWidthX,
       y: Math.max(0, piece.height - depth - innerHeight),
       width: innerWidth,
       height: innerHeight,
@@ -1057,7 +1059,7 @@ function innerGuideForPiece(piece, params) {
 
   if (["left", "right"].includes(piece.name)) {
     return {
-      x: guideX,
+      x: guideWidthX,
       y: guideY,
       width: innerWidth,
       height: innerHeight,
