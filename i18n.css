@@ -55,7 +55,8 @@ body > .language-switcher {
 }
 
 .brand .language-switcher {
-  margin-left: auto;
+  grid-column: 3;
+  justify-self: end;
 }
 
 .brand .language-switcher select {
