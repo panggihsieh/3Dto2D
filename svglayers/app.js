@@ -1,7 +1,6 @@
 const els = {
   svgInput: document.querySelector("#svgInput"),
   loadSample: document.querySelector("#loadSample"),
-  loadFluxSample: document.querySelector("#loadFluxSample"),
   fitView: document.querySelector("#fitView"),
   zoomOut: document.querySelector("#zoomOut"),
   zoomIn: document.querySelector("#zoomIn"),
@@ -40,15 +39,6 @@ els.svgInput.addEventListener("change", async () => {
 });
 
 els.loadSample.addEventListener("click", async () => {
-  const response = await fetch("../bmptrace/assets/sample.png", { cache: "no-store" });
-  if (!response.ok) return;
-  const blob = await response.blob();
-  const dataUrl = await readBlobAsDataUrl(blob);
-  const sampleSvg = sampleSvgDocument(dataUrl);
-  await loadSvgText(sampleSvg, "sample-layer-check.svg");
-});
-
-els.loadFluxSample.addEventListener("click", async () => {
   const response = await fetch("samples/flux_gradient.svg", { cache: "no-store" });
   if (!response.ok) return;
   await loadSvgText(await response.text(), "flux_gradient.svg");
@@ -241,30 +231,6 @@ function parseSvgLength(value) {
   if (!value) return 0;
   const number = Number.parseFloat(String(value));
   return Number.isFinite(number) ? number : 0;
-}
-
-function readBlobAsDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-function sampleSvgDocument(imageUrl) {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="120mm" height="80mm" viewBox="0 0 120 80">
-  <g id="L01_lightest_gray_8_w_100mm_s" inkscape:groupmode="layer" inkscape:label="L01_lightest_gray_8%w_100mm/s">
-    <rect x="6" y="6" width="108" height="68" rx="4" fill="#b3b3b3"/>
-  </g>
-  <g id="L03_tone_03_gray_24_w_100mm_s" inkscape:groupmode="layer" inkscape:label="L03_tone_03_gray_24%w_100mm/s">
-    <image href="${imageUrl}" x="22" y="12" width="76" height="42" preserveAspectRatio="xMidYMid meet"/>
-  </g>
-  <g id="L05_darkest_gray_40_w_100mm_s" inkscape:groupmode="layer" inkscape:label="L05_darkest_gray_40%w_100mm/s">
-    <rect x="22" y="60" width="76" height="6" rx="2" fill="#1d1d1d"/>
-  </g>
-</svg>`;
 }
 
 function clamp(value, min, max) {
