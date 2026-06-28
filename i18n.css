@@ -1,12 +1,12 @@
-.has-language-switcher {
-  padding-top: 56px;
+.language-switcher {
+  flex: 0 0 auto;
+  z-index: 1000;
 }
 
-.language-switcher {
+body > .language-switcher {
   position: fixed;
   top: 10px;
   right: 16px;
-  z-index: 1000;
 }
 
 .language-switcher label {
@@ -46,17 +46,21 @@
   appearance: none;
 }
 
+.toolbar .language-switcher {
+  margin-left: 8px;
+}
+
+.toolbar .language-switcher select {
+  min-width: 180px;
+}
+
 .language-switcher select:focus-visible {
   outline: 2px solid #0b6bcb;
   outline-offset: 2px;
 }
 
 @media (max-width: 760px) {
-  .has-language-switcher {
-    padding-top: 0;
-  }
-
-  .language-switcher {
+  body > .language-switcher {
     position: sticky;
     top: 8px;
     display: flex;

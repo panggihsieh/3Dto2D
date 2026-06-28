@@ -372,8 +372,15 @@
     return pages[parent] ? parent : "";
   };
 
+  function switcherHost() {
+    const toolbar = document.querySelector(".workspace .toolbar");
+    if (!toolbar) return document.body;
+    const zoomControls = toolbar.querySelector(".zoom-controls");
+    const legend = toolbar.querySelector(".legend");
+    return { toolbar, before: zoomControls, after: legend };
+  }
+
   function ensureSwitcher() {
-    document.body.classList.add("has-language-switcher");
     if (document.querySelector("#languageSelect")) return;
     const wrapper = document.createElement("div");
     wrapper.className = "language-switcher";
@@ -392,7 +399,16 @@
     }
     label.append(labelText, select);
     wrapper.append(label);
-    document.body.prepend(wrapper);
+    const host = switcherHost();
+    if (host === document.body) {
+      document.body.prepend(wrapper);
+    } else if (host.after) {
+      host.after.insertAdjacentElement("afterend", wrapper);
+    } else if (host.before) {
+      host.toolbar.insertBefore(wrapper, host.before);
+    } else {
+      host.toolbar.append(wrapper);
+    }
   }
 
   function setText(selector, values, index) {
