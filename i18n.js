@@ -1,10 +1,8 @@
 (() => {
   const defaultLanguage = "zh-Hant";
   const languages = [
-    ["zh-Hant", "zh-hant (中文)"],
-    ["en", "en(英文)"],
-    ["de", "de(德文)"],
-    ["de-AT", "de-AT(奧地利文)"]
+    ["zh-Hant", "中文"],
+    ["en", "English"]
   ];
 
   const shared = {
@@ -367,6 +365,7 @@
   };
 
   const langIndex = (language) => languages.findIndex(([code]) => code === language);
+  const isSelectableLanguage = (language) => languages.some(([code]) => code === language);
   const pageKey = () => {
     const segment = location.pathname.split("/").filter(Boolean).pop();
     if (segment && pages[segment]) return segment;
@@ -502,7 +501,7 @@
     window.__applyingI18n = true;
     const key = pageKey();
     const page = pages[key];
-    const safeLanguage = shared[language] ? language : defaultLanguage;
+    const safeLanguage = shared[language] && isSelectableLanguage(language) ? language : defaultLanguage;
     const index = langIndex(safeLanguage);
     document.documentElement.lang = safeLanguage;
     document.documentElement.classList.add("notranslate");

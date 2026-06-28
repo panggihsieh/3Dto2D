@@ -328,10 +328,8 @@
       <label>
         <span data-i18n="languageLabel">語言</span>
         <select id="languageSelect" aria-label="語言">
-          <option value="zh-Hant">zh-hant (中文)</option>
-          <option value="en">en(英文)</option>
-          <option value="de">de(德文)</option>
-          <option value="de-AT">de-AT(奧地利文)</option>
+          <option value="zh-Hant">中文</option>
+          <option value="en">English</option>
         </select>
       </label>
     </div>
@@ -489,10 +487,12 @@
 
       const languageSelect = document.querySelector("#languageSelect");
       const defaultLanguage = "zh-Hant";
+      const selectableLanguages = new Set(["zh-Hant", "en"]);
 
       function applyLanguage(language) {
-        const dictionary = translations[language] || translations[defaultLanguage];
-        document.documentElement.lang = language;
+        const safeLanguage = selectableLanguages.has(language) ? language : defaultLanguage;
+        const dictionary = translations[safeLanguage] || translations[defaultLanguage];
+        document.documentElement.lang = safeLanguage;
         document.documentElement.classList.add("notranslate");
         document.documentElement.setAttribute("translate", "no");
         document.body.setAttribute("translate", "no");
@@ -508,7 +508,7 @@
           if (dictionary[key]) element.setAttribute("aria-label", dictionary[key]);
         });
 
-        languageSelect.value = translations[language] ? language : defaultLanguage;
+        languageSelect.value = safeLanguage;
         localStorage.setItem("homeLanguage", languageSelect.value);
       }
 
