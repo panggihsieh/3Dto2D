@@ -140,7 +140,7 @@ function modelWarnings(params) {
 }
 
 function offsetReferenceValidationMessages(pieces, params) {
-  if (!params.generateJoinery) return [];
+  if (params.generateJoinery) return [];
   if (params.dimensionMode !== "inner") return [];
   if (!["cube", "cuboid", "gable_house"].includes(params.modelType)) return [];
 
@@ -1015,9 +1015,12 @@ function render(result) {
 
   addSvgStyles();
   const canUseInnerGuides = ["cube", "cuboid", "gable_house"].includes(result.params.modelType);
-  const showCutPaths = true;
+  const showCutPaths = result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
   const showAsOffsetPreview = result.params.dimensionMode !== "inner" || !canUseInnerGuides;
-  setOffsetLegendVisibility(result.params.generateJoinery);
+  setLayerLegendVisibility({
+    offset: !result.params.generateJoinery,
+    cut: result.params.generateJoinery
+  });
 
   if (showCutPaths) {
     const cutGroup = createSvgElement("g", {
@@ -1052,9 +1055,11 @@ function render(result) {
   renderWarnings(result.warnings);
 }
 
-function setOffsetLegendVisibility(visible) {
+function setLayerLegendVisibility({ offset, cut }) {
   const offsetLegend = document.querySelector(".legend .offset");
-  if (offsetLegend) offsetLegend.hidden = !visible;
+  const cutLegend = document.querySelector(".legend .cut");
+  if (offsetLegend) offsetLegend.hidden = !offset;
+  if (cutLegend) cutLegend.hidden = !cut;
 }
 
 function pathToD(points, offsetX = 0, offsetY = 0) {
@@ -1139,7 +1144,7 @@ function addSvgStyles() {
 }
 
 function renderOffsetReferenceGuides(result) {
-  if (!result.params.generateJoinery) return;
+  if (result.params.generateJoinery) return;
   if (result.params.dimensionMode !== "inner") return;
   if (!["cube", "cuboid", "gable_house"].includes(result.params.modelType)) return;
 
