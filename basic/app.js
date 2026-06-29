@@ -140,6 +140,7 @@ function modelWarnings(params) {
 }
 
 function offsetReferenceValidationMessages(pieces, params) {
+  if (!params.generateJoinery) return [];
   if (params.dimensionMode !== "inner") return [];
   if (!["cube", "cuboid", "gable_house"].includes(params.modelType)) return [];
 
@@ -1013,22 +1014,28 @@ function render(result) {
   updatePreviewZoom();
 
   addSvgStyles();
-  const cutGroup = createSvgElement("g", {
-    class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
-  });
-  els.previewSvg.appendChild(cutGroup);
+  const canUseInnerGuides = ["cube", "cuboid", "gable_house"].includes(result.params.modelType);
+  const showCutPaths = result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
+  setOffsetLegendVisibility(result.params.generateJoinery);
 
-  for (const piece of result.pieces) {
-    for (const path of piece.paths) {
-      cutGroup.appendChild(createSvgElement("path", {
-        d: pathToD(path, piece.x, piece.y),
-        fill: "none",
-        stroke: result.params.generateJoinery ? "#ff0000" : "#94a3b8",
-        "stroke-linejoin": "miter",
-        "stroke-linecap": "square",
-        "vector-effect": "non-scaling-stroke",
-        "stroke-width": previewStrokeWidth(result.params)
-      }));
+  if (showCutPaths) {
+    const cutGroup = createSvgElement("g", {
+      class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
+    });
+    els.previewSvg.appendChild(cutGroup);
+
+    for (const piece of result.pieces) {
+      for (const path of piece.paths) {
+        cutGroup.appendChild(createSvgElement("path", {
+          d: pathToD(path, piece.x, piece.y),
+          fill: "none",
+          stroke: result.params.generateJoinery ? "#ff0000" : "#94a3b8",
+          "stroke-linejoin": "miter",
+          "stroke-linecap": "square",
+          "vector-effect": "non-scaling-stroke",
+          "stroke-width": previewStrokeWidth(result.params)
+        }));
+      }
     }
   }
   renderPieceLabels(result.pieces);
@@ -1042,6 +1049,11 @@ function render(result) {
   els.downloadDxf.disabled = false;
   els.downloadSvg.disabled = false;
   renderWarnings(result.warnings);
+}
+
+function setOffsetLegendVisibility(visible) {
+  const offsetLegend = document.querySelector(".legend .offset");
+  if (offsetLegend) offsetLegend.hidden = !visible;
 }
 
 function pathToD(points, offsetX = 0, offsetY = 0) {
@@ -1126,6 +1138,7 @@ function addSvgStyles() {
 }
 
 function renderOffsetReferenceGuides(result) {
+  if (!result.params.generateJoinery) return;
   if (result.params.dimensionMode !== "inner") return;
   if (!["cube", "cuboid", "gable_house"].includes(result.params.modelType)) return;
 
