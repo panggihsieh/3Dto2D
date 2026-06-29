@@ -1015,12 +1015,13 @@ function render(result) {
 
   addSvgStyles();
   const canUseInnerGuides = ["cube", "cuboid", "gable_house"].includes(result.params.modelType);
-  const showCutPaths = result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
+  const showCutPaths = true;
+  const showAsOffsetPreview = result.params.dimensionMode !== "inner" || !canUseInnerGuides;
   setOffsetLegendVisibility(result.params.generateJoinery);
 
   if (showCutPaths) {
     const cutGroup = createSvgElement("g", {
-      class: result.params.generateJoinery ? "svg-cut" : "offset-reference-preview"
+      class: showAsOffsetPreview ? "offset-reference-preview" : "svg-cut"
     });
     els.previewSvg.appendChild(cutGroup);
 
@@ -1029,7 +1030,7 @@ function render(result) {
         cutGroup.appendChild(createSvgElement("path", {
           d: pathToD(path, piece.x, piece.y),
           fill: "none",
-          stroke: result.params.generateJoinery ? "#ff0000" : "#94a3b8",
+          stroke: showAsOffsetPreview ? "#94a3b8" : "#ff0000",
           "stroke-linejoin": "miter",
           "stroke-linecap": "square",
           "vector-effect": "non-scaling-stroke",
