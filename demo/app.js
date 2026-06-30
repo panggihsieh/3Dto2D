@@ -1840,6 +1840,7 @@ function updateFieldVisibility() {
   const type = els.modelType.value;
   const house = type === "gable_house";
   els.houseFields.forEach(field => field.hidden = !house);
+  updateFixedSizeDisplay();
 }
 
 function updateDefaultsForModel() {
@@ -1849,6 +1850,14 @@ function updateDefaultsForModel() {
   }
   updateFieldVisibility();
   runConversion();
+}
+
+function updateFixedSizeDisplay() {
+  const modelDefaults = defaults[els.modelType.value] || defaults.cuboid;
+  for (const [key, value] of Object.entries(modelDefaults)) {
+    const target = document.querySelector(`[data-size-value="${key}"]`);
+    if (target) target.textContent = `${formatGuideNumber(value)} mm`;
+  }
 }
 
 function resetParams() {
@@ -1916,6 +1925,7 @@ function toggleJoineryMode() {
 function runConversion() {
   els.statusPill.textContent = "Generating";
   updateFieldVisibility();
+  updateFixedSizeDisplay();
   updateDimensionModeControls();
   updateJoineryModeControls();
   const params = getParams();
