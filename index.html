@@ -62,6 +62,21 @@
         text-decoration: underline;
       }
 
+      .license-note {
+        position: fixed;
+        left: 16px;
+        bottom: 12px;
+        max-width: min(420px, calc(100vw - 32px));
+        padding: 7px 10px;
+        border: 1px solid rgba(102, 192, 244, 0.35);
+        border-radius: 6px;
+        color: var(--steam-blue);
+        background: rgba(5, 5, 5, 0.72);
+        box-shadow: var(--steam-glow);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       header {
         margin-bottom: 22px;
         text-align: center;
@@ -305,6 +320,11 @@
           bottom: 10px;
         }
 
+        .license-note {
+          left: 12px;
+          bottom: 34px;
+        }
+
         .language-switcher {
           position: static;
           justify-self: end;
@@ -395,6 +415,7 @@
           </section>
         </div>
       </section>
+      <p class="license-note" data-i18n="licenseNote">MIT 授權公開釋出，歡迎教育單位使用。</p>
       <a class="credit" href="https://www.youtube.com/watch?v=ajS14K2Bd28&amp;list=PLOpaxws6B-0QGvgA3LF9dzdTRRb6PtHp7" target="_blank" rel="noopener">@大南國小 邦基老師</a>
     </main>
     <script>
@@ -418,7 +439,8 @@
           materialThickness: "材料厚度 mm",
           kerf: "Kerf mm",
           tabWidth: "接榫寬度 mm",
-          tabDepth: "接榫深度 mm"
+          tabDepth: "接榫深度 mm",
+          licenseNote: "MIT 授權公開釋出，歡迎教育單位使用。"
         },
         en: {
           documentTitle: "3D to 2D SVG Tools",
@@ -439,7 +461,8 @@
           materialThickness: "Material thickness mm",
           kerf: "Kerf mm",
           tabWidth: "Tab width mm",
-          tabDepth: "Tab depth mm"
+          tabDepth: "Tab depth mm",
+          licenseNote: "Released under the MIT License. Educational institutions are welcome to use it."
         },
         de: {
           documentTitle: "3D-zu-2D-SVG-Werkzeuge",
@@ -460,7 +483,8 @@
           materialThickness: "Materialstärke mm",
           kerf: "Schnittfuge mm",
           tabWidth: "Zapfenbreite mm",
-          tabDepth: "Zapfentiefe mm"
+          tabDepth: "Zapfentiefe mm",
+          licenseNote: "Released under the MIT License. Educational institutions are welcome to use it."
         },
         "de-AT": {
           documentTitle: "3D-zu-2D-SVG-Werkzeuge",
@@ -481,7 +505,8 @@
           materialThickness: "Materialstärke mm",
           kerf: "Schnittfuge mm",
           tabWidth: "Zapfenbreite mm",
-          tabDepth: "Zapfentiefe mm"
+          tabDepth: "Zapfentiefe mm",
+          licenseNote: "Released under the MIT License. Educational institutions are welcome to use it."
         }
       };
 

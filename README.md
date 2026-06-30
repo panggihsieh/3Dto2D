@@ -25,7 +25,7 @@ See `VERSION.md` for the version record.
 
 ## License
 
-This project is released as public open source software under the MIT License. See `LICENSE`.
+This project is released as public open source software under the MIT License. Educational institutions are welcome to use it. See `LICENSE`.
 
 ## Joint SVG Joinery Preview
 
