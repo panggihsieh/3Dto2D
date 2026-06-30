@@ -84,7 +84,7 @@ function getParams() {
     partGap: readNumber(els.partGap, 8),
     segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
     dimensionMode: els.dimensionMode?.value || "inner",
-    generateJoinery: els.joineryToggle.checked
+    generateJoinery: els.joineryToggle.checked || state.cutOnlyView
   };
 }
 
@@ -1934,14 +1934,16 @@ function outerDimensionsFromInner(params) {
 
 function toggleJoineryMode() {
   els.joineryToggle.checked = !els.joineryToggle.checked;
+  if (!els.joineryToggle.checked) state.cutOnlyView = false;
   updateJoineryModeControls();
   runConversion();
 }
 
 function toggleCutOnlyView() {
   state.cutOnlyView = !state.cutOnlyView;
+  if (state.cutOnlyView) els.joineryToggle.checked = true;
   updateJoineryModeControls();
-  if (state.result) render(state.result);
+  runConversion();
 }
 
 function runConversion() {
