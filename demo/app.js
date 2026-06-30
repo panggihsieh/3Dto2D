@@ -1509,7 +1509,7 @@ function render(result) {
       }
     }
   }
-  if (!cutOnly) renderPieceLabels(result.pieces);
+  renderPieceLabels(result.pieces);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
   els.heightMetric.textContent = formatNumber(result.bounds.height);
