@@ -1,0 +1,3866 @@
+﻿const NS = "http://www.w3.org/2000/svg";
+const TAU = Math.PI * 2;
+const OUTPUT_MARGIN_MM = 10;
+
+const state = {
+  result: null,
+  zoom: 1,
+  baseViewBox: null,
+  celebrationTimer: null,
+  sourceMode: "parametric",
+  importedPieces: null,
+  importedPreset: null,
+  importedWarnings: [],
+  uiWarnings: [],
+  edgeSelectEnabled: false,
+  edgeSelection: {
+    pending: null,
+    pairs: []
+  },
+  tagMode: null,
+  appliedJoinery: false,
+  three: null
+};
+
+const els = {
+  modelType: document.querySelector("#modelType"),
+  dimensionMode: document.querySelector("#dimensionMode"),
+  innerDimensionButton: document.querySelector("#innerDimensionButton"),
+  dimensionModeStatus: document.querySelector("#dimensionModeStatus"),
+  outerDimensionStatus: document.querySelector("#outerDimensionStatus"),
+  length: document.querySelector("#length"),
+  width: document.querySelector("#width"),
+  height: document.querySelector("#height"),
+  radius: document.querySelector("#radius"),
+  wallHeight: document.querySelector("#wallHeight"),
+  roofHeight: document.querySelector("#roofHeight"),
+  materialThickness: document.querySelector("#materialThickness"),
+  kerfWidth: document.querySelector("#kerfWidth"),
+  fingerUnit: document.querySelector("#fingerUnit"),
+  endMarginMode: document.querySelector("#endMarginMode"),
+  tabWidth: document.querySelector("#tabWidth"),
+  tabDepth: document.querySelector("#tabDepth"),
+  tabSpacing: document.querySelector("#tabSpacing"),
+  partGap: document.querySelector("#partGap"),
+  segments: document.querySelector("#segments"),
+  projectName: document.querySelector("#projectName"),
+  joineryToggle: document.querySelector("#joineryToggle"),
+  resetButton: document.querySelector("#resetButton"),
+  summaryText: document.querySelector("#summaryText"),
+  downloadDxf: document.querySelector("#downloadDxf"),
+  downloadSvg: document.querySelector("#downloadSvg"),
+  previewSvg: document.querySelector("#previewSvg"),
+  zoomOutButton: document.querySelector("#zoomOutButton"),
+  zoomInButton: document.querySelector("#zoomInButton"),
+  zoomResetButton: document.querySelector("#zoomResetButton"),
+  zoomLevel: document.querySelector("#zoomLevel"),
+  svgUpload: document.querySelector("#svgUpload"),
+  loadCubeSample: document.querySelector("#loadCubeSample"),
+  downloadCuboidSample: document.querySelector("#downloadCuboidSample"),
+  downloadHouseSample: document.querySelector("#downloadHouseSample"),
+  tagTopPiece: document.querySelector("#tagTopPiece"),
+  tagBottomPiece: document.querySelector("#tagBottomPiece"),
+  toggleEdgeSelect: document.querySelector("#toggleEdgeSelect"),
+  applyEdgePairs: document.querySelector("#applyEdgePairs"),
+  clearEdgePairs: document.querySelector("#clearEdgePairs"),
+  pairList: document.querySelector("#pairList"),
+  widthMetric: document.querySelector("#widthMetric"),
+  heightMetric: document.querySelector("#heightMetric"),
+  pathMetric: document.querySelector("#pathMetric"),
+  warningList: document.querySelector("#warningList"),
+  exportStatus: document.querySelector("#exportStatus"),
+  exportLinks: document.querySelector("#exportLinks"),
+  statusPill: document.querySelector("#statusPill"),
+  circularFields: document.querySelectorAll("[data-field='circular']"),
+  houseFields: document.querySelectorAll("[data-field='house']"),
+  preview3dCanvas: null,
+  preview3dMode: null
+};
+
+const defaults = {
+  cube: { length: 60, width: 60, height: 60, radius: 30, wallHeight: 50, roofHeight: 28 },
+  cuboid: { length: 120, width: 80, height: 60, radius: 40, wallHeight: 50, roofHeight: 28 },
+  cylinder: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 50, roofHeight: 28 },
+  flex_box_5: { length: 120, width: 80, height: 45, radius: 18, wallHeight: 50, roofHeight: 28 },
+  gable_house: { length: 120, width: 80, height: 80, radius: 35, wallHeight: 55, roofHeight: 35 }
+};
+
+const pairColors = Array.from({ length: 48 }, (_, i) => {
+  const hue = Math.round((i * 137.508) % 360);
+  const sat = i % 2 ? 70 : 82;
+  const light = i % 3 === 0 ? 42 : 52;
+  return `hsl(${hue} ${sat}% ${light}%)`;
+});
+
+let audioContext = null;
+const toneDataUrls = new Map();
+const exportUrls = [];
+
+function readNumber(input, fallback) {
+  const value = Number(input.value);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+document.querySelector(".legend .source")?.replaceChildren("原始SVG展開圖");
+
+function getParams() {
+  const materialThickness = readNumber(els.materialThickness, 3);
+  const tabDepthValue = readNumber(els.tabDepth, materialThickness);
+  const fingerUnit = readNumber(els.fingerUnit, 4);
+  const tabWidth = materialThickness * fingerUnit;
+  const tabSpacing = materialThickness * fingerUnit;
+  if (els.tabWidth && els.tabWidth.value !== formatInputNumber(tabWidth)) els.tabWidth.value = formatInputNumber(tabWidth);
+  if (els.tabSpacing && els.tabSpacing.value !== formatInputNumber(tabSpacing)) els.tabSpacing.value = formatInputNumber(tabSpacing);
+  return {
+    modelType: els.modelType.value,
+    length: readNumber(els.length, 120),
+    width: readNumber(els.width, 80),
+    height: readNumber(els.height, 60),
+    radius: readNumber(els.radius, 35),
+    wallHeight: readNumber(els.wallHeight, 55),
+    roofHeight: readNumber(els.roofHeight, 35),
+    materialThickness,
+    kerfWidth: readNumber(els.kerfWidth, 0.1),
+    fingerUnit,
+    tabWidth,
+    tabDepth: tabDepthValue > 0 ? tabDepthValue : materialThickness,
+    tabSpacing,
+    endMarginMode: els.endMarginMode?.value || "boxes",
+    play: readNumber(els.kerfWidth, 0.1),
+    partGap: readNumber(els.partGap, 8),
+    segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
+    dimensionMode: els.dimensionMode?.value || "inner",
+    generateJoinery: els.joineryToggle.checked
+  };
+}
+
+function buildResult(params) {
+  const warnings = validateParams(params);
+  const pieces = [];
+
+  if (params.modelType === "cube") {
+    const side = params.length;
+    pieces.push(...buildDimensionedBoxPieces(side, side, side, params));
+  }
+
+  if (params.modelType === "cuboid") {
+    pieces.push(...buildDimensionedBoxPieces(params.length, params.width, params.height, params));
+  }
+
+  if (params.modelType === "cylinder") {
+    pieces.push(...buildCylinderPieces(params));
+  }
+
+  if (params.modelType === "flex_box_5") {
+    pieces.push(...buildFlexBox5Pieces(params));
+  }
+
+  if (params.modelType === "gable_house") {
+    pieces.push(...buildHousePieces(params));
+  }
+
+  const laidOut = layoutPieces(pieces, params.partGap);
+  const bounds = getBoundsFromPieces(laidOut);
+  warnings.push(...modelWarnings(params));
+
+  return { pieces: laidOut, bounds, warnings, params };
+}
+
+function buildImportedResult(params) {
+  const warnings = validateParams(params).concat(state.importedWarnings, state.uiWarnings);
+
+  if (state.appliedJoinery && state.importedPreset === "cube_net" && state.edgeSelection.pairs.length === 0) {
+    const side = params.length || 60;
+    const pieces = layoutPieces(buildDimensionedBoxPieces(side, side, side, params), params.partGap);
+    const bounds = getBoundsFromPieces(pieces);
+    warnings.push("已套用 cube net 接榫輸出。");
+    return { pieces, bounds, warnings, params };
+  }
+
+  const sourcePieces = clonePieces(state.importedPieces || []);
+  const pieces = applySelectedJoinery(sourcePieces, params, warnings);
+  const bounds = getBoundsFromPaths(pieces);
+
+  if (!pieces.length) {
+    warnings.push("尚未匯入可用的 SVG 幾何。");
+  }
+
+  if (state.edgeSelection.pairs.length > 48) {
+    warnings.push("接榫配對最多支援 48 組。");
+  }
+
+  return { pieces, bounds, warnings, params };
+}
+
+function clonePieces(pieces) {
+  return pieces.map(piece => ({
+    ...piece,
+    paths: piece.paths.map(path => {
+      const copy = path.map(point => ({ x: point.x, y: point.y }));
+      copy.closed = path.closed !== false;
+      return copy;
+    }),
+    sourcePaths: piece.sourcePaths?.map(path => {
+      const copy = path.map(point => ({ x: point.x, y: point.y }));
+      copy.closed = path.closed !== false;
+      return copy;
+    })
+  }));
+}
+
+function applySelectedJoinery(pieces, params, warnings) {
+  const edgeTypesByPath = new Map();
+  const edgeLayoutsByPath = new Map();
+
+  for (const [pairIndex, pair] of state.edgeSelection.pairs.entries()) {
+    const validation = validateEdgePair(pair.first, pair.second, params, pairIndex);
+    pair.validation = validation;
+    warnings.push(...validation.messages);
+    if (validation.status === "fail") continue;
+    const pairLayouts = buildSharedPairLayouts(pair.first, pair.second, params);
+    markEdgeType(edgeTypesByPath, pair.first, "f");
+    markEdgeType(edgeTypesByPath, pair.second, "F");
+    markEdgeLayout(edgeLayoutsByPath, pair.first, pairLayouts.f);
+    markEdgeLayout(edgeLayoutsByPath, pair.second, pairLayouts.F);
+  }
+
+  if (state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(state.edgeSelection.pending, params);
+    warnings.push(...validation.messages);
+    if (validation.status !== "fail") {
+      markEdgeType(edgeTypesByPath, state.edgeSelection.pending, "f");
+      markEdgeLayout(edgeLayoutsByPath, state.edgeSelection.pending, buildSharedEdgeLayoutForRef(state.edgeSelection.pending, "f", params));
+    }
+  }
+
+  return pieces.map((piece, pieceIndex) => ({
+    ...piece,
+    paths: piece.paths.map((path, pathIndex) => {
+      if (path.closed === false || path.length < 3) return path;
+      const key = edgePathKey(pieceIndex, pathIndex);
+      const edgeTypes = edgeTypesByPath.get(key) || Array(path.length).fill("e");
+      const edgeLayouts = edgeLayoutsByPath.get(key);
+      const joined = fingerJointPolygonPath(path, edgeTypes, params, piece.sourcePaths?.[pathIndex], edgeLayouts);
+      joined.closed = true;
+      return joined;
+    })
+  }));
+}
+
+function markEdgeType(edgeTypesByPath, ref, type) {
+  const key = edgePathKey(ref.pieceIndex, ref.pathIndex);
+  if (!edgeTypesByPath.has(key)) {
+    const path = state.importedPieces?.[ref.pieceIndex]?.paths?.[ref.pathIndex];
+    edgeTypesByPath.set(key, Array(path ? path.length : 0).fill("e"));
+  }
+  const edgeTypes = edgeTypesByPath.get(key);
+  if (ref.edgeIndex >= 0 && ref.edgeIndex < edgeTypes.length) edgeTypes[ref.edgeIndex] = type;
+}
+
+function markEdgeLayout(edgeLayoutsByPath, ref, layout) {
+  const key = edgePathKey(ref.pieceIndex, ref.pathIndex);
+  if (!edgeLayoutsByPath.has(key)) {
+    const path = state.importedPieces?.[ref.pieceIndex]?.paths?.[ref.pathIndex];
+    edgeLayoutsByPath.set(key, Array(path ? path.length : 0).fill(null));
+  }
+  const edgeLayouts = edgeLayoutsByPath.get(key);
+  if (ref.edgeIndex >= 0 && ref.edgeIndex < edgeLayouts.length) edgeLayouts[ref.edgeIndex] = layout;
+}
+
+function edgePathKey(pieceIndex, pathIndex) {
+  return `${pieceIndex}:${pathIndex}`;
+}
+
+function getEdgeLength(pieces, ref) {
+  const path = pieces[ref.pieceIndex]?.paths?.[ref.pathIndex];
+  if (!path?.length) return 0;
+  const a = path[ref.edgeIndex];
+  const b = path[(ref.edgeIndex + 1) % path.length];
+  return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
+}
+
+function findPairIndexForEdge(ref) {
+  return state.edgeSelection.pairs.findIndex(pair => sameEdge(pair.first, ref) || sameEdge(pair.second, ref));
+}
+
+function fingerLayoutForEdge(ref, params) {
+  const length = getEdgeLength(state.importedPieces || [], ref);
+  const runLayout = fingerRunLayoutForLength(length, params);
+  return { length, count: runLayout.count, endMargin: runLayout.endMargin };
+}
+
+function fingerRunLayoutForLength(length, params, fingerWidth = params.tabWidth) {
+  const layout = buildBoxesFingerLayout(length, "f", params, fingerWidth);
+  return { count: layout.count, endMargin: layout.endMargin, runs: layout.runs, internalSpace: layout.internalSpace };
+}
+
+function buildBoxesFingerLayout(length, type, params, fingerWidth = params.tabWidth) {
+  const materialThickness = params.materialThickness || 3;
+  const finger = Math.max(0, params.tabWidth || materialThickness * 2);
+  const space = Math.max(0, params.tabSpacing || finger);
+  const play = type === "F" ? (params.play || params.kerfWidth || 0) : 0;
+  const effectiveFinger = type === "F" ? fingerWidth + play : fingerWidth;
+  const effectiveSpace = Math.max(0, type === "F" ? space - play : space);
+  const count = calcFingerCount(length, params);
+  const runs = [];
+
+  if (count <= 0 || length <= 0 || effectiveFinger <= 0) {
+    return { count: 0, runs, endMargin: length / 2, internalSpace: 0 };
+  }
+
+  const nonFingerLength = Math.max(0, length - count * effectiveFinger);
+  const mode = params.endMarginMode || "boxes";
+  let endMargin = 0;
+  let internalSpace = effectiveSpace;
+
+  if (mode === "minimized" && count > 1) {
+    endMargin = Math.min(materialThickness, nonFingerLength / 2);
+    internalSpace = Math.max(0, (nonFingerLength - endMargin * 2) / (count - 1));
+  } else if (mode === "distributed") {
+    const gap = nonFingerLength / (count + 1);
+    endMargin = gap;
+    internalSpace = gap;
+  } else {
+    endMargin = Math.max(0, (nonFingerLength - Math.max(0, count - 1) * effectiveSpace) / 2);
+    internalSpace = effectiveSpace;
+  }
+
+  if (count === 1) {
+    endMargin = nonFingerLength / 2;
+    internalSpace = 0;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const start = endMargin + i * (effectiveFinger + internalSpace);
+    const end = Math.min(start + effectiveFinger, length);
+    if (end <= start || start >= length) continue;
+    runs.push({
+      start,
+      end,
+      center: start + (end - start) / 2,
+      length: end - start
+    });
+  }
+
+  return { count, runs, endMargin, internalSpace };
+}
+
+function buildSharedPairLayouts(first, second, params) {
+  const firstLength = getInnerEdgeLengthForRef(first) || getEdgeLength(state.importedPieces || [], first);
+  const secondLength = getInnerEdgeLengthForRef(second) || getEdgeLength(state.importedPieces || [], second);
+  const sharedLength = Math.max(0, Math.min(firstLength || 0, secondLength || 0));
+  const shared = buildSharedLayoutsForLength(sharedLength, params);
+  return {
+    f: centerSharedLayoutOnEdge(shared.f, firstLength, sharedLength),
+    F: centerSharedLayoutOnEdge(shared.F, secondLength, sharedLength)
+  };
+}
+
+function buildSharedEdgeLayoutForRef(ref, type, params) {
+  const length = getInnerEdgeLengthForRef(ref) || getEdgeLength(state.importedPieces || [], ref);
+  return buildSharedLayoutsForLength(length, params)[type];
+}
+
+function buildSharedLayoutsForLength(length, params) {
+  const base = buildBoxesFingerLayout(length, "f", params);
+  return {
+    f: {
+      ...base,
+      runs: base.runs.map(run => ({ ...run }))
+    },
+    F: {
+      ...base,
+      runs: base.runs.map(run => expandRunForPlay(run, length, params.play || params.kerfWidth || 0))
+    }
+  };
+}
+
+function centerSharedLayoutOnEdge(layout, edgeLength, sharedLength) {
+  const offset = Math.max(0, (edgeLength - sharedLength) / 2);
+  return {
+    ...layout,
+    edgeLength,
+    sharedLength,
+    sharedOffset: offset,
+    endMargin: layout.endMargin + offset,
+    runs: layout.runs.map(run => ({
+      ...run,
+      start: Math.max(0, Math.min(edgeLength, run.start + offset)),
+      end: Math.max(0, Math.min(edgeLength, run.end + offset)),
+      center: Math.max(0, Math.min(edgeLength, run.center + offset))
+    }))
+  };
+}
+
+function expandRunForPlay(run, length, play) {
+  const halfPlay = Math.max(0, play) / 2;
+  const start = Math.max(0, run.start - halfPlay);
+  const end = Math.min(length, run.end + halfPlay);
+  return {
+    start,
+    end,
+    center: run.center,
+    length: end - start
+  };
+}
+
+function getInnerEdgeLengthForRef(ref) {
+  const path = state.importedPieces?.[ref.pieceIndex]?.sourcePaths?.[ref.pathIndex];
+  if (!path?.length) return 0;
+  const a = path[ref.edgeIndex];
+  const b = path[(ref.edgeIndex + 1) % path.length];
+  return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
+}
+
+function validateJoineryParams(params, label = "接榫參數") {
+  const messages = [];
+  let status = "ok";
+  const pitch = params.tabWidth + params.tabSpacing;
+
+  if (pitch <= 0) {
+    status = "fail";
+    messages.push(`${label} 錯誤：接榫寬度與間距必須大於 0。`);
+  }
+
+  if (params.tabDepth <= 0) {
+    status = "fail";
+    messages.push(`${label} 錯誤：接榫深度必須大於 0。`);
+  } else if (params.tabDepth < params.materialThickness) {
+    status = "warning";
+    messages.push(`${label} 警告：接榫深度 ${formatNumber(params.tabDepth)} mm 小於材料厚度 ${formatNumber(params.materialThickness)} mm。`);
+  }
+
+  return { status, messages };
+}
+
+function mergeValidationStatus(a, b) {
+  if (a === "fail" || b === "fail") return "fail";
+  if (a === "warning" || b === "warning") return "warning";
+  return "ok";
+}
+
+function validatePreviewEdge(ref, params) {
+  const paramCheck = validateJoineryParams(params, edgeLabel(ref));
+  const layout = fingerLayoutForEdge(ref, params);
+  const messages = [...paramCheck.messages];
+  let status = paramCheck.status;
+
+  if (layout.count <= 0) {
+    status = "fail";
+    messages.push(`${edgeLabel(ref)} 錯誤：邊長 ${formatNumber(layout.length)} mm 無法配置至少 1 個接榫。`);
+  }
+
+  return { status, messages, fingerCount: layout.count, length: layout.length, endMargin: layout.endMargin };
+}
+
+function validateEdgePair(first, second, params, pairIndex = -1) {
+  const title = pairIndex >= 0 ? `第 ${pairIndex + 1} 組` : "此配對";
+  const paramCheck = validateJoineryParams(params, title);
+  const firstLayout = fingerLayoutForEdge(first, params);
+  const secondLayout = fingerLayoutForEdge(second, params);
+  const messages = [...paramCheck.messages];
+  let status = paramCheck.status;
+
+  if (sameEdge(first, second)) {
+    status = "fail";
+    messages.push(`${title} 錯誤：至少一邊無法產生有效接榫。`);
+  }
+
+  const duplicate = state.edgeSelection.pairs.find((pair, index) => (
+    index !== pairIndex
+    && [pair.first, pair.second].some(edge => sameEdge(edge, first) || sameEdge(edge, second))
+  ));
+  if (duplicate) {
+    status = "fail";
+    messages.push(`${title} 錯誤：${edgeLabel(first)} 與 ${edgeLabel(second)} 方向不相容。`);
+  }
+
+  if (firstLayout.count <= 0 || secondLayout.count <= 0) {
+    status = "fail";
+    messages.push(`${title} 錯誤：配對邊需要至少 1 個接榫。`);
+  }
+
+  const lengthTolerance = Math.max(params.materialThickness, 0.5);
+  const lengthDiff = Math.abs(firstLayout.length - secondLayout.length);
+  if (lengthDiff > lengthTolerance) {
+    status = mergeValidationStatus(status, "warning");
+    messages.push(`${title} 警告：配對邊長差 ${formatNumber(lengthDiff)} mm，超過容許 ${formatNumber(lengthTolerance)} mm。`);
+  }
+
+  if (firstLayout.count > 0 && secondLayout.count > 0 && firstLayout.count !== secondLayout.count) {
+    status = mergeValidationStatus(status, "warning");
+    messages.push(`${title} 警告：接榫數量不同：${firstLayout.count} / ${secondLayout.count}。`);
+  }
+
+  return {
+    status,
+    messages,
+    fingerCount: Math.min(firstLayout.count, secondLayout.count),
+    firstLength: firstLayout.length,
+    secondLength: secondLayout.length,
+    endMargin: Math.min(firstLayout.endMargin, secondLayout.endMargin),
+    firstCount: firstLayout.count,
+    secondCount: secondLayout.count,
+    suggestion: buildPairSuggestion(firstLayout, secondLayout, params)
+  };
+}
+
+function validateEdgePair(first, second, params, pairIndex = -1) {
+  const title = pairIndex >= 0 ? `Pair ${pairIndex + 1}` : "Pair";
+  const paramCheck = validateJoineryParams(params, title);
+  const firstLayout = fingerLayoutForEdge(first, params);
+  const secondLayout = fingerLayoutForEdge(second, params);
+  const sharedLayouts = buildSharedPairLayouts(first, second, params);
+  const sharedCount = Math.min(sharedLayouts.f.count || 0, sharedLayouts.F.count || 0);
+  const messages = [...paramCheck.messages];
+  let status = paramCheck.status;
+
+  if (sameEdge(first, second)) {
+    status = "fail";
+    messages.push(`${title}: choose two different edges.`);
+  }
+
+  const duplicate = state.edgeSelection.pairs.find((pair, index) => (
+    index !== pairIndex
+    && [pair.first, pair.second].some(edge => sameEdge(edge, first) || sameEdge(edge, second))
+  ));
+  if (duplicate) {
+    status = "fail";
+    messages.push(`${title}: one of these edges is already paired.`);
+  }
+
+  if (sharedCount <= 0) {
+    status = "fail";
+    messages.push(`${title}: shared edge span is too short for a finger joint.`);
+  }
+
+  const lengthTolerance = Math.max(params.materialThickness, 0.5);
+  const lengthDiff = Math.abs(firstLayout.length - secondLayout.length);
+  if (lengthDiff > lengthTolerance) {
+    status = mergeValidationStatus(status, "warning");
+    messages.push(`${title}: edge length mismatch ${formatNumber(lengthDiff)} mm; joinery is centered on the shorter shared span.`);
+  }
+
+  const suggestion = sharedCount <= 0 ? buildPairSuggestion(firstLayout, secondLayout, params) : null;
+
+  return {
+    status,
+    messages,
+    fingerCount: sharedCount,
+    firstLength: firstLayout.length,
+    secondLength: secondLayout.length,
+    endMargin: Math.min(sharedLayouts.f.endMargin, sharedLayouts.F.endMargin),
+    firstCount: sharedCount,
+    secondCount: sharedCount,
+    suggestion
+  };
+}
+
+function buildPairSuggestion(firstLayout, secondLayout, params) {
+  if (firstLayout.count <= 0 || secondLayout.count <= 0) {
+    const longest = Math.max(firstLayout.length, secondLayout.length);
+    const suggestedTabWidth = Math.max(1, Math.min(params.tabWidth, longest / 4));
+    return {
+      type: "params",
+      label: `邊長不足，建議接榫寬度改為 ${formatNumber(suggestedTabWidth)} mm。`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  if (firstLayout.count !== secondLayout.count) {
+    const shorter = Math.min(firstLayout.length, secondLayout.length);
+    const targetCount = Math.max(1, Math.min(firstLayout.count, secondLayout.count));
+    const safety = Math.max(params.materialThickness, params.tabDepth);
+    const available = Math.max(1, shorter - safety * 2 - Math.max(0, targetCount - 1) * params.tabSpacing);
+    const suggestedTabWidth = Math.max(1, available / targetCount);
+    return {
+      type: "params",
+      label: `接榫數量不同，建議接榫寬度改為 ${formatNumber(suggestedTabWidth)} mm，目標 ${targetCount} 個。`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  const lengthTolerance = Math.max(params.materialThickness, 0.5);
+  const lengthDiff = Math.abs(firstLayout.length - secondLayout.length);
+  if (lengthDiff > lengthTolerance) {
+    const shorter = Math.min(firstLayout.length, secondLayout.length);
+    const targetCount = Math.max(1, Math.min(firstLayout.count, secondLayout.count));
+    const safety = Math.max(params.materialThickness, params.tabDepth);
+    const available = Math.max(1, shorter - safety * 2 - Math.max(0, targetCount - 1) * params.tabSpacing);
+    const suggestedTabWidth = Math.max(1, available / targetCount);
+    return {
+      type: "params",
+      label: `邊長差 ${formatNumber(lengthDiff)} mm，建議接榫寬度改為 ${formatNumber(suggestedTabWidth)} mm。`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  const minCornerClearance = Math.max(params.materialThickness, params.tabDepth);
+  const endMargin = Math.min(firstLayout.endMargin, secondLayout.endMargin);
+  if (endMargin < minCornerClearance) {
+    const suggestedSpacing = Math.max(params.tabSpacing, minCornerClearance);
+    return {
+      type: "params",
+      label: `端距太小，建議接榫間距改為 ${formatNumber(suggestedSpacing)} mm。`,
+      params: { tabSpacing: suggestedSpacing }
+    };
+  }
+
+  return null;
+}
+
+function buildPairSuggestion(firstLayout, secondLayout, params) {
+  const matchingSuggestion = () => suggestMatchingTabWidth(firstLayout, secondLayout, params);
+
+  if (firstLayout.count <= 0 || secondLayout.count <= 0) {
+    const suggested = matchingSuggestion();
+    const suggestedTabWidth = suggested?.tabWidth ?? Math.max(1, Math.min(params.tabWidth, Math.max(firstLayout.length, secondLayout.length) / 4));
+    return {
+      type: "params",
+      label: `Edge is too short. Set tab width to ${formatNumber(suggestedTabWidth)} mm and regenerate.`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  const shorter = Math.min(firstLayout.length, secondLayout.length);
+  const targetCount = Math.max(1, Math.min(firstLayout.count, secondLayout.count));
+  const lengthTolerance = Math.max(params.materialThickness, 0.5);
+  const lengthDiff = Math.abs(firstLayout.length - secondLayout.length);
+
+  if (firstLayout.count !== secondLayout.count) {
+    const suggested = matchingSuggestion();
+    const suggestedTabWidth = suggested?.tabWidth ?? params.tabWidth;
+    const suggestedCount = suggested?.count ?? targetCount;
+    return {
+      type: "params",
+      label: `Finger counts differ. Use shorter edge: tab width ${formatNumber(suggestedTabWidth)} mm, ${suggestedCount} fingers.`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  if (lengthDiff > lengthTolerance) {
+    const suggested = matchingSuggestion();
+    const suggestedTabWidth = suggested?.tabWidth ?? params.tabWidth;
+    return {
+      type: "params",
+      label: `Edge length mismatch ${formatNumber(lengthDiff)} mm. Recalculate from shorter edge: tab width ${formatNumber(suggestedTabWidth)} mm.`,
+      params: { tabWidth: suggestedTabWidth }
+    };
+  }
+
+  const minCornerClearance = Math.max(params.materialThickness, params.tabDepth);
+  const endMargin = Math.min(firstLayout.endMargin, secondLayout.endMargin);
+  if (endMargin < minCornerClearance) {
+    const suggestedSpacing = Math.max(params.tabSpacing, minCornerClearance);
+    return {
+      type: "params",
+      label: `Corner clearance is small. Set tab spacing to ${formatNumber(suggestedSpacing)} mm.`,
+      params: { tabSpacing: suggestedSpacing }
+    };
+  }
+
+  return null;
+}
+
+function suggestMatchingTabWidth(firstLayout, secondLayout, params) {
+  const shorter = Math.min(firstLayout.length, secondLayout.length);
+  const longer = Math.max(firstLayout.length, secondLayout.length);
+  const maxTarget = Math.max(1, Math.min(
+    firstLayout.count > 0 ? firstLayout.count : Infinity,
+    secondLayout.count > 0 ? secondLayout.count : Infinity,
+    calcFingerCount(shorter, params) || 1
+  ));
+
+  for (let target = maxTarget; target >= 1; target -= 1) {
+    const tabWidth = tabWidthForFingerCount(shorter, target, params);
+    if (!Number.isFinite(tabWidth)) continue;
+    const nextParams = { ...params, tabWidth };
+    const shorterCount = fingerRunLayoutForLength(shorter, nextParams).count;
+    const longerCount = fingerRunLayoutForLength(longer, nextParams).count;
+    if (shorterCount === target && longerCount === target) {
+      return { tabWidth, count: target };
+    }
+  }
+
+  return null;
+}
+
+function tabWidthForFingerCount(length, targetCount, params) {
+  if (targetCount <= 0) return NaN;
+  const spacing = params.tabSpacing;
+  const safety = Math.max(params.materialThickness, params.tabDepth);
+  const upperByCount = ((length - spacing) / targetCount) - spacing;
+  const upperByFit = (length - safety * 2 - Math.max(0, targetCount - 1) * spacing) / targetCount;
+  const lowerByNextCount = targetCount > 0 ? ((length - spacing) / (targetCount + 1)) - spacing : 1;
+  const lower = Math.max(1, lowerByNextCount + 0.05);
+  const upper = Math.min(upperByCount, upperByFit);
+  if (!(upper >= lower)) return NaN;
+  return Math.max(1, upper * 0.98);
+}
+
+function applyPairSuggestion(suggestion) {
+  if (!suggestion?.params) return;
+  if (Number.isFinite(suggestion.params.tabWidth)) {
+    els.tabWidth.value = formatInputNumber(suggestion.params.tabWidth);
+  }
+  if (Number.isFinite(suggestion.params.tabSpacing)) {
+    els.tabSpacing.value = formatInputNumber(suggestion.params.tabSpacing);
+  }
+  if (Number.isFinite(suggestion.params.tabDepth)) {
+    els.tabDepth.value = formatInputNumber(suggestion.params.tabDepth);
+  }
+  state.uiWarnings = [`已套用建議：${suggestion.label}`];
+  runConversion();
+}
+
+function showJoinerySuccessIfAllPairsOk() {
+  if (!state.edgeSelection.pairs.length) return;
+  const params = getParams();
+  const validations = state.edgeSelection.pairs.map((pair, index) => validateEdgePair(pair.first, pair.second, params, index));
+  if (validations.every(validation => validation.status === "ok")) {
+    showJoinerySuccessPopup(params, validations[validations.length - 1]);
+  }
+}
+
+function validateAllPairsForFinalApply() {
+  const params = getParams();
+  const messages = [];
+  const canUsePresetJoinery = canUsePresetJoineryWithoutPairs()
+    && state.edgeSelection.pairs.length === 0
+    && !state.edgeSelection.pending;
+  if (canUsePresetJoinery) {
+    return {
+      ok: true,
+      params,
+      validations: [],
+      messages
+    };
+  }
+
+  if (state.sourceMode === "svg" && !canUsePresetJoineryWithoutPairs() && !hasTopBottomTags()) {
+    messages.push("Please tag one piece as top and one piece as bottom before applying joinery.");
+  }
+
+  if (state.edgeSelection.pending) {
+    messages.push("There is an unfinished first edge. Select the second edge or cancel it before applying.");
+  }
+  if (!state.edgeSelection.pairs.length) {
+    messages.push("No joinery pairs have been created.");
+  }
+
+  const validations = state.edgeSelection.pairs.map((pair, index) => validateEdgePair(pair.first, pair.second, params, index));
+  validations.forEach((validation, index) => {
+    pairValidationLabel(validation, index).forEach(message => messages.push(message));
+  });
+
+  return {
+    ok: messages.length === 0 && validations.every(validation => validation.status === "ok"),
+    params,
+    validations,
+    messages
+  };
+}
+
+function pairValidationLabel(validation, index) {
+  if (validation.status === "ok") return [];
+  const label = `Pair ${index + 1}`;
+  if (validation.messages?.length) {
+    return validation.messages.map(message => `${label}: ${message}`);
+  }
+  return [`${label}: validation failed.`];
+}
+
+function innerDimensionSummary(params) {
+  const length = params.length;
+  const width = params.width;
+  const height = params.modelType === "gable_house"
+    ? params.wallHeight + params.roofHeight
+    : params.height;
+  return {
+    length,
+    width,
+    height,
+    volume: length * width * height
+  };
+}
+
+function showJoinerySuccessPopup(params = getParams(), validation = null) {
+  const existing = document.querySelector(".success-modal-overlay");
+  if (existing) existing.remove();
+  if (state.celebrationTimer) {
+    clearTimeout(state.celebrationTimer);
+    state.celebrationTimer = null;
+  }
+
+  const dims = innerDimensionSummary(params);
+  const overlay = document.createElement("div");
+  overlay.className = "success-modal-overlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+
+  const fireworks = document.createElement("div");
+  fireworks.className = "success-fireworks";
+  for (let i = 0; i < 22; i += 1) {
+    const spark = document.createElement("span");
+    spark.style.setProperty("--x", `${Math.cos((i / 22) * TAU) * (45 + (i % 5) * 11)}px`);
+    spark.style.setProperty("--y", `${Math.sin((i / 22) * TAU) * (35 + (i % 4) * 12)}px`);
+    spark.style.setProperty("--delay", `${(i % 6) * 0.035}s`);
+    fireworks.appendChild(spark);
+  }
+
+  const modal = document.createElement("div");
+  modal.className = "success-modal";
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "success-close";
+  closeButton.setAttribute("aria-label", "Close success popup");
+  closeButton.textContent = "x";
+  closeButton.addEventListener("click", () => overlay.remove());
+
+  const title = document.createElement("strong");
+  title.textContent = "\u63a5\u69ab\u914d\u5c0d\u6b63\u78ba\uff01";
+
+  const detail = document.createElement("p");
+  detail.textContent = `內尺寸體積為 ${formatGuideNumber(dims.length)} x ${formatGuideNumber(dims.width)} x ${formatGuideNumber(dims.height)} = ${formatVolumeNumber(dims.volume)} mm3`;
+
+  const pairInfo = document.createElement("p");
+  pairInfo.className = "success-pair-info";
+  pairInfo.textContent = validation ? `OK: ${validation.firstCount} / ${validation.secondCount} fingers` : "OK";
+
+  modal.append(closeButton, title, detail, pairInfo);
+  overlay.append(fireworks, modal);
+  document.body.appendChild(overlay);
+
+  state.celebrationTimer = setTimeout(() => {
+    overlay.remove();
+    state.celebrationTimer = null;
+  }, 5200);
+}
+
+function loadImportedPieces(pieces, warnings = [], options = {}) {
+  const params = getParams();
+  const offsetPieces = offsetImportedPiecesForMaterial(pieces, params, warnings);
+  state.sourceMode = "svg";
+  state.importedPieces = options.layout === "grid"
+    ? prepareGeneratedPiecesForSelection(offsetPieces, params.partGap)
+    : prepareImportedPiecesForSelection(offsetPieces, params.partGap);
+  state.importedPreset = options.preset || null;
+  state.importedWarnings = warnings;
+  state.uiWarnings = [];
+  state.edgeSelection.pending = null;
+  state.edgeSelection.pairs = [];
+  state.tagMode = null;
+  state.appliedJoinery = false;
+  state.edgeSelectEnabled = true;
+  els.toggleEdgeSelect.setAttribute("aria-pressed", "true");
+  els.toggleEdgeSelect.textContent = "結束選邊";
+  runConversion();
+}
+
+function buildCubeNetPieces(params) {
+  const side = params.length || 60;
+  const faces = [
+    { name: "bottom", origin: [side, side] },
+    { name: "back", origin: [side, 0] },
+    { name: "left", origin: [0, side] },
+    { name: "right", origin: [side * 2, side] },
+    { name: "front", origin: [side, side * 2] },
+    { name: "top", origin: [side * 3, side] }
+  ];
+  return faces.map((face) => {
+    const [x, y] = face.origin;
+    const path = [
+      { x, y },
+      { x: x + side, y },
+      { x: x + side, y: y + side },
+      { x, y: y + side }
+    ];
+    path.closed = true;
+    return {
+      name: face.name,
+      width: side,
+      height: side,
+      x: 0,
+      y: 0,
+      layer: "CUT",
+      paths: [path]
+    };
+  });
+}
+
+function sampleRectPiece(name, width, height) {
+  const path = rectPath(0, 0, width, height);
+  path.closed = true;
+  return {
+    name,
+    width,
+    height,
+    x: 0,
+    y: 0,
+    layer: "CUT",
+    paths: [path]
+  };
+}
+
+function sampleGablePiece(name, width, wallHeight, roofHeight) {
+  const totalHeight = wallHeight + roofHeight;
+  const path = [
+    { x: 0, y: totalHeight },
+    { x: width, y: totalHeight },
+    { x: width, y: roofHeight },
+    { x: width / 2, y: 0 },
+    { x: 0, y: roofHeight }
+  ];
+  path.closed = true;
+  return {
+    name,
+    width,
+    height: totalHeight,
+    x: 0,
+    y: 0,
+    layer: "CUT",
+    paths: [path]
+  };
+}
+
+function buildCuboidSamplePieces(params) {
+  return [
+    sampleRectPiece("top", params.length, params.width),
+    sampleRectPiece("bottom", params.length, params.width),
+    sampleRectPiece("front", params.length, params.height),
+    sampleRectPiece("back", params.length, params.height),
+    sampleRectPiece("left", params.width, params.height),
+    sampleRectPiece("right", params.width, params.height)
+  ];
+}
+
+function buildHouseSamplePieces(params) {
+  const roofSlopeLength = Math.hypot(params.width / 2, params.roofHeight);
+  return [
+    sampleRectPiece("floor", params.length, params.width),
+    sampleRectPiece("left_wall", params.length, params.wallHeight),
+    sampleRectPiece("right_wall", params.length, params.wallHeight),
+    sampleGablePiece("front_gable", params.width, params.wallHeight, params.roofHeight),
+    sampleGablePiece("back_gable", params.width, params.wallHeight, params.roofHeight),
+    sampleRectPiece("roof_left", params.length, roofSlopeLength),
+    sampleRectPiece("roof_right", params.length, roofSlopeLength)
+  ];
+}
+
+function offsetImportedPiecesForMaterial(pieces, params, warnings = []) {
+  if (params.dimensionMode !== "inner") return pieces;
+
+  const thickness = params.materialThickness;
+  return pieces.map((piece) => {
+    const nextPaths = [];
+    const sourcePaths = [];
+    let usedOffset = false;
+
+    for (const path of piece.paths) {
+      const source = clonePath(path);
+      sourcePaths.push(source);
+
+      const offsetPath = offsetClosedPath(path, thickness);
+      if (offsetPath) {
+        nextPaths.push(offsetPath);
+        usedOffset = true;
+      } else {
+        nextPaths.push(clonePath(path));
+      }
+    }
+
+    if (!usedOffset && piece.paths.some(path => path.closed !== false)) {
+      warnings.push(`${piece.name}: imported outline could not be offset automatically.`);
+    }
+
+    const bounds = getBoundsFromPaths([{ ...piece, x: 0, y: 0, paths: nextPaths }]);
+    return {
+      ...piece,
+      originalName: piece.originalName || piece.name,
+      width: bounds.width,
+      height: bounds.height,
+      paths: nextPaths,
+      sourcePaths
+    };
+  });
+}
+
+function clonePath(path) {
+  const copy = path.map(point => ({ x: point.x, y: point.y }));
+  copy.closed = path.closed !== false;
+  return copy;
+}
+
+function offsetClosedPath(path, amount) {
+  if (path.closed === false || path.length < 3) return null;
+
+  if (path.length === 4) {
+    const rect = offsetRectangularPath(path, amount);
+    if (rect) return rect;
+  }
+
+  return offsetPolygonPath(path, amount);
+}
+
+function offsetRectangularPath(path, amount) {
+  const bounds = getPathBounds(path);
+  const corners = [
+    { x: bounds.minX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.maxY },
+    { x: bounds.minX, y: bounds.maxY }
+  ];
+  const matches = path.every(point => corners.some(corner => samePoint(point, corner)));
+  if (!matches) return null;
+
+  const expanded = [
+    { x: bounds.minX - amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.maxY + amount },
+    { x: bounds.minX - amount, y: bounds.maxY + amount }
+  ];
+  expanded.closed = true;
+  return expanded;
+}
+
+function offsetPolygonPath(path, amount) {
+  const area = signedPolygonArea(path);
+  if (Math.abs(area) < 0.0001) return null;
+
+  const offsetEdges = path.map((start, index) => {
+    const end = path[(index + 1) % path.length];
+    const normal = edgeOutwardNormal(start, end, area);
+    return {
+      start: offsetBy(start, normal, amount),
+      end: offsetBy(end, normal, amount)
+    };
+  });
+
+  const expanded = path.map((_, index) => {
+    const previous = offsetEdges[(index - 1 + offsetEdges.length) % offsetEdges.length];
+    const current = offsetEdges[index];
+    return lineIntersection(previous.start, previous.end, current.start, current.end);
+  });
+
+  if (expanded.some(point => !point)) return null;
+  expanded.closed = true;
+  return expanded;
+}
+
+function lineIntersection(a1, a2, b1, b2) {
+  const dax = a2.x - a1.x;
+  const day = a2.y - a1.y;
+  const dbx = b2.x - b1.x;
+  const dby = b2.y - b1.y;
+  const denominator = dax * dby - day * dbx;
+  if (Math.abs(denominator) < 0.0001) return null;
+
+  const bax = b1.x - a1.x;
+  const bay = b1.y - a1.y;
+  const t = (bax * dby - bay * dbx) / denominator;
+  return {
+    x: a1.x + dax * t,
+    y: a1.y + day * t
+  };
+}
+
+function prepareImportedPiecesForSelection(pieces, gap) {
+  const safeGap = Math.max(gap, 1);
+  const pieceBounds = pieces.map(piece => getBoundsFromPaths([{ ...piece, x: 0, y: 0 }]));
+  const xBands = axisBands(pieceBounds.map(bounds => bounds.minX));
+  const yBands = axisBands(pieceBounds.map(bounds => bounds.minY));
+
+  return pieces.map((piece, index) => {
+    const bounds = pieceBounds[index];
+    const xShift = axisBandIndex(bounds.minX, xBands) * safeGap;
+    const yShift = axisBandIndex(bounds.minY, yBands) * safeGap;
+    const paths = piece.paths.map(path => {
+      const copy = path.map(point => ({
+        x: point.x - bounds.minX,
+        y: point.y - bounds.minY
+      }));
+      copy.closed = path.closed !== false;
+      return copy;
+    });
+    const sourcePaths = (piece.sourcePaths || piece.paths).map(path => {
+      const copy = path.map(point => ({
+        x: point.x - bounds.minX,
+        y: point.y - bounds.minY
+      }));
+      copy.closed = path.closed !== false;
+      return copy;
+    });
+    return {
+      ...piece,
+      originalName: piece.originalName || piece.name,
+      x: bounds.minX + xShift,
+      y: bounds.minY + yShift,
+      width: bounds.width,
+      height: bounds.height,
+      paths,
+      sourcePaths
+    };
+  });
+}
+
+function canUsePresetJoineryWithoutPairs() {
+  return ["cube_net", "cuboid_net", "house_net"].includes(state.importedPreset);
+}
+
+function prepareGeneratedPiecesForSelection(pieces, gap) {
+  const normalized = pieces.map(piece => {
+    const bounds = getBoundsFromPaths([{ ...piece, x: 0, y: 0 }]);
+    const paths = piece.paths.map(path => {
+      const copy = path.map(point => ({
+        x: point.x - bounds.minX,
+        y: point.y - bounds.minY
+      }));
+      copy.closed = path.closed !== false;
+      return copy;
+    });
+    const sourcePaths = (piece.sourcePaths || piece.paths).map(path => {
+      const copy = path.map(point => ({
+        x: point.x - bounds.minX,
+        y: point.y - bounds.minY
+      }));
+      copy.closed = path.closed !== false;
+      return copy;
+    });
+    return {
+      ...piece,
+      originalName: piece.originalName || piece.name,
+      x: 0,
+      y: 0,
+      width: bounds.width,
+      height: bounds.height,
+      paths,
+      sourcePaths
+    };
+  });
+  return layoutPieces(normalized, Math.max(gap, 1));
+}
+
+function axisBands(values) {
+  const tolerance = 0.01;
+  return values
+    .slice()
+    .sort((a, b) => a - b)
+    .reduce((bands, value) => {
+      const last = bands[bands.length - 1];
+      if (last === undefined || Math.abs(value - last) > tolerance) bands.push(value);
+      return bands;
+    }, []);
+}
+
+function axisBandIndex(value, bands) {
+  let closestIndex = 0;
+  let closestDistance = Infinity;
+  for (let i = 0; i < bands.length; i += 1) {
+    const distance = Math.abs(value - bands[i]);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = i;
+    }
+  }
+  return closestIndex;
+}
+
+function parseImportedSvg(text) {
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  if (doc.querySelector("parsererror")) {
+    return { pieces: [], warnings: ["SVG 解析失敗，請確認檔案格式。"] };
+  }
+
+  const warnings = [];
+  const pieces = [];
+  const shapes = [...doc.querySelectorAll("polygon, polyline, path")];
+
+  for (const [index, shape] of shapes.entries()) {
+    let path = null;
+    if (shape.tagName.toLowerCase() === "polygon") {
+      path = parsePointsAttribute(shape.getAttribute("points"), true);
+    } else if (shape.tagName.toLowerCase() === "polyline") {
+      path = parsePointsAttribute(shape.getAttribute("points"), false);
+      if (path.length > 2 && samePoint(path[0], path[path.length - 1])) {
+        path.pop();
+        path.closed = true;
+      }
+    } else {
+      path = parseSimplePath(shape.getAttribute("d"), warnings);
+    }
+
+    if (!path || path.length < 2) continue;
+    if (shape.getAttribute("transform")) {
+      warnings.push("已略過 SVG transform；請先展開或轉換幾何。");
+    }
+
+    const bounds = getPathBounds(path);
+    pieces.push({
+      name: shapeName(shape, index),
+      width: bounds.width,
+      height: bounds.height,
+      x: 0,
+      y: 0,
+      layer: "CUT",
+      paths: [path]
+    });
+  }
+
+  if (!pieces.length) {
+    warnings.push("目前只支援 polygon、polyline，以及只含 M/L/H/V/Z 的簡單 path。");
+  }
+
+  return { pieces, warnings: uniqueWarnings(warnings) };
+}
+
+function shapeName(shape, index) {
+  return (shape.getAttribute("id") || shape.getAttribute("data-name") || `svg_${index + 1}`)
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, "_")
+    .replace(/^_+|_+$/g, "") || `svg_${index + 1}`;
+}
+
+function parsePointsAttribute(pointsText, closed) {
+  if (!pointsText) return null;
+  const nums = pointsText.trim().split(/[\s,]+/).map(Number).filter(Number.isFinite);
+  const points = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    points.push({ x: nums[i], y: nums[i + 1] });
+  }
+  points.closed = closed;
+  return points;
+}
+
+function parseSimplePath(d, warnings) {
+  if (!d) return null;
+  const tokens = d.match(/[MmLlHhVvZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
+  if (!tokens) return null;
+  const points = [];
+  let cursor = { x: 0, y: 0 };
+  let command = "";
+  let i = 0;
+  let closed = false;
+
+  while (i < tokens.length) {
+    if (/^[A-Za-z]$/.test(tokens[i])) command = tokens[i++];
+    if (!command) break;
+
+    if (command === "Z" || command === "z") {
+      closed = true;
+      command = "";
+      continue;
+    }
+
+    if (!"MmLlHhVv".includes(command)) {
+      warnings.push("已略過含曲線或複雜指令的 path；請先轉成直線多邊形。");
+      return null;
+    }
+
+    if ((command === "H" || command === "h") && i < tokens.length) {
+      const x = Number(tokens[i++]);
+      cursor = { x: command === "h" ? cursor.x + x : x, y: cursor.y };
+      points.push({ ...cursor });
+      continue;
+    }
+
+    if ((command === "V" || command === "v") && i < tokens.length) {
+      const y = Number(tokens[i++]);
+      cursor = { x: cursor.x, y: command === "v" ? cursor.y + y : y };
+      points.push({ ...cursor });
+      continue;
+    }
+
+    while (i + 1 < tokens.length && !/^[A-Za-z]$/.test(tokens[i])) {
+      const x = Number(tokens[i++]);
+      const y = Number(tokens[i++]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+      cursor = command === command.toLowerCase()
+        ? { x: cursor.x + x, y: cursor.y + y }
+        : { x, y };
+      points.push({ ...cursor });
+      if (command === "M") command = "L";
+      if (command === "m") command = "l";
+    }
+  }
+
+  if (points.length > 2 && samePoint(points[0], points[points.length - 1])) {
+    points.pop();
+    closed = true;
+  }
+  points.closed = closed;
+  return points;
+}
+
+function getPathBounds(path) {
+  const minX = Math.min(...path.map(point => point.x));
+  const minY = Math.min(...path.map(point => point.y));
+  const maxX = Math.max(...path.map(point => point.x));
+  const maxY = Math.max(...path.map(point => point.y));
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+function samePoint(a, b) {
+  return Math.abs(a.x - b.x) < 0.0001 && Math.abs(a.y - b.y) < 0.0001;
+}
+
+function validateParams(params) {
+  const warnings = [];
+  const positives = [
+    ["length", params.length],
+    ["width", params.width],
+    ["height", params.height],
+    ["material thickness", params.materialThickness],
+    ["tab width", params.tabWidth],
+    ["tab depth", params.tabDepth]
+  ];
+
+  if (["cylinder", "flex_box_5"].includes(params.modelType)) {
+    positives.push(["radius", params.radius]);
+  }
+
+  if (params.modelType === "gable_house") {
+    positives.push(["wall height", params.wallHeight], ["roof height", params.roofHeight]);
+  }
+
+  for (const [label, value] of positives) {
+    if (!(value > 0)) warnings.push(`${label} must be greater than 0.`);
+  }
+
+  if (params.tabDepth < params.materialThickness) {
+    warnings.push("接榫深度小於材料厚度，可能無法完全密合。");
+  }
+
+  return warnings;
+}
+
+function modelWarnings(params) {
+  const warnings = [];
+  if (params.modelType === "cylinder") {
+    warnings.push("圓形模型會以分段近似輸出。");
+    if (params.generateJoinery) warnings.push("圓形模型的接榫為近似結果，請先測試材料。");
+  }
+  if (params.modelType === "flex_box_5") {
+    warnings.push("Flex box 為 Boxes.py inspired 近似模型。");
+    if (params.radius > Math.min(params.length, params.width) / 2) {
+      warnings.push("圓角半徑過大，已限制於可用範圍。");
+    }
+  }
+  if (params.modelType === "gable_house") {
+    warnings.push("屋型模型為簡化展開，請先試切確認。");
+  }
+  return warnings;
+}
+
+function buildBoxPieces(length, width, height, params) {
+  const topEdges = params.generateJoinery ? "ffff" : "eeee";
+  const longWallEdges = params.generateJoinery ? "FFFF" : "eeee";
+  const shortWallEdges = params.generateJoinery ? "FfFf" : "eeee";
+  return [
+    rectPiece("top", length, width, params, topEdges),
+    rectPiece("bottom", length, width, params, topEdges),
+    rectPiece("front", length, height, params, longWallEdges),
+    rectPiece("back", length, height, params, longWallEdges),
+    rectPiece("left", width, height, params, shortWallEdges),
+    rectPiece("right", width, height, params, shortWallEdges)
+  ];
+}
+
+function buildInnerBoxPieces(innerLength, innerWidth, innerHeight, params) {
+  const thickness = params.materialThickness;
+  const outerLength = innerLength + thickness * 2;
+  const outerWidth = innerWidth + thickness * 2;
+  const outerHeight = innerHeight + thickness * 2;
+  return buildBoxPieces(
+    outerLength,
+    outerWidth,
+    outerHeight,
+    params
+  );
+}
+
+function buildDimensionedBoxPieces(length, width, height, params) {
+  if (params.dimensionMode === "inner") {
+    return buildInnerBoxPieces(length, width, height, params);
+  }
+  return buildBoxPieces(length, width, height, params);
+}
+
+function buildCylinderPieces(params) {
+  const dimensions = cylinderDimensions(params);
+  const circumference = TAU * dimensions.radius;
+  return [
+    circularFlexSidePiece("side_living_hinge", circumference, params.height, params),
+    circlePiece("top", dimensions.radius, params, params.generateJoinery),
+    circlePiece("bottom", dimensions.radius, params, params.generateJoinery)
+  ];
+}
+
+function cylinderDimensions(params) {
+  if (params.dimensionMode !== "inner") return { radius: params.radius };
+  return { radius: params.radius + params.materialThickness };
+}
+
+function buildFlexBox5Pieces(params) {
+  const dimensions = flexBoxDimensions(params);
+  const radius = Math.max(
+    params.materialThickness * 2,
+    Math.min(dimensions.radius, dimensions.length / 2, dimensions.width / 2)
+  );
+  const perimeter = 2 * (dimensions.length + dimensions.width - 4 * radius) + TAU * radius;
+  return [
+    roundedRectPiece("top_rounded_panel", dimensions.length, dimensions.width, radius, params),
+    roundedRectPiece("bottom_rounded_panel", dimensions.length, dimensions.width, radius, params),
+    flexSidePiece("flex_living_hinge_side", perimeter, params.height, radius, params),
+    latchPiece("front_latch", params)
+  ];
+}
+
+function flexBoxDimensions(params) {
+  if (params.dimensionMode !== "inner") {
+    return {
+      length: params.length,
+      width: params.width,
+      radius: params.radius
+    };
+  }
+
+  const thickness = params.materialThickness;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2,
+    radius: params.radius + thickness
+  };
+}
+
+function buildHousePieces(params) {
+  const dimensions = houseDimensions(params);
+  const roofSlopeLength = Math.hypot(dimensions.width / 2, params.roofHeight);
+  const floorEdges = params.generateJoinery ? "ffff" : "eeee";
+  const wallEdges = params.generateJoinery ? "FFFF" : "eeee";
+  const roofEdges = params.generateJoinery ? "ffff" : "eeee";
+  return [
+    rectPiece("floor", dimensions.length, dimensions.width, params, floorEdges),
+    rectPiece("left_wall", dimensions.length, params.wallHeight, params, wallEdges),
+    rectPiece("right_wall", dimensions.length, params.wallHeight, params, wallEdges),
+    gablePiece("front_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
+    gablePiece("back_gable", dimensions.width, params.wallHeight, params.roofHeight, params),
+    rectPiece("roof_left", dimensions.length, roofSlopeLength, params, roofEdges),
+    rectPiece("roof_right", dimensions.length, roofSlopeLength, params, roofEdges)
+  ];
+}
+
+function houseDimensions(params) {
+  if (params.dimensionMode !== "inner") {
+    return {
+      length: params.length,
+      width: params.width
+    };
+  }
+
+  const thickness = params.materialThickness;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2
+  };
+}
+
+function rectPiece(name, width, height, params, edges = "eeee") {
+  const hasJoinery = /[fF]/.test(edges);
+  const margin = hasJoinery ? params.tabDepth : 0;
+  const edgeGuides = innerEdgeGuidesForRectPiece(name, width, height, params);
+  const path = hasJoinery
+    ? fingerJointRectPath(margin, margin, width, height, edges, params, edgeGuides)
+    : rectPath(0, 0, width, height);
+  return {
+    name,
+    layer: "CUT",
+    paths: [path],
+    width: width + margin * 2,
+    height: height + margin * 2
+  };
+}
+
+function hasTopBottomTags() {
+  const names = new Set((state.importedPieces || []).map(piece => piece.name));
+  return names.has("top") && names.has("bottom");
+}
+
+function innerEdgeGuidesForRectPiece(name, width, height, params) {
+  if (params.dimensionMode !== "inner") return null;
+
+  const thickness = params.materialThickness;
+  const full = {
+    horizontal: { start: 0, length: width },
+    vertical: { start: 0, length: height }
+  };
+
+  if (["top", "bottom", "floor"].includes(name)) {
+    if (name === "floor" && params.modelType === "gable_house") {
+      return {
+        horizontal: { start: Math.max(0, (width - params.width - thickness * 2) / 2), length: params.width + thickness * 2 },
+        vertical: { start: 0, length: height }
+      };
+    }
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: { start: thickness, length: params.width }
+    };
+  }
+
+  if (["front", "back", "left_wall", "right_wall", "roof_left", "roof_right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.length },
+      vertical: full.vertical
+    };
+  }
+
+  if (["left", "right"].includes(name)) {
+    return {
+      horizontal: { start: thickness, length: params.width },
+      vertical: full.vertical
+    };
+  }
+
+  return full;
+}
+
+function circlePiece(name, radius, params, withSlots = false) {
+  const points = [];
+  for (let i = 0; i < params.segments; i += 1) {
+    const angle = -Math.PI / 2 + (i / params.segments) * TAU;
+    points.push({
+      x: radius + Math.cos(angle) * radius,
+      y: radius + Math.sin(angle) * radius
+    });
+  }
+  const slots = withSlots ? circularSlotPaths(radius, params) : [];
+  return {
+    name,
+    layer: "CUT",
+    paths: [points, ...slots],
+    width: radius * 2,
+    height: radius * 2
+  };
+}
+
+function circularFlexSidePiece(name, width, height, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const outline = params.generateJoinery
+    ? fingerJointRectPath(margin, margin, width, height, "fefe", params)
+    : rectPath(0, 0, width, height);
+  const hingeSlots = flexCutPatternPaths(margin, margin, width, height, params);
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...hingeSlots],
+    width: width + margin * 2,
+    height: height + margin * 2
+  };
+}
+
+function roundedRectPiece(name, width, height, radius, params) {
+  const outline = roundedRectPath(0, 0, width, height, radius, params.segments);
+  const slots = params.generateJoinery
+    ? roundedPanelSlotPaths(width, height, radius, params)
+    : [];
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...slots],
+    width,
+    height
+  };
+}
+
+function flexSidePiece(name, width, height, cornerRadius, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const outline = params.generateJoinery
+    ? fingerJointRectPath(margin, margin, width, height, "fefe", params)
+    : rectPath(0, 0, width, height);
+  const hingeSlots = livingHingeSlots(margin, margin, width, height, cornerRadius, params);
+  return {
+    name,
+    layer: "CUT",
+    paths: [outline, ...hingeSlots],
+    width: width + margin * 2,
+    height: height + margin * 2
+  };
+}
+
+function latchPiece(name, params) {
+  const width = Math.max(params.tabWidth * 2.5, params.materialThickness * 8);
+  const height = Math.max(params.materialThickness * 4, params.tabDepth * 3);
+  const notchWidth = Math.min(width * 0.36, params.tabWidth);
+  const points = [
+    { x: 0, y: height },
+    { x: 0, y: params.materialThickness },
+    { x: width / 2 - notchWidth / 2, y: params.materialThickness },
+    { x: width / 2 - notchWidth / 2, y: 0 },
+    { x: width / 2 + notchWidth / 2, y: 0 },
+    { x: width / 2 + notchWidth / 2, y: params.materialThickness },
+    { x: width, y: params.materialThickness },
+    { x: width, y: height }
+  ];
+  return {
+    name,
+    layer: "CUT",
+    paths: [points],
+    width,
+    height
+  };
+}
+
+function gablePiece(name, width, wallHeight, roofHeight, params) {
+  const margin = params.generateJoinery ? params.tabDepth : 0;
+  const x = margin;
+  const y = margin;
+  const totalHeight = wallHeight + roofHeight;
+  const points = [
+    { x, y: y + totalHeight },
+    { x: x + width, y: y + totalHeight },
+    { x: x + width, y: y + roofHeight },
+    { x: x + width / 2, y },
+    { x, y: y + roofHeight }
+  ];
+  const path = params.generateJoinery
+    ? fingerJointPolygonPath(points, "FFFFF", params)
+    : points;
+  return {
+    name,
+    layer: "CUT",
+    paths: [path],
+    width: width + margin * 2,
+    height: totalHeight + margin * 2
+  };
+}
+
+function rectPath(x, y, width, height) {
+  return [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height }
+  ];
+}
+
+function circularSlotPaths(radius, params) {
+  const runs = fingerRuns(TAU * radius, params, params.tabWidth + params.kerfWidth);
+  const slotLength = params.tabWidth + params.kerfWidth;
+  const slotDepth = params.tabDepth + params.kerfWidth;
+  return runs.map(run => {
+    const centerDistance = (run.start + run.end) / 2;
+    const theta = -Math.PI / 2 + (centerDistance / (TAU * radius)) * TAU;
+    return orientedSlotPath(radius, radius, radius - slotDepth / 2, theta, slotLength, slotDepth);
+  });
+}
+
+function orientedSlotPath(cx, cy, centerRadius, theta, tangentLength, radialDepth) {
+  const radial = { x: Math.cos(theta), y: Math.sin(theta) };
+  const tangent = { x: -Math.sin(theta), y: Math.cos(theta) };
+  const center = {
+    x: cx + radial.x * centerRadius,
+    y: cy + radial.y * centerRadius
+  };
+  const halfTangent = tangentLength / 2;
+  const halfRadial = radialDepth / 2;
+  return [
+    offset2(center, tangent, -halfTangent, radial, -halfRadial),
+    offset2(center, tangent, halfTangent, radial, -halfRadial),
+    offset2(center, tangent, halfTangent, radial, halfRadial),
+    offset2(center, tangent, -halfTangent, radial, halfRadial)
+  ];
+}
+
+function offset2(center, axisA, distanceA, axisB, distanceB) {
+  return {
+    x: center.x + axisA.x * distanceA + axisB.x * distanceB,
+    y: center.y + axisA.y * distanceA + axisB.y * distanceB
+  };
+}
+
+function fingerRuns(length, params, fingerWidth) {
+  const count = calcFingerCount(length, params);
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const inset = Math.max(params.materialThickness, (length - occupied) / 2);
+  const runs = [];
+  for (let i = 0; i < count; i += 1) {
+    const start = inset + i * (params.tabWidth + params.tabSpacing);
+    const end = Math.min(start + fingerWidth, length - params.materialThickness);
+    if (end > start && start < length) runs.push({ start, end });
+  }
+  return runs;
+}
+
+function roundedRectPath(x, y, width, height, radius, segments) {
+  const r = Math.min(radius, width / 2, height / 2);
+  const cornerSteps = Math.max(4, Math.ceil(segments / 12));
+  const points = [];
+  addArcPoints(points, x + width - r, y + r, r, -Math.PI / 2, 0, cornerSteps);
+  addArcPoints(points, x + width - r, y + height - r, r, 0, Math.PI / 2, cornerSteps);
+  addArcPoints(points, x + r, y + height - r, r, Math.PI / 2, Math.PI, cornerSteps);
+  addArcPoints(points, x + r, y + r, r, Math.PI, Math.PI * 1.5, cornerSteps);
+  return points;
+}
+
+function addArcPoints(points, cx, cy, radius, start, end, steps) {
+  for (let i = 0; i <= steps; i += 1) {
+    if (points.length && i === 0) continue;
+    const theta = start + (i / steps) * (end - start);
+    points.push({
+      x: cx + Math.cos(theta) * radius,
+      y: cy + Math.sin(theta) * radius
+    });
+  }
+}
+
+function roundedPanelSlotPaths(width, height, radius, params) {
+  const slotLength = params.tabWidth + params.kerfWidth;
+  const slotDepth = params.materialThickness + params.kerfWidth;
+  const inset = params.materialThickness * 1.5;
+  const slots = [];
+  addStraightSlots(slots, radius, width - radius, inset, slotLength, slotDepth, "horizontal", params);
+  addStraightSlots(slots, radius, width - radius, height - inset, slotLength, slotDepth, "horizontal", params);
+  addStraightSlots(slots, radius, height - radius, inset, slotLength, slotDepth, "vertical", params);
+  addStraightSlots(slots, radius, height - radius, width - inset, slotLength, slotDepth, "vertical", params);
+  return slots;
+}
+
+function addStraightSlots(slots, start, end, fixed, slotLength, slotDepth, orientation, params) {
+  const usable = end - start;
+  const count = calcFingerCount(usable, params);
+  if (count <= 0) return;
+  const pitch = params.tabWidth + params.tabSpacing;
+  const occupied = count * params.tabWidth + Math.max(0, count - 1) * params.tabSpacing;
+  const cursor = start + Math.max(params.materialThickness, (usable - occupied) / 2);
+
+  for (let i = 0; i < count; i += 1) {
+    const center = cursor + i * pitch + params.tabWidth / 2;
+    if (orientation === "horizontal") {
+      slots.push(rectPath(center - slotLength / 2, fixed - slotDepth / 2, slotLength, slotDepth));
+    } else {
+      slots.push(rectPath(fixed - slotDepth / 2, center - slotLength / 2, slotDepth, slotLength));
+    }
+  }
+}
+
+function livingHingeSlots(x, y, width, height, cornerRadius, params) {
+  const flexLength = Math.PI * cornerRadius;
+  const straightLength = Math.max(0, (width - flexLength * 2) / 2);
+  const zones = [
+    { start: straightLength, length: flexLength },
+    { start: straightLength * 2 + flexLength, length: flexLength }
+  ];
+
+  const slots = [];
+  for (const zone of zones) {
+    slots.push(...flexCutPatternPaths(x + zone.start, y, zone.length, height, params));
+  }
+  return slots;
+}
+
+function flexCutPatternPaths(x, y, length, height, params) {
+  const distance = Math.max(0.01, params.materialThickness * 0.5);
+  const connection = Math.max(0.01, params.materialThickness);
+  const patternWidth = Math.max(0.1, params.materialThickness * 5);
+  const lines = Math.floor(length / distance);
+  const leftover = length - lines * distance;
+  const sections = Math.max(Math.floor((height - connection) / patternWidth), 1);
+  const sectionHeight = ((height - connection) / sections) - connection;
+  const paths = [];
+
+  for (let i = 1; i < lines; i += 1) {
+    const px = x + i * distance + leftover / 2;
+    if (i % 2) {
+      addFlexCutSegment(paths, px, y, y + connection + sectionHeight);
+      for (let j = 0; j < Math.floor((sections - 1) / 2); j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + (2 * j + 1) * sectionHeight + (2 * j + 2) * connection,
+          y + (2 * j + 3) * (sectionHeight + connection)
+        );
+      }
+      if (sections % 2 === 0) {
+        addFlexCutSegment(paths, px, y + height - sectionHeight - connection, y + height);
+      }
+    } else if (sections % 2) {
+      addFlexCutSegment(paths, px, y + height, y + height - connection - sectionHeight);
+      for (let j = 0; j < Math.floor((sections - 1) / 2); j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + height - ((2 * j + 1) * sectionHeight + (2 * j + 2) * connection),
+          y + height - (2 * j + 3) * (sectionHeight + connection)
+        );
+      }
+    } else {
+      for (let j = 0; j < sections / 2; j += 1) {
+        addFlexCutSegment(
+          paths,
+          px,
+          y + height - connection - 2 * j * (sectionHeight + connection),
+          y + height - 2 * (j + 1) * (sectionHeight + connection)
+        );
+      }
+    }
+  }
+
+  return paths;
+}
+
+function addFlexCutSegment(paths, x, y1, y2) {
+  if (Math.abs(y2 - y1) < 0.0001) return;
+  const path = [
+    { x, y: y1 },
+    { x, y: y2 }
+  ];
+  path.closed = false;
+  paths.push(path);
+}
+
+function fingerJointRectPath(x, y, width, height, edges, params, edgeGuides = null) {
+  const points = [];
+  const [top = "e", right = "e", bottom = "e", left = "e"] = edges;
+  addFingerEdge(points, { x, y }, { x: x + width, y }, { x: 0, y: -1 }, top, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x: x + width, y }, { x: x + width, y: y + height }, { x: 1, y: 0 }, right, params, edgeGuides?.vertical);
+  addFingerEdge(points, { x: x + width, y: y + height }, { x, y: y + height }, { x: 0, y: 1 }, bottom, params, edgeGuides?.horizontal);
+  addFingerEdge(points, { x, y: y + height }, { x, y }, { x: -1, y: 0 }, left, params, edgeGuides?.vertical);
+  return points;
+}
+
+function fingerJointPolygonPath(vertices, edgeTypes, params, innerVertices = null, edgeLayouts = null) {
+  const points = [];
+  const area = signedPolygonArea(vertices);
+  const hasInnerGuide = innerVertices
+    && innerVertices.length === vertices.length
+    && innerVertices.closed !== false;
+
+  for (let i = 0; i < vertices.length; i += 1) {
+    const start = vertices[i];
+    const end = vertices[(i + 1) % vertices.length];
+    const type = edgeTypes[i] || "e";
+    if (hasInnerGuide && (type === "f" || type === "F")) {
+      const edgePoints = guidedFingerEdgePoints(
+        innerVertices[i],
+        innerVertices[(i + 1) % innerVertices.length],
+        start,
+        end,
+        type,
+        params,
+        edgeLayouts?.[i]
+      );
+      appendEdgePoints(points, edgePoints, params);
+    } else {
+      const outward = edgeOutwardNormal(start, end, area);
+      const beforeLength = points.length;
+      addFingerEdge(points, start, end, outward, type, params);
+      if (beforeLength > 0) {
+        const added = points.splice(beforeLength);
+        appendEdgePoints(points, added, params);
+      }
+    }
+  }
+
+  if (points.length > 1) appendCornerBridge(points, points[0], params);
+  if (points.length > 1 && samePoint(points[0], points[points.length - 1])) points.pop();
+  return points;
+}
+
+function signedPolygonArea(vertices) {
+  let area = 0;
+  for (let i = 0; i < vertices.length; i += 1) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % vertices.length];
+    area += a.x * b.y - b.x * a.y;
+  }
+  return area / 2;
+}
+
+function edgeOutwardNormal(start, end, polygonArea) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const normal = polygonArea >= 0
+    ? { x: dy / length, y: -dx / length }
+    : { x: -dy / length, y: dx / length };
+  return normal;
+}
+
+function addFingerEdge(points, start, end, outward, type, params, guide = null) {
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const dx = (end.x - start.x) / length;
+  const dy = (end.y - start.y) / length;
+  const direction = type === "f" ? 1 : type === "F" ? -1 : 0;
+  const fingerWidth = type === "F" ? params.tabWidth + params.kerfWidth : params.tabWidth;
+  const baseGuideStart = Math.max(0, Math.min(length, guide?.start ?? 0));
+  const baseGuideLength = Math.max(0, Math.min(length - baseGuideStart, guide?.length ?? length));
+  const baseGuideEnd = baseGuideStart + baseGuideLength;
+  const cornerClearance = direction
+    ? Math.min(baseGuideLength / 3, Math.max(params.materialThickness, params.tabDepth, params.tabWidth))
+    : 0;
+  const guideStart = baseGuideStart + cornerClearance;
+  const guideEnd = baseGuideEnd - cornerClearance;
+  const guideLength = Math.max(0, guideEnd - guideStart);
+  const count = calcFingerCount(guideLength, params);
+  const occupiedTabs = count * fingerWidth;
+  const fittedSpacing = count > 1
+    ? Math.max(0, (guideLength - occupiedTabs) / (count - 1))
+    : 0;
+  const inset = count > 1
+    ? guideStart
+    : guideStart + Math.max(0, (guideLength - fingerWidth) / 2);
+
+  pushPoint(points, start);
+
+  if (!direction || count <= 0) {
+    pushPoint(points, end);
+    return;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const tabStart = inset + i * (fingerWidth + fittedSpacing);
+    const tabEnd = Math.min(tabStart + fingerWidth, guideEnd);
+    if (tabEnd <= tabStart || tabStart >= guideEnd) continue;
+
+    const a = along(start, dx, dy, tabStart);
+    const b = along(start, dx, dy, tabEnd);
+    const ao = offsetBy(a, outward, params.tabDepth * direction);
+    const bo = offsetBy(b, outward, params.tabDepth * direction);
+    pushPoint(points, a);
+    pushPoint(points, ao);
+    pushPoint(points, bo);
+    pushPoint(points, b);
+  }
+
+  pushPoint(points, end);
+}
+
+function addGuidedFingerEdge(points, innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride = null) {
+  const edgePoints = guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride);
+  for (const point of edgePoints) pushPoint(points, point);
+}
+
+function guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride = null) {
+  const length = Math.hypot(innerEnd.x - innerStart.x, innerEnd.y - innerStart.y);
+  if (!length) return [];
+
+  const dx = (innerEnd.x - innerStart.x) / length;
+  const dy = (innerEnd.y - innerStart.y) / length;
+  const outward = guidedEdgeOutwardNormal(dx, dy, innerStart, innerEnd, outerStart, outerEnd);
+  const offsetDistance = params.materialThickness || Math.hypot(outerStart.x - innerStart.x, outerStart.y - innerStart.y) || 1;
+  const grayStart = offsetBy(innerStart, outward, offsetDistance);
+  const grayEnd = offsetBy(innerEnd, outward, offsetDistance);
+  const baseStart = type === "f" ? innerStart : grayStart;
+  const baseEnd = type === "f" ? innerEnd : grayEnd;
+  const jointStart = type === "f" ? grayStart : innerStart;
+  const edgeStart = type === "f" ? innerStart : grayStart;
+  const edgeEnd = type === "f" ? innerEnd : grayEnd;
+  const layout = layoutOverride || buildBoxesFingerLayout(length, type, params);
+  const count = layout.count;
+  const firstRun = layout.runs[0];
+  const lastRun = layout.runs[layout.runs.length - 1];
+  const guideStart = firstRun?.start ?? layout.endMargin;
+  const guideEnd = lastRun?.end ?? Math.max(0, length - layout.endMargin);
+
+  const points = [];
+  pushPoint(points, edgeStart);
+  if (type === "f") pushPoint(points, along(baseStart, dx, dy, guideStart));
+
+  if (count <= 0) {
+    if (type === "f") pushPoint(points, along(baseStart, dx, dy, guideEnd));
+    pushPoint(points, edgeEnd);
+    return points;
+  }
+
+  for (const run of layout.runs) {
+    const tabStart = run.start;
+    const tabEnd = run.end;
+
+    const a = along(baseStart, dx, dy, tabStart);
+    const b = along(baseStart, dx, dy, tabEnd);
+    const aj = along(jointStart, dx, dy, tabStart);
+    const bj = along(jointStart, dx, dy, tabEnd);
+    pushPoint(points, a);
+    pushPoint(points, aj);
+    pushPoint(points, bj);
+    pushPoint(points, b);
+  }
+
+  if (type === "f") {
+    pushPoint(points, along(baseStart, dx, dy, guideEnd));
+  }
+  pushPoint(points, edgeEnd);
+  return points;
+}
+
+function guidedEdgeOutwardNormal(dx, dy, innerStart, innerEnd, outerStart, outerEnd) {
+  const candidateA = { x: dy, y: -dx };
+  const candidateB = { x: -dy, y: dx };
+  const offsetHint = {
+    x: ((outerStart.x - innerStart.x) + (outerEnd.x - innerEnd.x)) / 2,
+    y: ((outerStart.y - innerStart.y) + (outerEnd.y - innerEnd.y)) / 2
+  };
+  const scoreA = candidateA.x * offsetHint.x + candidateA.y * offsetHint.y;
+  const scoreB = candidateB.x * offsetHint.x + candidateB.y * offsetHint.y;
+  return scoreA >= scoreB ? candidateA : candidateB;
+}
+
+function appendEdgePoints(points, edgePoints, params) {
+  if (!edgePoints.length) return;
+  if (points.length) appendCornerBridge(points, edgePoints[0], params);
+  for (const point of edgePoints) pushPoint(points, point);
+}
+
+function appendCornerBridge(points, nextPoint, params) {
+  const previous = points[points.length - 1];
+  if (!previous || !nextPoint || samePoint(previous, nextPoint)) return;
+  const dx = Math.abs(previous.x - nextPoint.x);
+  const dy = Math.abs(previous.y - nextPoint.y);
+  const materialThickness = params.materialThickness || 3;
+  const cornerTolerance = materialThickness * 1.5 + 0.01;
+  if (dx > 0.0001 && dy > 0.0001 && dx <= cornerTolerance && dy <= cornerTolerance) {
+    pushPoint(points, { x: nextPoint.x, y: previous.y });
+  }
+}
+
+function calcFingerCount(length, params) {
+  const tabWidth = params.tabWidth || params.materialThickness * 2 || 0;
+  const tabSpacing = params.tabSpacing || tabWidth;
+  const surroundingSpaces = params.surroundingSpaces || params.surroundingspaces || 2;
+  const pitch = tabWidth + tabSpacing;
+  if (pitch <= 0 || tabWidth <= 0) return 0;
+  let count = Math.floor((length - (surroundingSpaces - 1) * tabSpacing) / pitch);
+  if (count === 0 && length > tabWidth + params.materialThickness) count = 1;
+  return Math.max(0, count);
+}
+
+function along(start, dx, dy, distanceMm) {
+  return {
+    x: start.x + dx * distanceMm,
+    y: start.y + dy * distanceMm
+  };
+}
+
+function offsetBy(point, direction, distanceMm) {
+  return {
+    x: point.x + direction.x * distanceMm,
+    y: point.y + direction.y * distanceMm
+  };
+}
+
+function pushPoint(points, point) {
+  const last = points[points.length - 1];
+  if (last && Math.abs(last.x - point.x) < 0.0001 && Math.abs(last.y - point.y) < 0.0001) return;
+  points.push(point);
+}
+
+function layoutPieces(pieces, gap) {
+  const laidOut = [];
+  const maxRowWidth = 520;
+  let cursorX = 0;
+  let cursorY = 0;
+  let rowHeight = 0;
+
+  for (const piece of pieces) {
+    if (cursorX > 0 && cursorX + piece.width > maxRowWidth) {
+      cursorX = 0;
+      cursorY += rowHeight + gap;
+      rowHeight = 0;
+    }
+
+    laidOut.push({
+      ...piece,
+      x: cursorX,
+      y: cursorY
+    });
+
+    cursorX += piece.width + gap;
+    rowHeight = Math.max(rowHeight, piece.height);
+  }
+
+  return laidOut;
+}
+
+function getBoundsFromPieces(pieces) {
+  if (!pieces.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+  const maxX = Math.max(...pieces.map(piece => piece.x + piece.width));
+  const maxY = Math.max(...pieces.map(piece => piece.y + piece.height));
+  return { minX: 0, minY: 0, maxX, maxY, width: maxX, height: maxY };
+}
+
+function getBoundsFromPaths(pieces) {
+  const points = [];
+  for (const piece of pieces) {
+    for (const path of piece.paths) {
+      for (const point of path) points.push({ x: point.x + piece.x, y: point.y + piece.y });
+    }
+  }
+  if (!points.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+  const minX = Math.min(...points.map(point => point.x));
+  const minY = Math.min(...points.map(point => point.y));
+  const maxX = Math.max(...points.map(point => point.x));
+  const maxY = Math.max(...points.map(point => point.y));
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+function render(result) {
+  clearSvg();
+  const padding = 8;
+  const showSourceOnly = shouldShowImportedSourceOnly();
+  const showJoinerySegmentsOnly = shouldShowJoinerySegmentsOnly();
+  const previewBounds = stablePreviewBounds(result);
+  state.baseViewBox = {
+    x: previewBounds.minX - padding,
+    y: previewBounds.minY - padding,
+    width: Math.max(previewBounds.width + padding * 2, 1),
+    height: Math.max(previewBounds.height + padding * 2, 1)
+  };
+  els.previewSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  updatePreviewZoom();
+
+  addSvgStyles();
+  renderSourceOverlay();
+  renderOffsetReferenceOverlay();
+  const cutGroup = createSvgElement("g", { class: "svg-cut" });
+  els.previewSvg.appendChild(cutGroup);
+
+  const visiblePieces = showSourceOnly
+    ? result.pieces
+    : showJoinerySegmentsOnly
+      ? buildSelectedJoineryPieces(result.params)
+      : result.pieces;
+  for (const piece of visiblePieces) {
+    for (const path of piece.paths) {
+      cutGroup.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y),
+        fill: "none",
+        stroke: showSourceOnly ? "#cbd5e1" : "#ff0000",
+        "stroke-linejoin": "miter",
+        "stroke-linecap": "square",
+        "vector-effect": "non-scaling-stroke",
+        "stroke-width": previewStrokeWidth(result.params)
+      }));
+    }
+  }
+
+  renderPieceLabels(result);
+  renderTagOverlay(result);
+  renderEdgeOverlay(result);
+
+  els.widthMetric.textContent = formatNumber(result.bounds.width);
+  els.heightMetric.textContent = formatNumber(result.bounds.height);
+  els.pathMetric.textContent = String(result.pieces.length);
+  els.summaryText.textContent = `${modelLabel(result.params.modelType)} · ${result.pieces.length} parts`;
+  els.downloadDxf.disabled = false;
+  els.downloadSvg.disabled = false;
+  renderCheckReport(result);
+  render3dPreview(result);
+}
+
+function stablePreviewBounds(result) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length) return result.bounds;
+  const sourceBounds = getBoundsFromPaths(state.importedPieces);
+  const guard = Math.max(result.params.tabDepth || 0, result.params.materialThickness || 0, 0);
+  return {
+    minX: sourceBounds.minX - guard,
+    minY: sourceBounds.minY - guard,
+    maxX: sourceBounds.maxX + guard,
+    maxY: sourceBounds.maxY + guard,
+    width: sourceBounds.width + guard * 2,
+    height: sourceBounds.height + guard * 2
+  };
+}
+
+function shouldShowImportedSourceOnly() {
+  return state.sourceMode === "svg"
+    && Boolean(state.importedPieces?.length)
+    && !state.appliedJoinery
+    && !state.edgeSelection.pending
+    && state.edgeSelection.pairs.length === 0;
+}
+
+function shouldShowJoinerySegmentsOnly() {
+  return state.sourceMode === "svg"
+    && Boolean(state.importedPieces?.length)
+    && !state.appliedJoinery
+    && (Boolean(state.edgeSelection.pending) || state.edgeSelection.pairs.length > 0);
+}
+
+function buildSelectedJoineryPieces(params) {
+  const pieces = [];
+  const addEdge = (ref, type, layout = null) => {
+    const piece = state.importedPieces?.[ref.pieceIndex];
+    const sourcePath = piece?.paths?.[ref.pathIndex];
+    const innerPath = piece?.sourcePaths?.[ref.pathIndex];
+    if (!piece || !sourcePath || sourcePath.closed === false || sourcePath.length < 3) return;
+    const path = fingerJointEdgePath(sourcePath, ref.edgeIndex, type, params, innerPath, layout || buildSharedEdgeLayoutForRef(ref, type, params));
+    if (path.length < 2) return;
+    pieces.push({
+      name: `${piece.name || `piece_${ref.pieceIndex + 1}`}_edge_${ref.edgeIndex + 1}_${type}`,
+      layer: "CUT",
+      x: piece.x,
+      y: piece.y,
+      width: piece.width,
+      height: piece.height,
+      paths: [path]
+    });
+  };
+
+  for (const pair of state.edgeSelection.pairs) {
+    const pairLayouts = buildSharedPairLayouts(pair.first, pair.second, params);
+    addEdge(pair.first, "f", pairLayouts.f);
+    addEdge(pair.second, "F", pairLayouts.F);
+  }
+
+  if (state.edgeSelection.pending) addEdge(state.edgeSelection.pending, "f");
+  return pieces;
+}
+
+function ensure3dPreviewElements() {
+  if (els.preview3dCanvas) return true;
+
+  const frame = document.createElement("div");
+  frame.className = "preview-3d-frame";
+  frame.hidden = true;
+  frame.setAttribute("aria-label", "3D preview");
+
+  const badge = document.createElement("div");
+  badge.id = "preview3dMode";
+  badge.className = "preview-3d-badge";
+  badge.textContent = "3D preview";
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "preview-3d-close";
+  closeButton.setAttribute("aria-label", "Close 3D preview");
+  closeButton.textContent = "\u00d7";
+  closeButton.addEventListener("click", () => set3dPreviewVisible(false));
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "preview3dCanvas";
+
+  frame.append(badge, closeButton, canvas);
+  document.body.appendChild(frame);
+  els.preview3dCanvas = canvas;
+  els.preview3dMode = badge;
+  return true;
+}
+
+function ensure3dPreview() {
+  if (!ensure3dPreviewElements()) return null;
+  if (!window.THREE) {
+    els.preview3dMode.textContent = "3D unavailable";
+    return null;
+  }
+  if (state.three) return state.three;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf8fafc);
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 10000);
+  const renderer = new THREE.WebGLRenderer({
+    canvas: els.preview3dCanvas,
+    antialias: true,
+    preserveDrawingBuffer: true
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  const group = new THREE.Group();
+  group.rotation.x = -0.42;
+  group.rotation.y = 0.62;
+  scene.add(group);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
+  const key = new THREE.DirectionalLight(0xffffff, 2.4);
+  key.position.set(140, 220, 180);
+  scene.add(key);
+  const grid = new THREE.GridHelper(360, 18, 0xcbd5e1, 0xe2e8f0);
+  grid.position.y = -0.2;
+  scene.add(grid);
+
+  const ctx = { scene, camera, renderer, group, isDragging: false, lastX: 0, lastY: 0, needsResize: true };
+  state.three = ctx;
+
+  els.preview3dCanvas.addEventListener("pointerdown", (event) => {
+    ctx.isDragging = true;
+    ctx.lastX = event.clientX;
+    ctx.lastY = event.clientY;
+    els.preview3dCanvas.setPointerCapture(event.pointerId);
+  });
+  els.preview3dCanvas.addEventListener("pointermove", (event) => {
+    if (!ctx.isDragging) return;
+    const dx = event.clientX - ctx.lastX;
+    const dy = event.clientY - ctx.lastY;
+    ctx.lastX = event.clientX;
+    ctx.lastY = event.clientY;
+    group.rotation.y += dx * 0.008;
+    group.rotation.x = Math.max(-1.25, Math.min(0.35, group.rotation.x + dy * 0.008));
+  });
+  els.preview3dCanvas.addEventListener("pointerup", (event) => {
+    ctx.isDragging = false;
+    try {
+      els.preview3dCanvas.releasePointerCapture(event.pointerId);
+    } catch {
+      // Capture may already be released by the browser.
+    }
+  });
+  window.addEventListener("resize", () => {
+    ctx.needsResize = true;
+  });
+
+  const animate = () => {
+    if (!ctx.isDragging) group.rotation.y += 0.0022;
+    resize3dRenderer(ctx);
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+  return ctx;
+}
+
+function resize3dRenderer(ctx) {
+  const canvas = els.preview3dCanvas;
+  const width = Math.max(1, canvas.clientWidth);
+  const height = Math.max(1, canvas.clientHeight);
+  const ratio = ctx.renderer.getPixelRatio ? ctx.renderer.getPixelRatio() : 1;
+  if (!ctx.needsResize && canvas.width === Math.round(width * ratio) && canvas.height === Math.round(height * ratio)) return;
+  ctx.renderer.setSize(width, height, false);
+  ctx.camera.aspect = width / height;
+  ctx.camera.updateProjectionMatrix();
+  ctx.needsResize = false;
+}
+
+function render3dPreview(result) {
+  if (!shouldShow3dPreviewAfterConfirm()) {
+    set3dPreviewVisible(false);
+    return;
+  }
+  const ctx = ensure3dPreview();
+  if (!ctx || !result) return;
+  set3dPreviewVisible(true);
+  clear3dGroup(ctx.group);
+
+  const importedAssemblyMode = buildKnownImportedAssembly3d(ctx.group, result);
+  const mode = importedAssemblyMode
+    || (shouldRenderAssembledBox(result)
+      ? buildAssembledBox3d(ctx.group, result.params)
+      : buildPlatePreview3d(ctx.group, result));
+  els.preview3dMode.textContent = mode;
+  fit3dCamera(ctx, get3dBox(ctx.group));
+}
+
+function shouldShow3dPreviewAfterConfirm() {
+  return state.appliedJoinery;
+}
+
+function set3dPreviewVisible(isVisible) {
+  const frame = els.preview3dCanvas?.closest(".preview-3d-frame") || document.querySelector(".preview-3d-frame");
+  if (!frame) return;
+  frame.hidden = !isVisible;
+}
+
+function shouldRenderAssembledBox(result) {
+  return state.importedPreset === "cube_net"
+    || (state.sourceMode !== "svg" && ["cube", "cuboid"].includes(result.params.modelType));
+}
+
+function buildKnownImportedAssembly3d(group, result) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length) return null;
+  const pieces = importedPieceMap();
+
+  if (hasImportedPieceNames(pieces, ["top", "bottom", "front", "back", "left", "right"])) {
+    return buildImportedCuboidAssembly3d(group, pieces, result.params);
+  }
+
+  if (hasImportedPieceNames(pieces, ["floor", "left_wall", "right_wall", "front_gable", "back_gable", "roof_left", "roof_right"])) {
+    return buildImportedGableHouseAssembly3d(group, pieces, result.params);
+  }
+
+  return null;
+}
+
+function importedPieceMap() {
+  return new Map((state.importedPieces || []).map(piece => [piece.name, piece]));
+}
+
+function hasImportedPieceNames(pieceMap, names) {
+  return names.every(name => pieceMap.has(name));
+}
+
+function boardMaterial3d(color = 0xf7fafc, opacity = 0.92) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.72,
+    metalness: 0.02,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide
+  });
+}
+
+function redMaterial3d() {
+  return new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.45 });
+}
+
+function clear3dGroup(group) {
+  while (group.children.length) {
+    const child = group.children.pop();
+    child.traverse((node) => {
+      if (node.geometry) node.geometry.dispose();
+      if (node.material) {
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        materials.forEach(material => material.dispose());
+      }
+    });
+  }
+}
+
+function buildAssembledBox3d(group, params) {
+  const t = Math.max(params.materialThickness || 3, 0.2);
+  const innerLength = Math.max(params.length, 1);
+  const innerWidth = Math.max(params.modelType === "cube" ? params.length : params.width, 1);
+  const innerHeight = Math.max(params.modelType === "cube" ? params.length : params.height, 1);
+  const outerLength = innerLength + t * 2;
+  const outerWidth = innerWidth + t * 2;
+  const boardMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf7fafc,
+    roughness: 0.72,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.9,
+    side: THREE.DoubleSide
+  });
+  const edgeMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.45 });
+
+  addBoard3d(group, outerLength, t, outerWidth, 0, -t / 2, 0, boardMaterial);
+  addBoard3d(group, outerLength, t, outerWidth, 0, innerHeight + t / 2, 0, boardMaterial);
+  addBoard3d(group, outerLength, innerHeight, t, 0, innerHeight / 2, -innerWidth / 2 - t / 2, boardMaterial);
+  addBoard3d(group, outerLength, innerHeight, t, 0, innerHeight / 2, innerWidth / 2 + t / 2, boardMaterial);
+  addBoard3d(group, t, innerHeight, innerWidth, -innerLength / 2 - t / 2, innerHeight / 2, 0, boardMaterial);
+  addBoard3d(group, t, innerHeight, innerWidth, innerLength / 2 + t / 2, innerHeight / 2, 0, boardMaterial);
+
+  addEdgeStrip3d(group, outerLength, t * 0.42, 0, 0.25, -innerWidth / 2 - t - 0.2, 0, edgeMaterial);
+  addEdgeStrip3d(group, outerLength, t * 0.42, 0, 0.25, innerWidth / 2 + t + 0.2, 0, edgeMaterial);
+  addEdgeStrip3d(group, innerWidth, t * 0.42, -innerLength / 2 - t - 0.2, 0.25, 0, Math.PI / 2, edgeMaterial);
+  addEdgeStrip3d(group, innerWidth, t * 0.42, innerLength / 2 + t + 0.2, 0.25, 0, Math.PI / 2, edgeMaterial);
+
+  return "3D 組裝預覽";
+}
+
+function buildImportedCuboidAssembly3d(group, pieces, params) {
+  const t = Math.max(params.materialThickness || 3, 0.2);
+  const top = pieces.get("top");
+  const front = pieces.get("front");
+  const left = pieces.get("left");
+  const length = Math.max(top.width, front.width, 1);
+  const width = Math.max(top.height, left.width, 1);
+  const height = Math.max(front.height, left.height, 1);
+  const boardMaterial = boardMaterial3d(0xf7fafc, 0.92);
+  const edgeMaterial = redMaterial3d();
+
+  addBoard3d(group, length, t, width, 0, -t / 2, 0, boardMaterial);
+  addBoard3d(group, length, t, width, 0, height + t / 2, 0, boardMaterial);
+  addBoard3d(group, length, height, t, 0, height / 2, -width / 2 - t / 2, boardMaterial);
+  addBoard3d(group, length, height, t, 0, height / 2, width / 2 + t / 2, boardMaterial);
+  addBoard3d(group, t, height, width, -length / 2 - t / 2, height / 2, 0, boardMaterial);
+  addBoard3d(group, t, height, width, length / 2 + t / 2, height / 2, 0, boardMaterial);
+  addCuboidEdgeHighlights(group, length, width, height, t, edgeMaterial);
+  return "3D 組裝預覽";
+}
+
+function addCuboidEdgeHighlights(group, length, width, height, t, material) {
+  const d = Math.max(t * 0.42, 0.8);
+  addEdgeStrip3d(group, length, d, 0, 0.25, -width / 2 - t - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, 0.25, width / 2 + t + 0.2, 0, material);
+  addEdgeStrip3d(group, width, d, -length / 2 - t - 0.2, 0.25, 0, Math.PI / 2, material);
+  addEdgeStrip3d(group, width, d, length / 2 + t + 0.2, 0.25, 0, Math.PI / 2, material);
+  addEdgeStrip3d(group, length, d, 0, height + t + 0.2, -width / 2 - t - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, height + t + 0.2, width / 2 + t + 0.2, 0, material);
+}
+
+function buildImportedGableHouseAssembly3d(group, pieces, params) {
+  const t = Math.max(params.materialThickness || 3, 0.2);
+  const floor = pieces.get("floor");
+  const leftWall = pieces.get("left_wall");
+  const frontGable = pieces.get("front_gable");
+  const roofLeft = pieces.get("roof_left");
+  const length = Math.max(floor.width, leftWall.width, roofLeft.width, 1);
+  const width = Math.max(floor.height, frontGable.width, 1);
+  const wallHeight = Math.max(leftWall.height, 1);
+  const totalGableHeight = Math.max(frontGable.height, wallHeight + 1);
+  const roofHeight = Math.max(totalGableHeight - wallHeight, 1);
+  const roofSlope = Math.max(roofLeft.height, Math.hypot(width / 2, roofHeight));
+  const roofAngle = Math.atan2(roofHeight, width / 2);
+  const boardMaterial = boardMaterial3d(0xf7fafc, 0.92);
+  const roofMaterial = boardMaterial3d(0xe8edf4, 0.94);
+  const gableMaterial = boardMaterial3d(0xffffff, 0.94);
+  const edgeMaterial = redMaterial3d();
+
+  addBoard3d(group, length, t, width, 0, -t / 2, 0, boardMaterial);
+  addBoard3d(group, length, wallHeight, t, 0, wallHeight / 2, -width / 2 - t / 2, boardMaterial);
+  addBoard3d(group, length, wallHeight, t, 0, wallHeight / 2, width / 2 + t / 2, boardMaterial);
+  addGableWall3d(group, width, wallHeight, roofHeight, t, -length / 2 - t / 2, gableMaterial);
+  addGableWall3d(group, width, wallHeight, roofHeight, t, length / 2 + t / 2, gableMaterial);
+
+  const leftRoof = addBoard3d(group, length, t, roofSlope, 0, wallHeight + roofHeight / 2 + t * 0.15, -width / 4, roofMaterial);
+  leftRoof.rotation.x = -roofAngle;
+  const rightRoof = addBoard3d(group, length, t, roofSlope, 0, wallHeight + roofHeight / 2 + t * 0.15, width / 4, roofMaterial);
+  rightRoof.rotation.x = roofAngle;
+  addHouseEdgeHighlights(group, length, width, wallHeight, roofHeight, t, roofAngle, edgeMaterial);
+  return "3D 組裝預覽";
+}
+
+function addGableWall3d(group, width, wallHeight, roofHeight, thickness, x, material) {
+  const totalHeight = wallHeight + roofHeight;
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, 0);
+  shape.lineTo(width / 2, 0);
+  shape.lineTo(width / 2, wallHeight);
+  shape.lineTo(0, totalHeight);
+  shape.lineTo(-width / 2, wallHeight);
+  shape.lineTo(-width / 2, 0);
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geometry, material.clone());
+  mesh.rotation.y = Math.PI / 2;
+  mesh.position.set(x - thickness / 2, 0, 0);
+  group.add(mesh);
+  addMeshOutline3d(mesh);
+  return mesh;
+}
+
+function addHouseEdgeHighlights(group, length, width, wallHeight, roofHeight, thickness, roofAngle, material) {
+  const d = Math.max(thickness * 0.42, 0.8);
+  addEdgeStrip3d(group, length, d, 0, 0.25, -width / 2 - thickness - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, 0.25, width / 2 + thickness + 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, wallHeight + thickness * 0.3, -width / 2 - thickness - 0.2, 0, material);
+  addEdgeStrip3d(group, length, d, 0, wallHeight + thickness * 0.3, width / 2 + thickness + 0.2, 0, material);
+  const leftEave = addEdgeStrip3d(group, length, d, 0, wallHeight + thickness, -width / 2, 0, material);
+  leftEave.rotation.x = -roofAngle;
+  const rightEave = addEdgeStrip3d(group, length, d, 0, wallHeight + thickness, width / 2, 0, material);
+  rightEave.rotation.x = roofAngle;
+  addEdgeStrip3d(group, length, d, 0, wallHeight + roofHeight + thickness * 0.6, 0, 0, material);
+}
+
+function addBoard3d(group, width, height, depth, x, y, z, material) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material.clone());
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  addMeshOutline3d(mesh);
+  return mesh;
+}
+
+function addMeshOutline3d(mesh) {
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry),
+    new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.42 })
+  );
+  mesh.add(edges);
+}
+
+function addEdgeStrip3d(group, length, depth, x, y, z, rotationY, material) {
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(length, Math.max(depth, 0.8), Math.max(depth, 0.8)), material.clone());
+  strip.position.set(x, y, z);
+  strip.rotation.y = rotationY;
+  group.add(strip);
+  return strip;
+}
+
+function buildPlatePreview3d(group, result) {
+  const t = Math.max(result.params.materialThickness || 3, 0.2);
+  const bounds = getBoundsFromPaths(result.pieces);
+  const centerX = bounds.minX + bounds.width / 2;
+  const centerY = bounds.minY + bounds.height / 2;
+  const boardMaterial = new THREE.MeshStandardMaterial({
+    color: 0x111827,
+    roughness: 0.7,
+    metalness: 0.01,
+    transparent: true,
+    opacity: 0.82
+  });
+  const redMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.45 });
+
+  for (const piece of result.pieces) {
+    const width = Math.max(piece.width || 1, 1);
+    const height = Math.max(piece.height || 1, 1);
+    addBoard3d(group, width, t, height, piece.x + width / 2 - centerX, 0, piece.y + height / 2 - centerY, boardMaterial);
+  }
+
+  const refs = [];
+  for (const pair of state.edgeSelection.pairs) refs.push(pair.first, pair.second);
+  if (state.edgeSelection.pending) refs.push(state.edgeSelection.pending);
+  for (const ref of refs) addPlateEdgeMarker3d(group, ref, result.params, centerX, centerY, redMaterial);
+
+  return "2.5D 板件預覽";
+}
+
+function addPlateEdgeMarker3d(group, ref, params, centerX, centerY, material) {
+  const piece = state.importedPieces?.[ref.pieceIndex];
+  const path = piece?.paths?.[ref.pathIndex];
+  if (!piece || !path || !path.length) return;
+  const a = path[ref.edgeIndex];
+  const b = path[(ref.edgeIndex + 1) % path.length];
+  if (!a || !b) return;
+  const ax = piece.x + a.x;
+  const ay = piece.y + a.y;
+  const bx = piece.x + b.x;
+  const by = piece.y + b.y;
+  const length = Math.hypot(bx - ax, by - ay);
+  if (length < 0.01) return;
+  const strip = new THREE.Mesh(
+    new THREE.BoxGeometry(length, Math.max(params.materialThickness * 0.32, 0.7), Math.max(params.materialThickness * 0.7, 1.2)),
+    material.clone()
+  );
+  strip.position.set((ax + bx) / 2 - centerX, params.materialThickness + 0.35, (ay + by) / 2 - centerY);
+  strip.rotation.y = -Math.atan2(by - ay, bx - ax);
+  group.add(strip);
+}
+
+function get3dBox(group) {
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) {
+    box.min.set(-50, -50, -50);
+    box.max.set(50, 50, 50);
+  }
+  return box;
+}
+
+function fit3dCamera(ctx, box) {
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+  const maxSize = Math.max(size.x, size.y, size.z, 20);
+  const distance = maxSize * 2.05;
+  ctx.camera.position.set(center.x + distance, center.y + distance * 0.72, center.z + distance);
+  ctx.camera.lookAt(center.x, center.y, center.z);
+  ctx.camera.near = Math.max(distance / 100, 0.1);
+  ctx.camera.far = distance * 8;
+  ctx.camera.updateProjectionMatrix();
+  ctx.needsResize = true;
+}
+
+function fingerJointEdgePath(vertices, edgeIndex, type, params, innerVertices = null, layoutOverride = null) {
+  const start = vertices[edgeIndex];
+  const end = vertices[(edgeIndex + 1) % vertices.length];
+  if (!start || !end) return [];
+  const points = [];
+  const innerStart = innerVertices?.[edgeIndex];
+  const innerEnd = innerVertices?.[(edgeIndex + 1) % innerVertices.length];
+  if (innerStart && innerEnd && (type === "f" || type === "F")) {
+    addGuidedFingerEdge(points, innerStart, innerEnd, start, end, type, params, layoutOverride);
+  } else {
+    const outward = edgeOutwardNormal(start, end, signedPolygonArea(vertices));
+    addFingerEdge(points, start, end, outward, type, params);
+  }
+  points.closed = false;
+  return points;
+}
+
+function renderPieceLabels(result) {
+  if (state.sourceMode !== "svg") return;
+
+  const group = createSvgElement("g", { class: "piece-label-overlay" });
+  let labelCount = 0;
+  const labelColor = "#111827";
+  const labelPieces = state.appliedJoinery && state.importedPieces?.length
+    ? state.importedPieces
+    : result.pieces;
+
+  for (const piece of labelPieces) {
+    const isTopBottomTag = ["top", "bottom"].includes(piece.name);
+    if (state.appliedJoinery && !isTopBottomTag) continue;
+    const label = pieceLabel(piece.name);
+    if (!label) continue;
+    group.appendChild(createSvgElement("text", {
+      x: svgNum(piece.x + piece.width / 2),
+      y: svgNum(piece.y + piece.height / 2),
+      fill: labelColor,
+      class: isTopBottomTag ? "top-bottom-tag-label" : "piece-tag-label",
+      "font-family": "Arial, sans-serif",
+      "font-size": "6",
+      "font-weight": "700",
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      "paint-order": "stroke",
+      stroke: "#ffffff",
+      "stroke-width": "1.2",
+      "vector-effect": "non-scaling-stroke"
+    })).textContent = label;
+    labelCount += 1;
+  }
+
+  if (labelCount) els.previewSvg.appendChild(group);
+}
+
+function renderTagOverlay(result) {
+  if (
+    state.sourceMode !== "svg"
+    || state.appliedJoinery
+    || !state.tagMode
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "tag-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const [pieceIndex, piece] of state.importedPieces.entries()) {
+    const rect = createSvgElement("rect", {
+      x: svgNum(piece.x),
+      y: svgNum(piece.y),
+      width: svgNum(piece.width),
+      height: svgNum(piece.height),
+      class: "tag-hit",
+      "data-piece": pieceIndex
+    });
+    rect.addEventListener("click", handlePieceTagClick);
+    group.appendChild(rect);
+  }
+}
+
+function handlePieceTagClick(event) {
+  if (!state.tagMode || !state.importedPieces?.length) return;
+  const pieceIndex = Number(event.target.dataset.piece);
+  const role = state.tagMode;
+  if (!["top", "bottom"].includes(role) || !state.importedPieces[pieceIndex]) return;
+
+  state.importedPieces.forEach((piece, index) => {
+    if (index === pieceIndex) {
+      piece.name = role;
+      return;
+    }
+    if (piece.name === role) {
+      piece.name = restoredPieceName(piece, index);
+    }
+  });
+
+  state.tagMode = null;
+  state.uiWarnings = [];
+  state.appliedJoinery = false;
+  updateTagControls();
+  runConversion();
+}
+
+function restoredPieceName(piece, index) {
+  if (piece.originalName && !["top", "bottom"].includes(piece.originalName)) {
+    return piece.originalName;
+  }
+  return `piece_${index + 1}`;
+}
+
+function previewStrokeWidth(params) {
+  return Math.max(params.kerfWidth || 0.1, 0.8);
+}
+
+function updatePreviewZoom() {
+  const zoom = Math.max(0.5, Math.min(3, state.zoom));
+  state.zoom = zoom;
+  if (state.baseViewBox) {
+    const centerX = state.baseViewBox.x + state.baseViewBox.width / 2;
+    const centerY = state.baseViewBox.y + state.baseViewBox.height / 2;
+    const width = state.baseViewBox.width / zoom;
+    const height = state.baseViewBox.height / zoom;
+    els.previewSvg.setAttribute("viewBox", [
+      svgNum(centerX - width / 2),
+      svgNum(centerY - height / 2),
+      svgNum(width),
+      svgNum(height)
+    ].join(" "));
+  }
+  els.previewSvg.style.width = "";
+  els.previewSvg.style.height = "";
+  els.previewSvg.style.minWidth = "";
+  els.previewSvg.style.minHeight = "";
+  if (els.zoomLevel) els.zoomLevel.textContent = `${Math.round(zoom * 100)}%`;
+  if (els.zoomOutButton) els.zoomOutButton.disabled = zoom <= 0.5;
+  if (els.zoomInButton) els.zoomInButton.disabled = zoom >= 3;
+}
+
+function setPreviewZoom(nextZoom) {
+  state.zoom = Math.max(0.5, Math.min(3, nextZoom));
+  updatePreviewZoom();
+}
+
+function setTagMode(mode) {
+  if (state.sourceMode !== "svg" || !state.importedPieces?.length || state.appliedJoinery) return;
+  state.tagMode = state.tagMode === mode ? null : mode;
+  if (state.tagMode) {
+    state.edgeSelectEnabled = false;
+    state.edgeSelection.pending = null;
+    els.toggleEdgeSelect?.setAttribute("aria-pressed", "false");
+    if (els.toggleEdgeSelect) els.toggleEdgeSelect.textContent = "選取接榫邊";
+  }
+  updateTagControls();
+  runConversion();
+}
+
+function updateTagControls() {
+  if (els.tagTopPiece) {
+    els.tagTopPiece.setAttribute("aria-pressed", String(state.tagMode === "top"));
+  }
+  if (els.tagBottomPiece) {
+    els.tagBottomPiece.setAttribute("aria-pressed", String(state.tagMode === "bottom"));
+  }
+}
+
+function pieceLabel(name) {
+  const labels = {
+    floor: "bottom",
+    bottom: "bottom",
+    bottom_3d: "bottom",
+    left_wall: "left",
+    left: "left",
+    right_wall: "right",
+    right: "right",
+    front_gable: "front",
+    front: "front",
+    back_gable: "back",
+    back: "back",
+    roof_left: "roof left",
+    roof_right: "roof right",
+    top: "top"
+  };
+  return labels[name] || "";
+}
+
+function renderEdgeOverlay(result) {
+  if (state.sourceMode !== "svg" || !state.edgeSelectEnabled || !state.importedPieces?.length) return;
+  if (state.appliedJoinery && canUsePresetJoineryWithoutPairs() && state.edgeSelection.pairs.length === 0) return;
+
+  const group = createSvgElement("g", { class: "edge-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const edge of listSelectableEdges()) {
+    const sourceOnlyMode = shouldShowImportedSourceOnly();
+    const joinerySegmentMode = shouldShowJoinerySegmentsOnly();
+    const sourcePreviewMode = sourceOnlyMode || joinerySegmentMode;
+    const edgeColor = colorForEdge(edge);
+    const color = sourceOnlyMode || joinerySegmentMode ? (edgeColor ? "#ff0000" : "#cbd5e1") : (edgeColor || "#ff0000");
+    const edgeRole = roleForEdge(edge);
+    const shouldDrawVisibleEdge = !joinerySegmentMode;
+    const className = [
+      "edge-visible",
+      isPendingEdge(edge) ? "edge-pending-first" : "",
+      !sourcePreviewMode && state.edgeSelection.pending && !isPendingEdge(edge) && !colorForEdge(edge) ? "edge-second-candidate" : "",
+      colorForEdge(edge) && !isPendingEdge(edge) ? "edge-paired" : ""
+    ].filter(Boolean).join(" ");
+    const a = edge.start;
+    const b = edge.end;
+    const visible = createSvgElement("line", {
+      x1: svgNum(a.x),
+      y1: svgNum(a.y),
+      x2: svgNum(b.x),
+      y2: svgNum(b.y),
+      stroke: color,
+      "stroke-width": isPendingEdge(edge) || colorForEdge(edge) ? 1.8 : 0.6,
+      "vector-effect": "non-scaling-stroke",
+      class: className
+    });
+    const hit = createSvgElement("line", {
+      x1: svgNum(a.x),
+      y1: svgNum(a.y),
+      x2: svgNum(b.x),
+      y2: svgNum(b.y),
+      stroke: "transparent",
+      "stroke-width": 10,
+      "vector-effect": "non-scaling-stroke",
+      class: "edge-hit",
+      "data-piece": edge.pieceIndex,
+      "data-path": edge.pathIndex,
+      "data-edge": edge.edgeIndex
+    });
+    hit.addEventListener("click", handleEdgeClick);
+    if (shouldDrawVisibleEdge) group.appendChild(visible);
+    group.appendChild(hit);
+
+    if (!isPendingEdge(edge) && edgeRole === "convex") {
+      group.appendChild(createEdgeBadge(edge, "f", color));
+    }
+    if (!isPendingEdge(edge) && edgeRole === "concave") {
+      group.appendChild(createEdgeBadge(edge, "F", color));
+    }
+
+    if (isPendingEdge(edge)) {
+      group.appendChild(createEdgeBadge(edge, "1 f", "#ff0000"));
+    }
+  }
+}
+
+function renderSourceOverlay() {
+  if (
+    state.sourceMode !== "svg"
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "source-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const piece of state.importedPieces) {
+    for (const path of piece.sourcePaths || piece.paths) {
+      group.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y),
+        fill: "none",
+        stroke: "#000000",
+        "stroke-width": 1.25,
+        "vector-effect": "non-scaling-stroke"
+      }));
+    }
+  }
+}
+
+function renderOffsetReferenceOverlay() {
+  if (
+    state.sourceMode !== "svg"
+    || state.appliedJoinery
+    || !state.importedPieces?.length
+  ) return;
+
+  const group = createSvgElement("g", { class: "offset-reference-overlay" });
+  els.previewSvg.appendChild(group);
+
+  for (const edge of listSelectableEdges()) {
+    if (colorForEdge(edge)) continue;
+    const a = edge.start;
+    const b = edge.end;
+    group.appendChild(createSvgElement("line", {
+      x1: svgNum(a.x),
+      y1: svgNum(a.y),
+      x2: svgNum(b.x),
+      y2: svgNum(b.y),
+      stroke: "#cbd5e1",
+      "stroke-width": 0.8,
+      "vector-effect": "non-scaling-stroke"
+    }));
+  }
+}
+
+function createEdgeBadge(edge, label, color) {
+  const mid = {
+    x: (edge.start.x + edge.end.x) / 2,
+    y: (edge.start.y + edge.end.y) / 2
+  };
+  const text = createSvgElement("text", {
+    x: svgNum(mid.x),
+    y: svgNum(mid.y - 3),
+    fill: color,
+    class: "edge-badge",
+    "text-anchor": "middle",
+    "paint-order": "stroke",
+    stroke: "#ffffff",
+    "stroke-width": 3,
+    "vector-effect": "non-scaling-stroke"
+  });
+  text.textContent = label;
+  return text;
+}
+
+function listSelectableEdges() {
+  const edges = [];
+  for (const [pieceIndex, piece] of (state.importedPieces || []).entries()) {
+    for (const [pathIndex, path] of piece.paths.entries()) {
+      if (path.closed === false || path.length < 3) continue;
+      for (let edgeIndex = 0; edgeIndex < path.length; edgeIndex += 1) {
+        const start = offsetBy(path[edgeIndex], { x: piece.x, y: piece.y }, 1);
+        const end = offsetBy(path[(edgeIndex + 1) % path.length], { x: piece.x, y: piece.y }, 1);
+        edges.push({ pieceIndex, pathIndex, edgeIndex, start, end });
+      }
+    }
+  }
+  return edges;
+}
+
+function handleEdgeClick(event) {
+  const ref = {
+    pieceIndex: Number(event.target.dataset.piece),
+    pathIndex: Number(event.target.dataset.path),
+    edgeIndex: Number(event.target.dataset.edge)
+  };
+
+  state.uiWarnings = [];
+
+  const existingPairIndex = findPairIndexForEdge(ref);
+  if (existingPairIndex >= 0) {
+    state.edgeSelection.pairs.splice(existingPairIndex, 1);
+    state.edgeSelection.pending = null;
+    state.appliedJoinery = false;
+    runConversion();
+    return;
+  }
+
+  if (!state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(ref, getParams());
+    if (validation.status === "fail") {
+      state.uiWarnings = validation.messages;
+      runConversion();
+      renderPairList();
+      return;
+    }
+    state.edgeSelection.pending = ref;
+    state.appliedJoinery = false;
+    playJoineryTone("convex");
+    runConversion();
+    renderPairList();
+    return;
+  }
+
+  if (sameEdge(state.edgeSelection.pending, ref)) {
+    state.edgeSelection.pending = null;
+    state.appliedJoinery = false;
+    runConversion();
+    renderPairList();
+    return;
+  }
+
+  if (state.edgeSelection.pairs.length >= 48) {
+    state.uiWarnings = ["最多可建立 48 組接榫配對。"];
+    state.edgeSelection.pending = null;
+    runConversion();
+    return;
+  }
+
+  const validation = validateEdgePair(state.edgeSelection.pending, ref, getParams(), -1);
+  if (validation.status === "fail") {
+    state.uiWarnings = validation.messages;
+    runConversion();
+    renderPairList();
+    return;
+  }
+
+  state.edgeSelection.pairs.push({
+    id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    color: pairColors[state.edgeSelection.pairs.length],
+    first: state.edgeSelection.pending,
+    second: ref,
+    validation
+  });
+  playJoineryTone("concave");
+  state.edgeSelection.pending = null;
+  state.appliedJoinery = false;
+  runConversion();
+}
+
+async function ensureAudioContext() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+
+  audioContext ||= new AudioCtor();
+  if (audioContext.state === "suspended") {
+    try {
+      await audioContext.resume();
+    } catch {
+      return null;
+    }
+  }
+  return audioContext;
+}
+
+async function playJoineryTone(type) {
+  const ctx = await ensureAudioContext();
+  if (!ctx) {
+    playMediaElementTone(type);
+    return;
+  }
+
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const startFreq = type === "convex" ? 660 : 360;
+  const endFreq = type === "convex" ? 880 : 260;
+
+  osc.type = type === "convex" ? "triangle" : "sine";
+  osc.frequency.setValueAtTime(startFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.11);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.08, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.15);
+}
+
+function playMediaElementTone(type) {
+  if (!document?.createElement) return;
+  const audio = document.createElement("audio");
+  audio.preload = "auto";
+  audio.src = toneDataUrl(type);
+  audio.volume = 0.75;
+  const played = audio.play();
+  if (played?.catch) played.catch(() => {});
+}
+
+function toneDataUrl(type) {
+  if (toneDataUrls.has(type)) return toneDataUrls.get(type);
+  const url = buildToneWavDataUrl(type === "convex" ? 720 : 320, type === "convex" ? 940 : 240, 0.18);
+  toneDataUrls.set(type, url);
+  return url;
+}
+
+function buildToneWavDataUrl(startFreq, endFreq, durationSeconds) {
+  const sampleRate = 22050;
+  const sampleCount = Math.max(1, Math.floor(sampleRate * durationSeconds));
+  const dataSize = sampleCount * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, dataSize, true);
+
+  let phase = 0;
+  for (let i = 0; i < sampleCount; i += 1) {
+    const t = i / sampleCount;
+    const freq = startFreq + (endFreq - startFreq) * t;
+    phase += (Math.PI * 2 * freq) / sampleRate;
+    const envelope = Math.sin(Math.PI * t);
+    const sample = Math.max(-1, Math.min(1, Math.sin(phase) * envelope * 0.55));
+    view.setInt16(44 + i * 2, sample * 32767, true);
+  }
+
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return `data:audio/wav;base64,${btoa(binary)}`;
+}
+
+function writeAscii(view, offset, text) {
+  for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+}
+
+function sameEdge(a, b) {
+  return a && b
+    && a.pieceIndex === b.pieceIndex
+    && a.pathIndex === b.pathIndex
+    && a.edgeIndex === b.edgeIndex;
+}
+
+function colorForEdge(edge) {
+  if (isPendingEdge(edge)) return "#ff0000";
+  const pair = state.edgeSelection.pairs.find(item => sameEdge(item.first, edge) || sameEdge(item.second, edge));
+  return pair ? "#ff0000" : "";
+}
+
+function roleForEdge(edge) {
+  if (isPendingEdge(edge)) return "pending";
+  const pair = state.edgeSelection.pairs.find(item => sameEdge(item.first, edge) || sameEdge(item.second, edge));
+  if (!pair) return "";
+  return sameEdge(pair.first, edge) ? "convex" : "concave";
+}
+
+function isPendingEdge(edge) {
+  return sameEdge(state.edgeSelection.pending, edge);
+}
+
+function uniqueWarnings(warnings) {
+  return Array.from(new Set(warnings));
+}
+
+function pathToD(points, offsetX = 0, offsetY = 0) {
+  if (!points.length) return "";
+  const [first, ...rest] = points;
+  const commands = [`M ${svgNum(first.x + offsetX)} ${svgNum(first.y + offsetY)}`];
+  for (const point of rest) {
+    commands.push(`L ${svgNum(point.x + offsetX)} ${svgNum(point.y + offsetY)}`);
+  }
+  if (points.closed !== false) commands.push("Z");
+  return commands.join(" ");
+}
+
+function createSvgElement(name, attributes) {
+  const el = document.createElementNS(NS, name);
+  for (const [key, value] of Object.entries(attributes)) {
+    el.setAttribute(key, value);
+  }
+  return el;
+}
+
+function clearSvg() {
+  while (els.previewSvg.firstChild) {
+    els.previewSvg.removeChild(els.previewSvg.firstChild);
+  }
+}
+
+function addSvgStyles() {
+  const style = createSvgElement("style", {});
+  style.textContent = `
+    .source-overlay path {
+      fill: none;
+      stroke: #111827;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+    }
+    .svg-cut path {
+      fill: none;
+      stroke-linejoin: miter;
+      stroke-linecap: square;
+    }
+  `;
+  els.previewSvg.appendChild(style);
+}
+
+function renderWarnings(warnings) {
+  els.warningList.innerHTML = "";
+  const items = warnings.length ? warnings : ["No warnings."];
+  for (const warning of items) {
+    const li = document.createElement("li");
+    li.textContent = warning;
+    els.warningList.appendChild(li);
+  }
+}
+
+function renderCheckReport(result) {
+  const report = els.warningList?.closest(".warnings");
+  if (!els.warningList) return;
+
+  if (!state.appliedJoinery) {
+    els.warningList.innerHTML = "";
+    if (report) report.hidden = true;
+    return;
+  }
+
+  if (report) report.hidden = false;
+  const warnings = result?.warnings || [];
+  const params = result?.params || getParams();
+  const messages = [];
+
+  if (warnings.length) {
+    messages.push(...warnings);
+  }
+
+  if (state.edgeSelection.pairs.length) {
+    state.edgeSelection.pairs.forEach((pair, index) => {
+      const validation = validateEdgePair(pair.first, pair.second, params, index);
+      const label = `第 ${index + 1} 組 ${edgeLabel(pair.first)} / ${edgeLabel(pair.second)}`;
+      if (validation.status === "ok") {
+        messages.push(`${label}: 檢測通過，接榫 ${validation.firstCount} / ${validation.secondCount}`);
+      } else {
+        messages.push(`${label}: ${validation.messages.join(" ") || "檢測未通過"}`);
+      }
+    });
+  } else {
+    messages.push("檢測通過，已產生接榫。");
+  }
+
+  renderWarnings(messages);
+}
+
+function renderPairList() {
+  if (!els.pairList) return;
+  els.pairList.innerHTML = "";
+
+  const params = getParams();
+
+  if (state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(state.edgeSelection.pending, params);
+    const li = document.createElement("li");
+    li.className = `selection-hint pair-${validation.status}`;
+    li.innerHTML = `<span style="background:#111827"></span><div>已選凸榫 f：${edgeLabel(state.edgeSelection.pending)}，接榫數 ${validation.fingerCount}</div>`;
+    els.pairList.appendChild(li);
+  }
+
+  if (!state.edgeSelection.pairs.length) {
+    const li = document.createElement("li");
+    li.className = "pair-empty";
+    li.textContent = state.edgeSelection.pending ? "請選擇配對凹榫 F" : "尚未建立接榫配對";
+    els.pairList.appendChild(li);
+    return;
+  }
+
+  state.edgeSelection.pairs.forEach((pair, index) => {
+    const validation = validateEdgePair(pair.first, pair.second, params, index);
+    pair.validation = validation;
+    const li = document.createElement("li");
+    li.className = `pair-${validation.status}`;
+    li.style.borderColor = pair.color;
+    const statusLabel = validation.status === "ok" ? "OK" : validation.status === "warning" ? "霅血?" : "憭望?";
+    li.innerHTML = `<span style="background:${pair.color}"></span><div><strong class="pair-status">${statusLabel}</strong>嚚洵 ${index + 1} 蝯???f ${edgeLabel(pair.first)} ????F ${edgeLabel(pair.second)}嚚托??${validation.fingerCount}</div>`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "?芷";
+    button.addEventListener("click", () => {
+      state.edgeSelection.pairs.splice(index, 1);
+      state.uiWarnings = [];
+      state.appliedJoinery = false;
+      runConversion();
+    });
+    li.appendChild(button);
+    els.pairList.appendChild(li);
+  });
+  return;
+
+  if (state.edgeSelection.pending) {
+    const li = document.createElement("li");
+    li.className = "selection-hint";
+    li.textContent = `已選凸榫 f：${edgeLabel(state.edgeSelection.pending)}，請選擇配對凹榫 F。`;
+    els.pairList.appendChild(li);
+  }
+
+  if (!state.edgeSelection.pairs.length) {
+    const li = document.createElement("li");
+    li.textContent = state.edgeSelection.pending ? "尚未完成配對" : "尚未建立接榫配對";
+    els.pairList.appendChild(li);
+    return;
+  }
+
+  state.edgeSelection.pairs.forEach((pair, index) => {
+    const li = document.createElement("li");
+    li.style.borderColor = pair.color;
+    li.innerHTML = `<span style="background:${pair.color}"></span>蝚?${index + 1} 蝯???f ${edgeLabel(pair.first)} ????F ${edgeLabel(pair.second)}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "?芷";
+    button.addEventListener("click", () => {
+      state.edgeSelection.pairs.splice(index, 1);
+      state.appliedJoinery = false;
+      runConversion();
+    });
+    li.appendChild(button);
+    els.pairList.appendChild(li);
+  });
+}
+
+function renderPairList() {
+  if (!els.pairList) return;
+  els.pairList.innerHTML = "";
+
+  const params = getParams();
+
+  if (state.edgeSelection.pending) {
+    const validation = validatePreviewEdge(state.edgeSelection.pending, params);
+    const li = document.createElement("li");
+    li.className = `selection-hint pair-${validation.status}`;
+    const marker = document.createElement("span");
+    marker.style.background = "#111827";
+    const content = document.createElement("div");
+    content.textContent = `已選凸榫 f：${edgeLabel(state.edgeSelection.pending)}，接榫數 ${validation.fingerCount}`;
+    li.append(marker, content);
+    els.pairList.appendChild(li);
+  }
+
+  if (!state.edgeSelection.pairs.length) {
+    const li = document.createElement("li");
+    li.className = "pair-empty";
+    li.textContent = state.edgeSelection.pending ? "請選擇配對凹榫 F" : "尚未建立接榫配對";
+    els.pairList.appendChild(li);
+    return;
+  }
+
+  state.edgeSelection.pairs.forEach((pair, index) => {
+    const validation = validateEdgePair(pair.first, pair.second, params, index);
+    pair.validation = validation;
+
+    const li = document.createElement("li");
+    li.className = `pair-${validation.status}`;
+    li.style.borderColor = pair.color;
+
+    const marker = document.createElement("span");
+    marker.style.background = pair.color;
+    li.appendChild(marker);
+
+    const content = document.createElement("div");
+    const statusLabel = validation.status === "ok" ? "OK" : validation.status === "warning" ? "警告" : "錯誤";
+    const title = document.createElement("div");
+    const status = document.createElement("strong");
+    status.className = "pair-status";
+    status.textContent = statusLabel;
+    title.append(status, ` 第 ${index + 1} 組：f ${edgeLabel(pair.first)} / F ${edgeLabel(pair.second)}`);
+
+    const detail = document.createElement("div");
+    detail.className = "pair-detail";
+    detail.textContent = `邊長 ${formatNumber(validation.firstLength)} / ${formatNumber(validation.secondLength)} mm，接榫 ${validation.firstCount} / ${validation.secondCount}`;
+    content.append(title, detail);
+
+    if (validation.suggestion) {
+      const suggestion = document.createElement("div");
+      suggestion.className = "pair-suggestion";
+      suggestion.textContent = validation.suggestion.label;
+      content.appendChild(suggestion);
+    }
+
+    li.appendChild(content);
+
+    const actions = document.createElement("div");
+    actions.className = "pair-actions";
+    if (validation.suggestion) {
+      const applyButton = document.createElement("button");
+      applyButton.type = "button";
+      applyButton.textContent = "套用建議";
+      applyButton.addEventListener("click", () => applyPairSuggestion(validation.suggestion));
+      actions.appendChild(applyButton);
+    }
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.textContent = "移除";
+    removeButton.addEventListener("click", () => {
+      state.edgeSelection.pairs.splice(index, 1);
+      state.uiWarnings = [];
+      state.appliedJoinery = false;
+      runConversion();
+    });
+    actions.appendChild(removeButton);
+    li.appendChild(actions);
+    els.pairList.appendChild(li);
+  });
+}
+
+function edgeLabel(ref) {
+  const pieceName = state.importedPieces?.[ref.pieceIndex]?.name || `P${ref.pieceIndex + 1}`;
+  return `${pieceName}-E${ref.edgeIndex + 1}`;
+}
+
+function exportSvg(result) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${buildRedOnlySvg(result, result.pieces).outerHTML}\n`;
+}
+
+function buildRedOnlySvg(result, pieces) {
+  const exportBounds = getBoundsFromPaths(pieces);
+  const width = Math.max(exportBounds.width + OUTPUT_MARGIN_MM, 1);
+  const height = Math.max(exportBounds.height + OUTPUT_MARGIN_MM, 1);
+  const svg = createSvgElement("svg", {
+    xmlns: NS,
+    width: `${svgNum(width)}mm`,
+    height: `${svgNum(height)}mm`,
+    viewBox: `0 0 ${svgNum(width)} ${svgNum(height)}`
+  });
+  const group = createSvgElement("g", { class: "svg-cut" });
+  svg.appendChild(group);
+
+  for (const piece of pieces) {
+    for (const path of piece.paths) {
+      group.appendChild(createSvgElement("path", {
+        d: pathToD(
+          path,
+          piece.x - exportBounds.minX + OUTPUT_MARGIN_MM,
+          piece.y - exportBounds.minY + OUTPUT_MARGIN_MM
+        ),
+        fill: "none",
+        stroke: "#ff0000",
+        "stroke-linejoin": "miter",
+        "stroke-linecap": "square",
+        "vector-effect": "non-scaling-stroke",
+        "stroke-width": svgNum(previewStrokeWidth(result.params))
+      }));
+    }
+  }
+
+  return svg;
+}
+
+function exportSampleSvg(pieces, name, labels = {}) {
+  const bounds = getBoundsFromPieces(pieces);
+  const paths = [];
+  const textNodes = [];
+  for (const piece of pieces) {
+    for (const path of piece.paths) {
+      paths.push(`  <path id="${escapeXml(piece.name)}" d="${pathToD(path, piece.x, piece.y)}" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="miter" stroke-linecap="square"/>`);
+    }
+    const label = labels[piece.name];
+    if (label) {
+      textNodes.push(`  <text x="${svgNum(piece.x + piece.width / 2)}" y="${svgNum(piece.y + piece.height / 2)}" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" dominant-baseline="middle" fill="#111827">${escapeXml(label)}</text>`);
+    }
+  }
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="${NS}" width="${svgNum(bounds.width)}mm" height="${svgNum(bounds.height)}mm" viewBox="0 0 ${svgNum(bounds.width)} ${svgNum(bounds.height)}">`,
+    `  <title>${escapeXml(name)}</title>`,
+    `  <g id="CUT">`,
+    ...paths,
+    `  </g>`,
+    ...(textNodes.length ? [`  <g id="LABELS">`, ...textNodes, `  </g>`] : []),
+    `</svg>`,
+    ``
+  ].join("\n");
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function sampleParams(overrides = {}) {
+  return {
+    ...getParams(),
+    generateJoinery: false,
+    ...overrides
+  };
+}
+
+async function downloadPracticeSample(type) {
+  if (type === "cuboid") {
+    const params = sampleParams({ length: 120, width: 80, height: 60, partGap: 12 });
+    const pieces = layoutPieces(buildBoxPieces(params.length, params.width, params.height, params), params.partGap);
+    await download("cuboid_practice.svg", exportSampleSvg(pieces, "Cuboid practice SVG"), "image/svg+xml");
+    return;
+  }
+
+  const params = sampleParams({ length: 120, width: 80, wallHeight: 55, roofHeight: 35, partGap: 12 });
+  const pieces = layoutPieces(buildHousePieces(params), params.partGap);
+  await download("gable_house_practice.svg", exportSampleSvg(pieces, "Gable house practice SVG", {
+    floor: "bottom",
+    left_wall: "left",
+    right_wall: "right",
+    front_gable: "front",
+    back_gable: "back",
+    roof_left: "roof left",
+    roof_right: "roof right"
+  }), "image/svg+xml");
+}
+
+function exportDxf(result) {
+  const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
+  const exportPieces = result.pieces;
+  const exportBounds = getBoundsFromPaths(exportPieces);
+  for (const piece of exportPieces) {
+    for (const path of piece.paths) {
+      const segmentCount = path.closed === false ? path.length - 1 : path.length;
+      for (let i = 0; i < segmentCount; i += 1) {
+        const a = path[i];
+        const b = path[(i + 1) % path.length];
+        const ax = a.x + piece.x - exportBounds.minX + OUTPUT_MARGIN_MM;
+        const ay = a.y + piece.y - exportBounds.minY + OUTPUT_MARGIN_MM;
+        const bx = b.x + piece.x - exportBounds.minX + OUTPUT_MARGIN_MM;
+        const by = b.y + piece.y - exportBounds.minY + OUTPUT_MARGIN_MM;
+        lines.push(
+          "0", "LINE",
+          "8", piece.layer,
+          "10", dxfNum(ax),
+          "20", dxfNum(-ay),
+          "30", "0",
+          "11", dxfNum(bx),
+          "21", dxfNum(-by),
+          "31", "0"
+        );
+      }
+    }
+  }
+  lines.push("0", "ENDSEC", "0", "EOF");
+  return `${lines.join("\n")}\n`;
+}
+
+function safeBaseName() {
+  return (els.projectName.value || "laser_parts")
+    .replace(/[^a-z0-9_-]+/gi, "_")
+    .replace(/^_+|_+$/g, "") || "laser_parts";
+}
+
+async function download(name, content, type) {
+  const blob = new Blob([content], { type });
+  if (await saveWithFilePicker(name, blob, type)) return;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.textContent = name;
+  a.className = "export-link";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  exportUrls.push(url);
+  while (exportUrls.length > 6) URL.revokeObjectURL(exportUrls.shift());
+
+  if (els.exportStatus) {
+    els.exportStatus.textContent = `瀏覽器無法直接儲存 ${name}，請使用下載連結。`;
+  }
+
+  if (els.exportLinks) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = `下載 ${name}`;
+    link.className = "export-link";
+    els.exportLinks.prepend(link);
+    while (els.exportLinks.children.length > 4) {
+      els.exportLinks.lastChild.remove();
+    }
+  }
+}
+
+async function saveWithFilePicker(name, blob, type) {
+  if (!window.showSaveFilePicker) return false;
+
+  try {
+    const extension = name.endsWith(".dxf") ? ".dxf" : ".svg";
+    const handle = await window.showSaveFilePicker({
+      suggestedName: name,
+      types: [
+        {
+          description: extension === ".dxf" ? "DXF file" : "SVG file",
+          accept: { [type]: [extension] }
+        }
+      ]
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    if (els.exportStatus) els.exportStatus.textContent = `已儲存 ${name}`;
+    return true;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      if (els.exportStatus) els.exportStatus.textContent = "已取消儲存";
+      return true;
+    }
+    console.warn("File picker save failed; falling back to download link.", error);
+    return false;
+  }
+}
+
+function updateFieldVisibility() {
+  const type = els.modelType.value;
+  const circular = ["cylinder", "flex_box_5"].includes(type);
+  const house = type === "gable_house";
+  els.circularFields.forEach(field => field.hidden = !circular);
+  els.houseFields.forEach(field => field.hidden = !house);
+}
+
+function updateDefaultsForModel() {
+  state.sourceMode = "parametric";
+  state.importedPreset = null;
+  state.edgeSelectEnabled = false;
+  state.appliedJoinery = false;
+  state.tagMode = null;
+  state.edgeSelection.pending = null;
+  els.toggleEdgeSelect.setAttribute("aria-pressed", "false");
+  els.toggleEdgeSelect.textContent = "選取接榫邊";
+  const modelDefaults = defaults[els.modelType.value];
+  for (const [key, value] of Object.entries(modelDefaults)) {
+    if (els[key]) els[key].value = String(value);
+  }
+  updateFieldVisibility();
+  runConversion();
+}
+
+function resetParams() {
+  els.materialThickness.value = "3";
+  if (els.fingerUnit) els.fingerUnit.value = "4";
+  if (els.endMarginMode) els.endMarginMode.value = "boxes";
+  els.kerfWidth.value = "0.1";
+  els.tabWidth.value = "12";
+  els.tabDepth.value = "3";
+  els.tabSpacing.value = "12";
+  els.partGap.value = "8";
+  els.segments.value = "48";
+  els.joineryToggle.checked = true;
+  if (els.dimensionMode) els.dimensionMode.value = "inner";
+  updateDimensionModeControls();
+  updateDefaultsForModel();
+}
+
+function updateDimensionModeControls() {
+  const mode = els.dimensionMode?.value || "inner";
+  if (els.innerDimensionButton) {
+    els.innerDimensionButton.setAttribute("aria-pressed", String(mode === "inner"));
+  }
+  if (els.dimensionModeStatus) {
+    els.dimensionModeStatus.textContent = mode === "inner"
+      ? "目前：內尺寸（長寬高為內部尺寸）"
+      : "目前：外尺寸";
+  }
+}
+
+function updateOuterDimensionStatus(params = getParams()) {
+  if (!els.outerDimensionStatus) return;
+  const outer = outerDimensionsFromInner(params);
+  const volume = outer.length * outer.width * outer.height;
+  els.outerDimensionStatus.textContent = `外尺寸：長 x 寬 x 高 = ${formatGuideNumber(outer.length)} x ${formatGuideNumber(outer.width)} x ${formatGuideNumber(outer.height)} = ${formatVolumeNumber(volume)} mm3`;
+}
+
+function outerDimensionsFromInner(params) {
+  const thickness = params.materialThickness;
+  const innerHeight = params.modelType === "gable_house"
+    ? params.wallHeight + params.roofHeight
+    : params.height;
+  return {
+    length: params.length + thickness * 2,
+    width: params.width + thickness * 2,
+    height: innerHeight + thickness * 2
+  };
+}
+
+function runConversion() {
+  els.statusPill.textContent = "Generating";
+  updateFieldVisibility();
+  updateDimensionModeControls();
+  updateTagControls();
+  const params = getParams();
+  updateOuterDimensionStatus(params);
+  state.result = state.sourceMode === "svg"
+    ? buildImportedResult(params)
+    : buildResult(params);
+  render(state.result);
+  renderPairList();
+  els.statusPill.textContent = "Ready";
+}
+
+function modelLabel(type) {
+  const labels = {
+    cube: "cube",
+    cuboid: "cuboid",
+    cylinder: "cylinder",
+    flex_box_5: "flex box",
+    gable_house: "gable house"
+  };
+  return labels[type] || type;
+}
+
+function formatNumber(value) {
+  return Number(value).toFixed(value >= 100 ? 0 : 1);
+}
+
+function formatGuideNumber(value) {
+  return Number(value).toFixed(Number.isInteger(value) ? 0 : 1);
+}
+
+function formatVolumeNumber(value) {
+  return Number(value).toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+function formatInputNumber(value) {
+  return Number(value).toFixed(2).replace(/\.?0+$/, "");
+}
+
+function svgNum(value) {
+  return Number(value).toFixed(3).replace(/\.?0+$/, "");
+}
+
+function dxfNum(value) {
+  return Number(value).toFixed(4);
+}
+
+els.modelType.addEventListener("change", updateDefaultsForModel);
+els.resetButton.addEventListener("click", resetParams);
+els.tagTopPiece?.addEventListener("click", () => setTagMode("top"));
+els.tagBottomPiece?.addEventListener("click", () => setTagMode("bottom"));
+els.innerDimensionButton?.addEventListener("click", () => {
+  if (els.dimensionMode) els.dimensionMode.value = "inner";
+  updateDimensionModeControls();
+  runConversion();
+});
+els.zoomOutButton?.addEventListener("click", () => setPreviewZoom(state.zoom - 0.25));
+els.zoomInButton?.addEventListener("click", () => setPreviewZoom(state.zoom + 0.25));
+els.zoomResetButton?.addEventListener("click", () => setPreviewZoom(1));
+
+for (const input of document.querySelectorAll("input, select")) {
+  if (!["modelType", "svgUpload"].includes(input.id)) {
+    input.addEventListener("input", runConversion);
+    input.addEventListener("change", runConversion);
+  }
+}
+
+els.svgUpload.addEventListener("change", async () => {
+  const file = els.svgUpload.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  const parsed = parseImportedSvg(text);
+  loadImportedPieces(parsed.pieces, parsed.warnings);
+});
+
+function loadCubeNetPractice() {
+  loadSampleNet("cube");
+}
+
+function loadSampleNet(type) {
+  const presets = {
+    cube: { modelType: "cube", values: defaults.cube, warning: "已載入正方體展開圖。" },
+    cuboid: { modelType: "cuboid", values: defaults.cuboid, warning: "已載入長方盒展開圖。" },
+    house: { modelType: "gable_house", values: defaults.gable_house, warning: "已載入斜頂屋形展開圖。" }
+  };
+  const preset = presets[type] || presets.cube;
+  els.modelType.value = preset.modelType;
+  for (const [key, value] of Object.entries(preset.values)) {
+    if (els[key]) els[key].value = String(value);
+  }
+  els.materialThickness.value = "3";
+  els.tabDepth.value = "3";
+  if (els.fingerUnit) els.fingerUnit.value = "4";
+  if (els.endMarginMode) els.endMarginMode.value = "boxes";
+
+  const params = getParams();
+  const pieces = type === "house"
+    ? buildHouseSamplePieces(params)
+    : type === "cuboid"
+      ? buildCuboidSamplePieces(params)
+      : buildCubeNetPieces(params);
+
+  loadImportedPieces(pieces, [preset.warning], {
+    preset: type === "cube" ? "cube_net" : `${type}_net`,
+    layout: type === "cube" ? "preserve" : "grid"
+  });
+}
+
+els.loadCubeSample?.addEventListener("click", () => loadSampleNet("cube"));
+
+els.downloadCuboidSample?.addEventListener("click", () => loadSampleNet("cuboid"));
+
+els.downloadHouseSample?.addEventListener("click", () => loadSampleNet("house"));
+
+els.toggleEdgeSelect.addEventListener("click", () => {
+  if (state.sourceMode !== "svg") {
+    playJoineryTone("convex");
+    loadSampleNet("cube");
+    return;
+  }
+  state.tagMode = null;
+  state.edgeSelectEnabled = !state.edgeSelectEnabled;
+  state.edgeSelection.pending = null;
+  els.toggleEdgeSelect.setAttribute("aria-pressed", String(state.edgeSelectEnabled));
+  els.toggleEdgeSelect.textContent = state.edgeSelectEnabled ? "結束選邊" : "選取接榫邊";
+  if (state.edgeSelectEnabled) playJoineryTone("convex");
+  runConversion();
+});
+
+els.applyEdgePairs.addEventListener("click", () => {
+  if (state.sourceMode !== "svg") return;
+  const finalCheck = validateAllPairsForFinalApply();
+  if (!finalCheck.ok) {
+    state.uiWarnings = finalCheck.messages;
+    runConversion();
+    renderPairList();
+    return;
+  }
+  state.appliedJoinery = true;
+  state.edgeSelectEnabled = false;
+  state.tagMode = null;
+  state.edgeSelection.pending = null;
+  els.toggleEdgeSelect.setAttribute("aria-pressed", "false");
+  els.toggleEdgeSelect.textContent = "選取接榫邊";
+  runConversion();
+  showJoinerySuccessPopup(finalCheck.params, finalCheck.validations[finalCheck.validations.length - 1]);
+});
+
+els.clearEdgePairs.addEventListener("click", () => {
+  state.edgeSelection.pending = null;
+  state.edgeSelection.pairs = [];
+  state.tagMode = null;
+  state.appliedJoinery = false;
+  runConversion();
+});
+
+els.downloadDxf.addEventListener("click", async () => {
+  if (!state.result) return;
+  await download(`${safeBaseName()}.dxf`, exportDxf(state.result), "application/dxf");
+});
+
+els.downloadSvg.addEventListener("click", async () => {
+  if (!state.result) return;
+  await download(`${safeBaseName()}.svg`, exportSvg(state.result), "image/svg+xml");
+});
+
+updateFieldVisibility();
+loadCubeNetPractice();

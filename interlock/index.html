@@ -1,0 +1,151 @@
+﻿<!doctype html>
+<html lang="zh-Hant" class="notranslate" translate="no">
+  <head>
+    <meta charset="utf-8">
+    <meta name="google" content="notranslate">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interlock SVG 接榫</title>
+    <link rel="stylesheet" href="styles.css?v=20260630-sample-load-buttons">
+    <link rel="stylesheet" href="../i18n.css?v=20260628-10">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="controls" aria-label="SVG 接榫控制">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">Interlock standalone tool</p>
+            <h1>SVG 接榫產生器</h1>
+          </div>
+          <span class="status-pill" id="statusPill">Ready</span>
+        </header>
+
+        <input id="modelType" type="hidden" value="cube">
+        <input id="dimensionMode" type="hidden" value="inner">
+        <button class="hidden-reset" type="button" id="resetButton" aria-hidden="true" tabindex="-1">R</button>
+
+        <section class="panel" aria-labelledby="svgImportTitle">
+          <div class="section-head">
+            <h2 id="svgImportTitle">SVG 接榫設定</h2>
+          </div>
+          <label class="full-field">
+            <span>匯入 SVG</span>
+            <input id="svgUpload" type="file" accept=".svg,image/svg+xml">
+          </label>
+          <div class="sample-actions">
+            <button id="loadCubeSample" type="button">正方體</button>
+            <button id="downloadCuboidSample" type="button">長方盒</button>
+            <button id="downloadHouseSample" type="button">斜頂屋形</button>
+          </div>
+          <div class="actions stacked-actions">
+            <div class="tag-actions" aria-label="Top bottom tags">
+              <button id="tagTopPiece" type="button" aria-pressed="false">Top tag</button>
+              <button id="tagBottomPiece" type="button" aria-pressed="false">Bottom tag</button>
+            </div>
+            <button id="toggleEdgeSelect" type="button" aria-pressed="false">選取接榫邊</button>
+            <button id="applyEdgePairs" type="button">確認產生接榫</button>
+            <button id="clearEdgePairs" type="button">清除配對</button>
+          </div>
+          <ol class="pair-list" id="pairList" aria-live="polite"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="sizeTitle">
+          <div class="section-head"><h2 id="sizeTitle">尺寸 mm</h2></div>
+          <div class="dimension-mode-row" aria-label="尺寸模式">
+            <button id="innerDimensionButton" class="mode-button" type="button" aria-pressed="true">內尺寸</button>
+            <span id="dimensionModeStatus">目前：內尺寸（長寬高為內部尺寸）</span>
+          </div>
+          <div class="field-grid">
+            <label><span>接榫單位</span><select id="fingerUnit"><option value="2">標準 2t</option><option value="3">中等 3t</option><option value="4" selected>稀疏 4t</option></select></label>
+            <label><span>長度</span><input id="length" type="number" min="1" step="1" value="60"></label>
+            <label><span>寬度</span><input id="width" type="number" min="1" step="1" value="60"></label>
+            <label><span>高度</span><input id="height" type="number" min="1" step="1" value="60"></label>
+            <label data-field="circular" hidden><span>半徑</span><input id="radius" type="number" min="1" step="1" value="35"></label>
+            <label data-field="house" hidden><span>牆高</span><input id="wallHeight" type="number" min="1" step="1" value="55"></label>
+            <label data-field="house" hidden><span>屋頂高度</span><input id="roofHeight" type="number" min="1" step="1" value="35"></label>
+          </div>
+          <div class="outer-dimension-box" aria-live="polite"><span id="outerDimensionStatus">外尺寸：-- x -- x -- mm</span></div>
+        </section>
+
+        <section class="panel" aria-labelledby="joineryTitle">
+          <div class="section-head"><h2 id="joineryTitle">材料與接榫</h2></div>
+          <div class="field-grid">
+            <label><span>材料厚度</span><input id="materialThickness" type="number" min="0.1" step="0.1" value="3"></label>
+            <label><span>Kerf</span><input id="kerfWidth" type="number" min="0" step="0.01" value="0.1"></label>
+            <label><span>接榫寬度</span><input id="tabWidth" type="number" min="0.1" step="0.1" value="12" readonly></label>
+            <label><span>接榫深度</span><input id="tabDepth" type="number" min="0.1" step="0.1" value="3"></label>
+            <label><span>接榫間距</span><input id="tabSpacing" type="number" min="0" step="0.1" value="12" readonly></label>
+            <label><span>端距模式</span><select id="endMarginMode" hidden aria-hidden="true"><option value="boxes" selected>Boxes.py 標準</option><option value="minimized">最小端距</option><option value="distributed">平均分布</option></select><input id="partGap" type="number" min="0" step="1" value="8"></label>
+            <label><span>圓弧段數</span><input id="segments" type="number" min="8" step="1" value="48"></label>
+            <label><span>專案名稱</span><input id="projectName" type="text" value="laser_parts" maxlength="40"></label>
+          </div>
+          <div class="toggle-row"><label><input id="joineryToggle" type="checkbox" checked><span>產生 f/F 凸凹接榫</span></label></div>
+        </section>
+
+        <section class="panel" aria-labelledby="downloadsTitle">
+          <div class="section-head"><h2 id="downloadsTitle">輸出<span class="red-only-note">（紅線切割）</span></h2><span id="summaryText">Ready</span></div>
+          <div class="actions"><button id="downloadSvg" type="button" title="Download SVG" aria-label="Download SVG">SVG</button><button id="downloadDxf" type="button" title="Download DXF" aria-label="Download DXF">DXF</button></div>
+          <div class="export-status" id="exportStatus" aria-live="polite"></div>
+          <div class="export-links" id="exportLinks"></div>
+        </section>
+
+        <section class="panel manual-panel" aria-labelledby="manualTitle">
+          <div class="section-head"><h2 id="manualTitle">使用流程</h2><span>SVG 接榫</span></div>
+          <ol class="manual-list">
+            <li>匯入 SVG，或下載範例 SVG 後再匯入。</li>
+            <li>設定內尺寸、材料厚度、Kerf、接榫寬度與深度。</li>
+            <li>需要時用 Top tag / Bottom tag 標註上下片。</li>
+            <li>按「選取接榫邊」後，先選凸榫 f，再選配對凹榫 F。</li>
+            <li>按「確認產生接榫」後，才會顯示檢測報告與 3D 模型，並可輸出 SVG 或 DXF。</li>
+          </ol>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="2D output preview">
+        <div class="toolbar">
+          <div class="metric-strip"><span><strong id="widthMetric">0</strong> mm W</span><span><strong id="heightMetric">0</strong> mm H</span><span><strong id="pathMetric">0</strong> parts</span></div>
+          <div class="legend" aria-label="Layer legend"><span class="cut">CUT</span><span class="joinery">SELECTED</span><span class="source">原始SVG展開圖</span></div>
+          <span class="language-anchor" aria-label="Language selector"></span>
+          <div class="zoom-controls" aria-label="Preview zoom controls"><button id="zoomOutButton" type="button" title="Zoom out" aria-label="Zoom out">-</button><span id="zoomLevel">100%</span><button id="zoomInButton" type="button" title="Zoom in" aria-label="Zoom in">+</button><button id="zoomResetButton" type="button" title="Reset zoom" aria-label="Reset zoom">Reset</button></div>
+        </div>
+        <div class="preview-frame"><svg id="previewSvg" role="img" aria-label="Generated 2D laser preview"></svg></div>
+        <div class="warnings" aria-live="polite"><h2>檢測報告</h2><ul id="warningList"><li>No warnings.</li></ul></div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="app.js?v=20260630-guided-normal-orthogonal"></script>
+    <script src="../i18n.js?v=20260628-13"></script>
+    <script>
+      (() => {
+        const placeJoineryUnitControls = () => {
+          const joineryGrid = document.querySelector("#joineryTitle")?.closest(".panel")?.querySelector(".field-grid");
+          const materialLabel = document.querySelector("#materialThickness")?.closest("label");
+          const fingerLabel = document.querySelector("#fingerUnit")?.closest("label");
+          if (joineryGrid && materialLabel && fingerLabel && fingerLabel.parentElement !== joineryGrid) joineryGrid.insertBefore(fingerLabel, materialLabel);
+          const endMargin = document.querySelector("#endMarginMode");
+          const partGapLabel = document.querySelector("#partGap")?.closest("label");
+          if (joineryGrid && materialLabel && endMargin && partGapLabel && endMargin.parentElement === partGapLabel) {
+            const endMarginLabel = document.createElement("label");
+            const labelText = document.createElement("span");
+            labelText.textContent = "端距模式";
+            endMargin.hidden = false;
+            endMargin.removeAttribute("aria-hidden");
+            endMarginLabel.append(labelText, endMargin);
+            joineryGrid.insertBefore(endMarginLabel, partGapLabel);
+          }
+        };
+        const moveLanguageSwitcher = () => {
+          const anchor = document.querySelector(".language-anchor");
+          const switcher = document.querySelector(".language-switcher");
+          if (anchor && switcher && switcher.parentElement !== anchor) anchor.append(switcher);
+        };
+        placeJoineryUnitControls();
+        moveLanguageSwitcher();
+        document.addEventListener("DOMContentLoaded", () => { placeJoineryUnitControls(); moveLanguageSwitcher(); });
+        setTimeout(() => { placeJoineryUnitControls(); moveLanguageSwitcher(); }, 0);
+        setTimeout(() => { placeJoineryUnitControls(); moveLanguageSwitcher(); }, 350);
+        setTimeout(() => { placeJoineryUnitControls(); moveLanguageSwitcher(); }, 1300);
+      })();
+    </script>
+  </body>
+</html>
