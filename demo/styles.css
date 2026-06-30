@@ -116,6 +116,32 @@ h2 {
   margin-top: 12px;
 }
 
+.fixed-value-grid {
+  align-items: stretch;
+}
+
+.fixed-field {
+  min-height: 56px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.fixed-field span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.fixed-field strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 720;
+}
+
 label span,
 .control-row > span {
   display: block;

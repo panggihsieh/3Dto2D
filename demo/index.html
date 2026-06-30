@@ -5,7 +5,7 @@
     <meta name="google" content="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>3D to 2D Basic</title>
-    <link rel="stylesheet" href="styles.css?v=20260627-manual">
+    <link rel="stylesheet" href="styles.css?v=20260701-fixed-material">
     <link rel="stylesheet" href="../i18n.css?v=20260628-10">
   </head>
   <body>
@@ -80,25 +80,29 @@
             <h2 id="materialTitle">材料與預覽</h2>
           </div>
 
-          <div class="field-grid">
-            <label>
+          <div class="field-grid fixed-value-grid">
+            <div class="fixed-field">
               <span>材料厚度</span>
-              <input id="materialThickness" type="number" min="0.1" step="0.1" value="3">
-            </label>
-            <label>
+              <strong>3 mm</strong>
+            </div>
+            <div class="fixed-field">
               <span>Kerf</span>
-              <input id="kerfWidth" type="number" min="0" step="0.01" value="0.15">
-            </label>
-            <label>
+              <strong>0.15 mm</strong>
+            </div>
+            <div class="fixed-field">
               <span>零件間距</span>
-              <input id="partGap" type="number" min="0" step="1" value="8">
-            </label>
-            <label>
-              <span>圓弧段數</span>
-              <input id="segments" type="number" min="8" step="1" value="48">
-            </label>
+              <strong>8 mm</strong>
+            </div>
+            <div class="fixed-field">
+              <span>接榫</span>
+              <strong>稀疏 4t</strong>
+            </div>
           </div>
 
+          <input id="materialThickness" type="hidden" value="3">
+          <input id="kerfWidth" type="hidden" value="0.15">
+          <input id="partGap" type="hidden" value="8">
+          <input id="segments" type="hidden" value="48">
           <input id="tabWidth" type="hidden" value="12">
           <input id="tabDepth" type="hidden" value="3">
           <input id="tabSpacing" type="hidden" value="12">
@@ -119,9 +123,9 @@
           <ol class="manual-list">
             <li>選擇模型類型，例如長方體、正立方體或雙斜屋頂小屋。</li>
             <li>輸入長、寬、高等尺寸，並確認目前使用的是內尺寸。</li>
-            <li>設定材料厚度、Kerf 與零件間距，讓切割尺寸符合實際材料。</li>
-            <li>需要接榫時按「顯示接榫後」，預覽會更新紅色切割線。</li>
-            <li>檢查右側預覽與提示，確認黑色內尺寸、灰色 offset 與紅色切割線狀態。</li>
+            <li>此 demo 固定使用 3 mm 材料、0.15 mm Kerf、8 mm 零件間距與稀疏 4t 接榫。</li>
+            <li>按「顯示接榫後」可查看紅色切割線如何由黑色內尺寸與灰色 offset 產生。</li>
+            <li>檢查右側預覽：黑色是內尺寸，灰色是材料厚度 offset，紅色是接榫後切割線。</li>
           </ol>
         </section>
       </aside>
@@ -159,7 +163,7 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260701-no-dim-labels"></script>
+    <script src="app.js?v=20260701-fixed-material"></script>
     <script src="../i18n.js?v=20260628-13"></script>
   </body>
 </html>
