@@ -1,5 +1,6 @@
 const NS = "http://www.w3.org/2000/svg";
 const TAU = Math.PI * 2;
+const SPARSE_FINGER_UNIT = 4;
 
 const state = {
   result: null,
@@ -56,6 +57,13 @@ function readNumber(input, fallback) {
 function getParams() {
   const materialThickness = readNumber(els.materialThickness, 3);
   const tabDepthValue = readNumber(els.tabDepth, materialThickness);
+  const sparseFingerSize = materialThickness * SPARSE_FINGER_UNIT;
+  if (els.tabWidth && els.tabWidth.value !== formatInputNumber(sparseFingerSize)) {
+    els.tabWidth.value = formatInputNumber(sparseFingerSize);
+  }
+  if (els.tabSpacing && els.tabSpacing.value !== formatInputNumber(sparseFingerSize)) {
+    els.tabSpacing.value = formatInputNumber(sparseFingerSize);
+  }
   return {
     modelType: els.modelType.value,
     length: readNumber(els.length, 120),
@@ -65,9 +73,9 @@ function getParams() {
     roofHeight: readNumber(els.roofHeight, 35),
     materialThickness,
     kerfWidth: readNumber(els.kerfWidth, 0.15),
-    tabWidth: readNumber(els.tabWidth, 10),
+    tabWidth: sparseFingerSize,
     tabDepth: tabDepthValue > 0 ? tabDepthValue : materialThickness,
-    tabSpacing: readNumber(els.tabSpacing, 8),
+    tabSpacing: sparseFingerSize,
     play: readNumber(els.kerfWidth, 0.15),
     endMarginMode: "boxes",
     surroundingSpaces: 2,
@@ -1788,6 +1796,10 @@ function formatVolumeNumber(value) {
   return Math.round(Number(value)).toLocaleString("en-US");
 }
 
+function formatInputNumber(value) {
+  return Number(value).toFixed(3).replace(/\.?0+$/, "");
+}
+
 function updatePreviewZoom() {
   const zoom = Math.max(0.5, Math.min(3, state.zoom));
   state.zoom = zoom;
@@ -1883,9 +1895,9 @@ function updateDefaultsForModel() {
 function resetParams() {
   els.materialThickness.value = "3";
   els.kerfWidth.value = "0.15";
-  els.tabWidth.value = "10";
+  els.tabWidth.value = "12";
   els.tabDepth.value = "3";
-  els.tabSpacing.value = "8";
+  els.tabSpacing.value = "12";
   els.partGap.value = "8";
   els.segments.value = "48";
   if (els.dimensionMode) els.dimensionMode.value = "inner";
