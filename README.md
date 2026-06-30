@@ -25,7 +25,41 @@ See `VERSION.md` for the version record.
 
 ## License
 
-This project is released as public open source software under the MIT License. Educational institutions are welcome to use it. See `LICENSE`.
+This project is released as public open source software under the MIT License. K12 maker and STEM educational institutions are especially welcome to use it. See `LICENSE`.
+
+## Homepage Structure, Teaching Strategy, and Learning Map
+
+The homepage is designed as a classroom-friendly learning hub for laser-cutting and SVG workflow practice, especially for K12 maker education and STEM learning. It starts from visual inspection, then moves into joinery logic, image-to-vector conversion, and SVG layer checking. The project is released under the MIT License, and educational institutions are welcome to use, adapt, and remix it for teaching.
+
+### Homepage Pages
+
+| Page | URL | Classroom Role | Learning Focus |
+| --- | --- | --- | --- |
+| Laser Lab Home | `/` | Learning hub and tool entry point. | Choose a learning activity and understand the workflow map. |
+| Joinery Demo | `/demo/` | Concept demonstration. | Compare plain unfolded geometry, offset references, and sparse 4t red joinery cut lines. |
+| Joinery Builder | `/interlock/` | Guided operation practice. | Upload SVG, select paired edges, and generate complementary f/F finger-joint geometry from inner dimensions. |
+| Gradient Maker | `/bmptrace/` | Image-to-vector preparation. | Convert bitmap images into grayscale layered SVG assets for FLUX / Beam Studio engraving tests. |
+| Layer Inspector | `/svglayers/` | Output inspection. | Check SVG layer names, visibility, vector details, and engraving/cutting readiness. |
+
+### Teaching Strategy
+
+1. Concept first: use `/demo/` to show why inner dimensions, offset references, and red cutting paths must be separated.
+2. Hands-on construction: move to `/interlock/` so learners can select real SVG edges and observe how convex `f` and concave `F` joints match.
+3. Material awareness: discuss material thickness, kerf, offset direction, and why the demo uses sparse 4t joinery for easier visual understanding.
+4. Asset preparation: use `/bmptrace/` to turn images into layered SVGs before engraving.
+5. Output review: use `/svglayers/` to inspect layers and confirm the SVG is ready before sending it to laser software.
+6. Reflection and iteration: ask learners to compare preview geometry with assembled physical results, then revise their SVG or parameters.
+
+### Suggested Learning Map
+
+| Stage | Activity | Tool | Expected Outcome |
+| --- | --- | --- | --- |
+| 1 | Observe a ready-made unfold drawing. | `/demo/` | Learners can identify black inner-size lines, gray offset references, and red cut lines. |
+| 2 | Switch between no-joinery and joined views. | `/demo/` | Learners understand what joinery changes and what should remain as reference geometry. |
+| 3 | Practice edge pairing. | `/interlock/` | Learners can pair two SVG edges and explain `f`/`F` complementary joints. |
+| 4 | Prepare engraving artwork. | `/bmptrace/` | Learners can convert a bitmap into grayscale SVG layers. |
+| 5 | Inspect SVG layers. | `/svglayers/` | Learners can verify layer names, visibility, and vector details before production. |
+| 6 | Export and test cut. | `/demo/` or `/interlock/` | Learners connect digital preview rules to real material assembly results. |
 
 ## Joint SVG Joinery Preview
 
@@ -59,8 +93,12 @@ https://panggihsieh.github.io/3Dto2D/joint/
 
 The static webapp root is a mode selector in `index.html`.
 
-- `basic/`: basic SVG/DXF layout without joinery.
-- `joint/`: standalone uploaded SVG edge-pair joinery tool.
+- `demo/`: fixed-value sparse 4t joinery demonstration for cube, cuboid, and gable-roof examples.
+- `interlock/`: standalone uploaded SVG edge-pair joinery tool.
+- `bmptrace/`: bitmap-to-grayscale-layered-SVG workflow for engraving preparation.
+- `svglayers/`: SVG layer inspection workflow.
+- `basic/`: earlier basic SVG/DXF layout without joinery, kept for reference.
+- `joint/`: earlier standalone uploaded SVG edge-pair joinery tool, kept for reference.
 
 Run a local static server from the project folder:
 
@@ -189,112 +227,6 @@ An output is considered valid when:
 - No default watermark text such as `P-001` appears in preview, SVG, or DXF output.
 - DXF output preserves separate cut, score, engrave, and joinery layers.
 
-## 繁體中文說明
-
-本專案目標是將 3D OBJ 模型轉換成可用於雷射雕刻或雷射切割的 2D 檔案，例如 SVG 或 DXF。
-
-### 轉換流程
-
-1. 匯入 OBJ
-   - 讀取頂點、面、群組與材質提示。
-   - 將單位統一轉換為毫米。
-   - 在轉換前檢查模型幾何是否可用。
-
-2. 選擇輸出模式
-   - 表面展開：將 3D 模型表面攤平成可切割或折疊的 2D 圖形。
-   - 分層切片：依材料厚度將模型切成多層 2D 輪廓。
-
-3. 幾何清理
-   - 移除重複頂點與無效面。
-   - 修復或回報破洞、自交、非流形邊等問題。
-   - 依 `snappingToleranceMm` 將非常接近的點、端點與路徑精準對齊。
-
-4. 產生 2D 版面
-   - 從展開面或切片輪廓產生 2D 路徑。
-   - Snapping 後合併可連接的路徑段。
-   - 分配切割、折線、雕刻等圖層。
-   - 啟用組裝輸出時，自動產生卡榫與插槽。
-
-5. 卡榫
-   - 針對需要組裝的對應邊，自動產生卡榫與插槽。
-   - 依材料厚度、切縫寬度與組裝間隙計算卡榫尺寸。
-   - V1 不加入預設浮水印或零件編號文字。
-
-6. 切縫補償
-   - 在輸出前套用 kerf 設定。
-   - 若只是要模擬雷射切縫，可用 `kerfMode: stroke` 設定輸出線寬。
-   - 若需要真正尺寸補償，可用 `kerfMode: offset` 對封閉切割路徑做幾何偏移。
-
-7. 輸出檔案
-   - 輸出 SVG 或 DXF。
-   - 保留圖層名稱、顏色、線寬與路徑順序。
-   - 最後檢查重複路徑、未閉合切割線與比例錯誤。
-   - 若目標是雷射雕刻與切割流程，優先輸出 DXF，並保留切割、折線、雕刻與卡榫圖層。
-
-### 流程控制參數
-
-| 參數 | 用途 | 預設值 |
-| --- | --- | --- |
-| `unit` | 輸入與輸出的單位標準化。 | `mm` |
-| `mode` | `surface-unfold` 表面展開，或 `layer-slice` 分層切片。 | `layer-slice` |
-| `materialThicknessMm` | 材料厚度或切片間距。 | `3.0` |
-| `kerfWidthMm` | 雷射切縫寬度，用於線寬模擬或尺寸補償。 | `0.15` |
-| `kerfMode` | `none`、`stroke` 或 `offset`。 | `stroke` |
-| `snappingToleranceMm` | 合併近似點或重合路徑的距離容許值。 | `0.01` |
-| `dedupePaths` | 是否合併重複或重疊路徑以節省切割時間。 | `true` |
-| `generateJoinery` | 是否自動產生卡榫與插槽組裝結構。 | `true` |
-| `tabWidthMm` | 每個卡榫的寬度。 | `10.0` |
-| `tabDepthMm` | 卡榫深度，通常等於材料厚度。 | `materialThicknessMm` |
-| `slotClearanceMm` | 插槽額外間隙，用於補償實際材料與切縫誤差。 | `0.1` |
-| `outputFormat` | 輸出格式，`svg` 或 `dxf`。 | `svg` |
-
-### Kerf 切縫規則
-
-- `kerfMode: none`
-  - 直接輸出原始幾何。
-  - 適合由雷射軟體自行處理切縫補償。
-
-- `kerfMode: stroke`
-  - 路徑中心線不變。
-  - 將輸出線寬設為 `kerfWidthMm`。
-  - 適合用於預覽切縫，或機台流程會解讀線寬的情況。
-
-- `kerfMode: offset`
-  - 封閉切割路徑依 `kerfWidthMm / 2` 做偏移。
-  - 外輪廓向外偏移。
-  - 內孔洞向內偏移。
-  - 適合輸出檔案本身就必須包含最終補償尺寸的情況。
-
-### Snapping 對齊與去重規則
-
-- 距離小於或等於 `snappingToleranceMm` 的頂點會被合併。
-- 路徑端點經 snapping 後重合時，會嘗試接成連續路徑。
-- 正規化後完全重複的路徑會被移除。
-- 在幾何等價時，優先保留較長、較連續的路徑，減少機台空跑與重切。
-- 若路徑只是部分重疊且無法安全判斷，應回報問題，而不是直接刪除。
-
-### 卡榫規則
-
-- 只在需要與其他零件接合的邊上產生卡榫。
-- 對應邊必須產生匹配的插槽或接收切口。
-- 預設使用 `materialThicknessMm` 作為卡榫深度。
-- 透過 `slotClearanceMm` 增加插槽間隙，避免實際材料公差造成無法組裝。
-- 避免把卡榫放在太靠近角落、小孔或其他卡榫的位置。
-- V1 不加入預設零件編號或浮水印文字。
-
-### 驗證標準
-
-輸出結果需符合下列條件：
-
-- 輸出比例與毫米尺寸正確。
-- 封閉切割路徑在 snapping 與 kerf 補償後仍保持封閉。
-- 完全重複的切割路徑已移除。
-- `kerfMode: stroke` 時，輸出線寬等於 `kerfWidthMm`。
-- `kerfMode: offset` 時，幾何尺寸依每側 `kerfWidthMm / 2` 正確補償。
-- 自動產生的卡榫與插槽在套用 kerf 與 clearance 後尺寸相符。
-- 預覽、SVG 與 DXF 輸出不會出現 `P-001` 這類預設浮水印文字。
-- DXF 輸出保留切割、折線、雕刻與卡榫相關圖層。
-
 ## V1 Public Webapp Requirements
 
 V1 is the first public webapp version. It should stay small, testable, and focused on converting one OBJ file into laser-ready 2D output.
@@ -390,99 +322,40 @@ V1 is the first public webapp version. It should stay small, testable, and focus
 - Joinery output creates matching tabs and slots when enabled.
 - The preview shows layer colors and final dimensions before download.
 - Invalid or unsupported OBJ files produce clear warnings or errors.
+## 中文翻譯
 
-## V1 Public Webapp 規格需求
+本專案為公開專案，採 MIT 授權公開釋出，歡迎教育單位使用。特別歡迎 K12 創客教育與 STEM 教育單位使用、改編，並延伸為課堂教學教材。
 
-V1 是第一版公開網頁應用程式，目標是保持範圍小、可測試、可交付：讓使用者上傳一個 OBJ 檔，設定雷射加工參數，並輸出可用於雷射雕刻與切割的 2D 檔案。
+### 首頁架構、教學策略與學習地圖
 
-### V1 範圍
+本專案首頁規劃為適合課堂使用的雷射切割與 SVG 工作流程學習入口。學習順序從視覺觀察開始，逐步進入接榫邏輯、圖片轉向量、SVG 圖層檢查與實作輸出。
 
-- 上傳單一 `.obj` 檔案。
-- 轉換前檢查檔案格式與檔案大小。
-- 可設定核心雷射參數：
-  - `materialThicknessMm`
-  - `kerfWidthMm`
-  - `kerfMode`
-  - `snappingToleranceMm`
-  - `generateJoinery`
-  - `tabWidthMm`
-  - `slotClearanceMm`
-  - `outputFormat`
-- 將 OBJ 幾何轉換成 2D 雷射路徑。
-- 不加入預設浮水印或零件編號文字。
-- 啟用 `generateJoinery` 時，自動產生卡榫與插槽。
-- 下載前提供 2D 預覽。
-- 主要輸出 DXF，供雷射雕刻與切割使用。
-- SVG 作為輔助預覽或相容格式。
+#### 首頁四個 Page 連結架構
 
-### V1 不做的項目
+| 頁面 | URL | 課堂角色 | 學習重點 |
+| --- | --- | --- | --- |
+| 雷雕實驗室首頁 | `/` | 學習入口與工具總覽。 | 選擇學習活動，理解整體學習路徑。 |
+| 接榫展示區 | `/demo/` | 概念展示。 | 比較未接榫展開圖、灰色 offset 參考線，以及稀疏 4t 紅色接榫切割線。 |
+| 接榫製作區 | `/interlock/` | 操作練習。 | 上傳 SVG、選取成對邊線，並從內尺寸產生互補的 f/F 接榫。 |
+| 漸層一鍵生 | `/bmptrace/` | 圖像轉向量準備。 | 將點陣圖片轉成灰階分層 SVG，供 FLUX / Beam Studio 雕刻測試。 |
+| 漸層檢視區 | `/svglayers/` | 輸出檢查。 | 檢查 SVG 圖層名稱、顯示狀態、向量細節與輸出準備度。 |
 
-- 不做使用者帳號。
-- 不做永久雲端儲存。
-- 不做付款系統。
-- 不做多檔批次轉換。
-- 不做進階 3D 編輯器。
-- 不保證支援任意有機曲面模型。
-- 不自動修復嚴重破損的 OBJ 幾何。
+#### 教學策略
 
-### V1 網頁畫面
+1. 先建立概念：使用 `/demo/` 說明內尺寸黑線、offset 灰線、紅色切割線為什麼要分開看。
+2. 再做操作：使用 `/interlock/` 讓學生選取 SVG 成對邊線，觀察凸榫 `f` 與凹榫 `F` 如何互補。
+3. 連結材料知識：討論材料厚度、kerf、offset 方向，以及為何展示版採用稀疏 4t 接榫方便理解。
+4. 準備雕刻素材：使用 `/bmptrace/` 將圖片轉成灰階分層 SVG。
+5. 檢查輸出檔案：使用 `/svglayers/` 檢查圖層與向量細節，再送入雷雕軟體。
+6. 反思與修正：讓學生比較預覽圖與實際組裝結果，再修正 SVG 或參數。
 
-1. 上傳畫面
-   - `.obj` 檔案選擇器。
-   - 顯示檔案大小限制。
-   - 簡單的專案名稱欄位。
+#### 學習地圖
 
-2. 參數畫面
-   - 材料厚度輸入。
-   - 切縫寬度輸入。
-   - 切縫模式選擇：`none`、`stroke`、`offset`。
-   - Snapping 容許值輸入。
-   - 卡榫功能開關。
-   - 卡榫寬度與插槽間隙輸入。
-   - 輸出格式選擇，預設為 DXF。
-
-3. 預覽畫面
-   - 2D 圖層預覽。
-   - 切割、折線、雕刻、編號、卡榫圖層使用不同顏色。
-   - 顯示整體寬度與高度，單位為毫米。
-   - 顯示未閉合路徑、重複路徑或不支援幾何的警告。
-
-4. 下載畫面
-   - 下載 DXF。
-   - 啟用時可下載 SVG。
-   - 顯示轉換摘要與警告。
-
-### V1 後端需求
-
-- 解析 OBJ 時不可執行或信任檔案內容。
-- 超過大小限制的檔案必須拒絕。
-- 轉換任務必須有 timeout。
-- 上傳檔與產生檔應為暫存。
-- 相同 OBJ 與相同參數應產生一致輸出。
-- 輸出需分成固定圖層：
-  - `CUT`
-  - `SCORE`
-  - `ENGRAVE`
-  - `JOINERY`
-- 對於無法安全判斷的幾何，回傳結構化警告，不可靜默刪除。
-
-### V1 安全需求
-
-- V1 僅接受 `.obj` 上傳。
-- 公開轉換請求必須做 rate limit。
-- 不可透過公開目錄列出上傳檔案。
-- 任務過期後刪除暫存檔。
-- 不永久保存原始檔。
-- 限制 CPU 時間、記憶體、檔案大小與輸出路徑數量。
-
-### V1 驗收標準
-
-- 有效 OBJ 可以上傳並轉換為 DXF。
-- DXF 可被常見雷射或 CAD 軟體開啟。
-- 輸出單位為毫米。
-- 預覽、SVG 與 DXF 輸出不會出現 `P-001` 這類預設浮水印文字。
-- `kerfMode: stroke` 時，輸出線寬等於 `kerfWidthMm`。
-- Snapping 可移除完全重複路徑，但不會誤刪模糊的部分重疊路徑。
-- 啟用卡榫時，會產生尺寸匹配的卡榫與插槽。
-- 下載前預覽會顯示圖層顏色與最終尺寸。
-- 無效或不支援的 OBJ 會產生清楚的警告或錯誤。
+| 階段 | 活動 | 工具 | 預期成果 |
+| --- | --- | --- | --- |
+| 1 | 觀察內建展開圖。 | `/demo/` | 學生能辨識黑色內尺寸線、灰色 offset 參考線與紅色切割線。 |
+| 2 | 切換未接榫與接榫後視圖。 | `/demo/` | 學生理解接榫改變了哪些切割路徑，哪些線只是參考。 |
+| 3 | 練習邊線配對。 | `/interlock/` | 學生能配對兩條 SVG 邊線，並說明 f/F 互補接榫。 |
+| 4 | 準備雕刻圖像。 | `/bmptrace/` | 學生能將點陣圖轉成灰階 SVG 圖層。 |
+| 5 | 檢查 SVG 圖層。 | `/svglayers/` | 學生能確認圖層名稱、顯示狀態與向量細節。 |
+| 6 | 輸出並試切。 | `/demo/` 或 `/interlock/` | 學生能把數位預覽規則連結到實際材料組裝成果。 |
