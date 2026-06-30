@@ -1577,15 +1577,6 @@ function addSvgStyles() {
       stroke-width: 1.2;
       pointer-events: none;
     }
-    .inner-dimension-guides text {
-      fill: #111827;
-      font-family: Arial, sans-serif;
-      font-size: 8px;
-      font-weight: 700;
-      text-anchor: middle;
-      dominant-baseline: middle;
-      pointer-events: none;
-    }
     .offset-dimension-guides path {
       fill: none;
       stroke: #94a3b8;
@@ -1628,11 +1619,6 @@ function renderInnerDimensionGuides(result) {
           d: pathToD(path, piece.x, piece.y)
         }));
       }
-      const bounds = getBoundsFromPaths([{ ...piece, paths: piece.sourcePaths }]);
-      group.appendChild(createSvgElement("text", {
-        x: svgNum(piece.x + bounds.minX + bounds.width / 2),
-        y: svgNum(piece.y + bounds.minY + bounds.height / 2 + Math.min(18, Math.max(12, bounds.height * 0.24)))
-      })).textContent = sourceDimensionLabel(piece, result.params);
       guideCount += 1;
       continue;
     }
@@ -1642,36 +1628,9 @@ function renderInnerDimensionGuides(result) {
     for (const pathD of guidePathDs(piece, guide, 0)) {
       group.appendChild(createSvgElement("path", { d: pathD }));
     }
-    group.appendChild(createSvgElement("text", {
-      x: svgNum(piece.x + guide.x + guide.width / 2),
-      y: svgNum(piece.y + guide.y + guide.height / 2 + dimensionTextOffset(guide))
-    })).textContent = guide.label;
     guideCount += 1;
   }
   if (guideCount) els.previewSvg.appendChild(group);
-}
-
-function sourceDimensionLabel(piece, params) {
-  const labels = {
-    top: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
-    bottom: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
-    floor: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
-    front: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.height)}`,
-    back: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.height)}`,
-    left: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.height)}`,
-    right: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.height)}`,
-    left_wall: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.wallHeight)}`,
-    right_wall: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.wallHeight)}`,
-    roof_left: `${formatGuideNumber(params.length)} x ${formatGuideNumber(Math.hypot(params.width / 2, params.roofHeight))}`,
-    roof_right: `${formatGuideNumber(params.length)} x ${formatGuideNumber(Math.hypot(params.width / 2, params.roofHeight))}`,
-    front_gable: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.wallHeight)}`,
-    back_gable: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.wallHeight)}`
-  };
-  return labels[piece.name] || "";
-}
-
-function dimensionTextOffset(guide) {
-  return Math.min(18, Math.max(12, guide.height * 0.24));
 }
 
 function innerGuideForPiece(piece, params) {
