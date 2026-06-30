@@ -299,6 +299,11 @@ select:focus-visible {
   background: var(--joinery);
 }
 
+.cut-only-button[aria-pressed="true"] {
+  border-color: #cc0000;
+  background: var(--cut);
+}
+
 .actions {
   gap: 8px;
   margin-top: 12px;

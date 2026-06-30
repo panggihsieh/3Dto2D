@@ -5,7 +5,8 @@ const SPARSE_FINGER_UNIT = 4;
 const state = {
   result: null,
   zoom: 1,
-  baseViewBox: null
+  baseViewBox: null,
+  cutOnlyView: false
 };
 
 const els = {
@@ -39,6 +40,7 @@ const els = {
   warningList: document.querySelector("#warningList"),
   statusPill: document.querySelector("#statusPill"),
   joineryModeButton: document.querySelector("#joineryModeButton"),
+  cutOnlyViewButton: document.querySelector("#cutOnlyViewButton"),
   joineryModeStatus: document.querySelector("#joineryModeStatus"),
   houseFields: document.querySelectorAll("[data-field='house']")
 };
@@ -1473,19 +1475,23 @@ function render(result) {
 
   addSvgStyles();
   const canUseInnerGuides = ["cube", "cuboid", "gable_house"].includes(result.params.modelType);
-  const showCutPaths = result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
-  const showAsOffsetPreview = result.params.dimensionMode !== "inner" || !canUseInnerGuides;
+  const cutOnly = state.cutOnlyView;
+  const showCutPaths = cutOnly || result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
+  const showAsOffsetPreview = !cutOnly && (result.params.dimensionMode !== "inner" || !canUseInnerGuides);
   setLayerLegendVisibility({
-    offset: result.params.dimensionMode === "inner" && canUseInnerGuides,
-    cut: result.params.generateJoinery
+    dimension: !cutOnly && canUseInnerGuides,
+    offset: !cutOnly && result.params.dimensionMode === "inner" && canUseInnerGuides,
+    cut: cutOnly || result.params.generateJoinery
   });
 
-  renderInnerDimensionGuides(result);
-  renderOffsetReferenceGuides(result);
+  if (!cutOnly) {
+    renderInnerDimensionGuides(result);
+    renderOffsetReferenceGuides(result);
+  }
 
   if (showCutPaths) {
     const cutGroup = createSvgElement("g", {
-      class: showAsOffsetPreview ? "offset-reference-preview" : "svg-cut"
+      class: showAsOffsetPreview && !cutOnly ? "offset-reference-preview" : "svg-cut"
     });
     els.previewSvg.appendChild(cutGroup);
 
@@ -1494,7 +1500,7 @@ function render(result) {
         cutGroup.appendChild(createSvgElement("path", {
           d: pathToD(path, piece.x, piece.y),
           fill: "none",
-          stroke: showAsOffsetPreview ? "#94a3b8" : "#ff0000",
+          stroke: showAsOffsetPreview && !cutOnly ? "#94a3b8" : "#ff0000",
           "stroke-linejoin": "miter",
           "stroke-linecap": "square",
           "vector-effect": "non-scaling-stroke",
@@ -1503,7 +1509,7 @@ function render(result) {
       }
     }
   }
-  renderPieceLabels(result.pieces);
+  if (!cutOnly) renderPieceLabels(result.pieces);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
   els.heightMetric.textContent = formatNumber(result.bounds.height);
@@ -1511,9 +1517,11 @@ function render(result) {
   renderWarnings(result.warnings);
 }
 
-function setLayerLegendVisibility({ offset, cut }) {
+function setLayerLegendVisibility({ dimension, offset, cut }) {
+  const dimensionLegend = document.querySelector(".legend .dimension");
   const offsetLegend = document.querySelector(".legend .offset");
   const cutLegend = document.querySelector(".legend .cut");
+  if (dimensionLegend) dimensionLegend.hidden = !dimension;
   if (offsetLegend) offsetLegend.hidden = !offset;
   if (cutLegend) cutLegend.hidden = !cut;
 }
@@ -1870,6 +1878,7 @@ function resetParams() {
   els.segments.value = "48";
   if (els.dimensionMode) els.dimensionMode.value = "inner";
   els.joineryToggle.checked = false;
+  state.cutOnlyView = false;
   updateDimensionModeControls();
   updateJoineryModeControls();
   updateDefaultsForModel();
@@ -1884,7 +1893,14 @@ function updateJoineryModeControls() {
   const enabled = els.joineryToggle.checked;
   els.joineryModeButton.setAttribute("aria-pressed", String(enabled));
   els.joineryModeButton.textContent = enabled ? "顯示沒有接榫" : "顯示接榫後";
-  els.joineryModeStatus.textContent = enabled ? "目前：接榫後" : "目前：沒有接榫";
+  if (els.cutOnlyViewButton) {
+    els.cutOnlyViewButton.setAttribute("aria-pressed", String(state.cutOnlyView));
+  }
+  els.joineryModeStatus.textContent = state.cutOnlyView
+    ? "目前：切割圖"
+    : enabled
+      ? "目前：接榫後"
+      : "目前：沒有接榫";
 }
 
 function updateDimensionModeControls() {
@@ -1922,6 +1938,12 @@ function toggleJoineryMode() {
   runConversion();
 }
 
+function toggleCutOnlyView() {
+  state.cutOnlyView = !state.cutOnlyView;
+  updateJoineryModeControls();
+  if (state.result) render(state.result);
+}
+
 function runConversion() {
   els.statusPill.textContent = "Generating";
   updateFieldVisibility();
@@ -1955,6 +1977,7 @@ function svgNum(value) {
 els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
 els.joineryModeButton.addEventListener("click", toggleJoineryMode);
+els.cutOnlyViewButton?.addEventListener("click", toggleCutOnlyView);
 els.innerDimensionButton?.addEventListener("click", () => {
   if (els.dimensionMode) els.dimensionMode.value = "inner";
   updateDimensionModeControls();
