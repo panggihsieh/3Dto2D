@@ -2,17 +2,17 @@
 
 ## Current
 
-- Version: `v1.0.0-alpha`
-- Product stage: V1 work in progress
-- Recorded date: 2026-05-27
+- Version: `v1.0.0`
+- Product stage: Public final release
+- Recorded date: 2026-07-01
 - Branch: `main`
-- Status: Active development
+- Status: Final public MIT release
 
 ## Notes
 
-This version records the first in-progress public webapp prototype for converting OBJ geometry into 2D laser DXF/SVG output.
+This version records the public final webapp release for the 3D to 2D laser SVG workflow.
 
-The project should move to `v1.0.0` only after the V1 scope is stable enough for a public release.
+The project is public and released under the MIT License.
 
 ## Joint Preview
 

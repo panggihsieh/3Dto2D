@@ -17,11 +17,15 @@ Arbitrary organic STL mesh unfolding is intentionally out of scope for the first
 
 ## Current Version
 
-- Version: `v1.0.0-alpha`
-- Stage: V1 work in progress
-- Recorded: 2026-05-27
+- Version: `v1.0.0`
+- Stage: Public final release
+- Recorded: 2026-07-01
 
 See `VERSION.md` for the version record.
+
+## License
+
+This project is released as public open source software under the MIT License. See `LICENSE`.
 
 ## Joint SVG Joinery Preview
 
