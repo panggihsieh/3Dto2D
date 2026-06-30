@@ -21,16 +21,12 @@ const els = {
   tabSpacing: document.querySelector("#tabSpacing"),
   partGap: document.querySelector("#partGap"),
   segments: document.querySelector("#segments"),
-  projectName: document.querySelector("#projectName"),
   dimensionMode: document.querySelector("#dimensionMode"),
   innerDimensionButton: document.querySelector("#innerDimensionButton"),
   dimensionModeStatus: document.querySelector("#dimensionModeStatus"),
   outerDimensionStatus: document.querySelector("#outerDimensionStatus"),
   joineryToggle: document.querySelector("#joineryToggle"),
   resetButton: document.querySelector("#resetButton"),
-  summaryText: document.querySelector("#summaryText"),
-  downloadDxf: document.querySelector("#downloadDxf"),
-  downloadSvg: document.querySelector("#downloadSvg"),
   previewSvg: document.querySelector("#previewSvg"),
   zoomOutButton: document.querySelector("#zoomOutButton"),
   zoomInButton: document.querySelector("#zoomInButton"),
@@ -1049,9 +1045,6 @@ function render(result) {
   els.widthMetric.textContent = formatNumber(result.bounds.width);
   els.heightMetric.textContent = formatNumber(result.bounds.height);
   els.pathMetric.textContent = String(result.pieces.length);
-  els.summaryText.textContent = `${modelLabel(result.params.modelType)} · ${result.pieces.length} parts`;
-  els.downloadDxf.disabled = false;
-  els.downloadSvg.disabled = false;
   renderWarnings(result.warnings);
 }
 
@@ -1385,81 +1378,6 @@ function renderWarnings(warnings) {
   }
 }
 
-function exportSvg(result) {
-  const svg = buildCutOnlySvg(result);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}\n`;
-}
-
-function buildCutOnlySvg(result) {
-  const svg = createSvgElement("svg", {
-    xmlns: NS,
-    width: `${svgNum(result.bounds.width)}mm`,
-    height: `${svgNum(result.bounds.height)}mm`,
-    viewBox: `0 0 ${svgNum(Math.max(result.bounds.width, 1))} ${svgNum(Math.max(result.bounds.height, 1))}`
-  });
-  const group = createSvgElement("g", { class: "svg-cut" });
-  svg.appendChild(group);
-  for (const piece of result.pieces) {
-    if (piece.layer !== "CUT") continue;
-    for (const path of piece.paths) {
-      group.appendChild(createSvgElement("path", {
-        d: pathToD(path, piece.x, piece.y),
-        fill: "none",
-        stroke: "#ff0000",
-        "stroke-linejoin": "miter",
-        "stroke-linecap": "square",
-        "vector-effect": "non-scaling-stroke",
-        "stroke-width": svgNum(previewStrokeWidth(result.params))
-      }));
-    }
-  }
-  return svg;
-}
-
-function exportDxf(result) {
-  const lines = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"];
-  for (const piece of result.pieces) {
-    if (piece.layer !== "CUT") continue;
-    for (const path of piece.paths) {
-      const segmentCount = path.closed === false ? path.length - 1 : path.length;
-      for (let i = 0; i < segmentCount; i += 1) {
-        const a = path[i];
-        const b = path[(i + 1) % path.length];
-        lines.push(
-          "0", "LINE",
-          "8", piece.layer,
-          "10", dxfNum(a.x + piece.x),
-          "20", dxfNum(-(a.y + piece.y)),
-          "30", "0",
-          "11", dxfNum(b.x + piece.x),
-          "21", dxfNum(-(b.y + piece.y)),
-          "31", "0"
-        );
-      }
-    }
-  }
-  lines.push("0", "ENDSEC", "0", "EOF");
-  return `${lines.join("\n")}\n`;
-}
-
-function safeBaseName() {
-  return (els.projectName.value || "laser_parts")
-    .replace(/[^a-z0-9_-]+/gi, "_")
-    .replace(/^_+|_+$/g, "") || "laser_parts";
-}
-
-function download(name, content, type) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 function updateFieldVisibility() {
   const type = els.modelType.value;
   const house = type === "gable_house";
@@ -1566,10 +1484,6 @@ function svgNum(value) {
   return Number(value).toFixed(3).replace(/\.?0+$/, "");
 }
 
-function dxfNum(value) {
-  return Number(value).toFixed(4);
-}
-
 els.modelType.addEventListener("change", updateDefaultsForModel);
 els.resetButton.addEventListener("click", resetParams);
 els.joineryModeButton.addEventListener("click", toggleJoineryMode);
@@ -1588,16 +1502,6 @@ for (const input of document.querySelectorAll("input, select")) {
     input.addEventListener("change", runConversion);
   }
 }
-
-els.downloadDxf.addEventListener("click", () => {
-  if (!state.result) return;
-  download(`${safeBaseName()}.dxf`, exportDxf(state.result), "application/dxf");
-});
-
-els.downloadSvg.addEventListener("click", () => {
-  if (!state.result) return;
-  download(`${safeBaseName()}.svg`, exportSvg(state.result), "image/svg+xml");
-});
 
 updateFieldVisibility();
 runConversion();

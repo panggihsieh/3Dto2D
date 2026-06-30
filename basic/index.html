@@ -77,7 +77,7 @@
 
         <section class="panel" aria-labelledby="materialTitle">
           <div class="section-head">
-            <h2 id="materialTitle">材料與輸出</h2>
+            <h2 id="materialTitle">材料與預覽</h2>
           </div>
 
           <div class="field-grid">
@@ -97,10 +97,6 @@
               <span>圓弧段數</span>
               <input id="segments" type="number" min="8" step="1" value="48">
             </label>
-            <label>
-              <span>專案名稱</span>
-              <input id="projectName" type="text" value="basic_parts" maxlength="40">
-            </label>
           </div>
 
           <input id="tabWidth" type="hidden" value="10">
@@ -115,17 +111,6 @@
           </div>
         </section>
 
-        <section class="panel" aria-labelledby="downloadsTitle">
-          <div class="section-head">
-            <h2 id="downloadsTitle">輸出<span class="red-only-note">(限紅線)</span></h2>
-            <span id="summaryText">Ready</span>
-          </div>
-          <div class="actions">
-            <button id="downloadSvg" type="button" title="Download SVG" aria-label="Download SVG">SVG</button>
-            <button id="downloadDxf" type="button" title="Download DXF" aria-label="Download DXF">DXF</button>
-          </div>
-        </section>
-
         <section class="panel manual-panel" aria-labelledby="manualTitle">
           <div class="section-head">
             <h2 id="manualTitle">使用者簡易操作手冊</h2>
@@ -136,7 +121,7 @@
             <li>輸入長、寬、高等尺寸，並確認目前使用的是內尺寸。</li>
             <li>設定材料厚度、Kerf 與零件間距，讓切割尺寸符合實際材料。</li>
             <li>需要接榫時按「顯示接榫後」，預覽會更新紅色切割線。</li>
-            <li>檢查右側預覽與提示，確認沒有警告後下載 SVG 或 DXF。</li>
+            <li>檢查右側預覽與提示，確認黑色內尺寸、灰色 offset 與紅色切割線狀態。</li>
           </ol>
         </section>
       </aside>

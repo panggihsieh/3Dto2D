@@ -89,20 +89,8 @@ h2 {
   font-weight: 680;
 }
 
-.red-only-note {
-  color: var(--cut);
-  font-weight: 800;
-  margin-left: 4px;
-}
-
-.section-head .red-only-note {
-  color: var(--cut);
-  font-weight: 800;
-}
-
 .status-pill,
-.section-head span,
-.summaryText {
+.section-head span {
   color: var(--muted);
   font-size: 0.8rem;
 }
