@@ -280,10 +280,10 @@ select:focus-visible {
 .outer-dimension-box {
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid #d7dee6;
+  border: 1px solid #d9dee5;
   border-radius: 7px;
-  background: #f8fafc;
-  color: #cbd5e1;
+  background: #eef0f3;
+  color: var(--focus);
   font-size: 0.96rem;
   font-weight: 600;
   line-height: 1.35;
