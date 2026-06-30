@@ -299,7 +299,13 @@ select:focus-visible {
   background: var(--joinery);
 }
 
+.cut-only-button {
+  color: var(--muted);
+  background: #ffffff;
+}
+
 .cut-only-button[aria-pressed="true"] {
+  color: #ffffff;
   border-color: #cc0000;
   background: var(--cut);
 }
