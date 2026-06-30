@@ -68,6 +68,9 @@ function getParams() {
     tabWidth: readNumber(els.tabWidth, 10),
     tabDepth: tabDepthValue > 0 ? tabDepthValue : materialThickness,
     tabSpacing: readNumber(els.tabSpacing, 8),
+    play: readNumber(els.kerfWidth, 0.15),
+    endMarginMode: "boxes",
+    surroundingSpaces: 2,
     partGap: readNumber(els.partGap, 8),
     segments: Math.max(8, Math.round(readNumber(els.segments, 48))),
     dimensionMode: els.dimensionMode?.value || "inner",
@@ -77,20 +80,7 @@ function getParams() {
 
 function buildResult(params) {
   const warnings = validateParams(params);
-  const pieces = [];
-
-  if (params.modelType === "cube") {
-    const side = params.length;
-    pieces.push(...buildDimensionedBoxPieces(side, side, side, params, true));
-  }
-
-  if (params.modelType === "cuboid") {
-    pieces.push(...buildDimensionedBoxPieces(params.length, params.width, params.height, params, true));
-  }
-
-  if (params.modelType === "gable_house") {
-    pieces.push(...buildHousePieces(params));
-  }
+  const pieces = buildBasicInnerDimensionPieces(params, warnings);
 
   const laidOut = layoutModelPieces(pieces, params);
   const bounds = getBoundsFromPieces(laidOut);
@@ -99,6 +89,110 @@ function buildResult(params) {
   warnings.push(...offsetReferenceValidationMessages(laidOut, params));
 
   return { pieces: laidOut, bounds, warnings, params };
+}
+
+function buildBasicInnerDimensionPieces(params, warnings) {
+  const sourcePieces = buildBasicSourcePieces(params);
+  if (params.dimensionMode !== "inner") {
+    return sourcePieces;
+  }
+
+  const offsetPieces = offsetImportedPiecesForMaterial(sourcePieces, params, warnings);
+  const pieces = params.generateJoinery
+    ? applyPresetJoinery(offsetPieces, params)
+    : offsetPieces;
+  return normalizeGeneratedPieces(pieces);
+}
+
+function buildBasicSourcePieces(params) {
+  if (params.modelType === "cube") {
+    const cubeParams = { ...params, width: params.length, height: params.length };
+    return buildCuboidSourcePieces(cubeParams);
+  }
+  if (params.modelType === "cuboid") return buildCuboidSourcePieces(params);
+  if (params.modelType === "gable_house") return buildHouseSourcePieces(params);
+  return [];
+}
+
+function buildCuboidSourcePieces(params) {
+  return [
+    sampleRectPiece("top", params.length, params.width),
+    sampleRectPiece("bottom", params.length, params.width),
+    sampleRectPiece("front", params.length, params.height),
+    sampleRectPiece("back", params.length, params.height),
+    sampleRectPiece("left", params.width, params.height),
+    sampleRectPiece("right", params.width, params.height)
+  ];
+}
+
+function buildHouseSourcePieces(params) {
+  const roofSlopeLength = Math.hypot(params.width / 2, params.roofHeight);
+  return [
+    sampleRectPiece("floor", params.length, params.width),
+    sampleRectPiece("left_wall", params.length, params.wallHeight),
+    sampleRectPiece("right_wall", params.length, params.wallHeight),
+    sampleGablePiece("front_gable", params.width, params.wallHeight, params.roofHeight),
+    sampleGablePiece("back_gable", params.width, params.wallHeight, params.roofHeight),
+    sampleRectPiece("roof_left", params.length, roofSlopeLength),
+    sampleRectPiece("roof_right", params.length, roofSlopeLength)
+  ];
+}
+
+function sampleRectPiece(name, width, height) {
+  const path = rectPath(0, 0, width, height);
+  path.closed = true;
+  return {
+    name,
+    layer: "CUT",
+    paths: [path],
+    width,
+    height
+  };
+}
+
+function sampleGablePiece(name, width, wallHeight, roofHeight) {
+  const totalHeight = wallHeight + roofHeight;
+  const path = [
+    { x: 0, y: totalHeight },
+    { x: width, y: totalHeight },
+    { x: width, y: roofHeight },
+    { x: width / 2, y: 0 },
+    { x: 0, y: roofHeight }
+  ];
+  path.closed = true;
+  return {
+    name,
+    layer: "CUT",
+    paths: [path],
+    width,
+    height: totalHeight
+  };
+}
+
+function applyPresetJoinery(pieces, params) {
+  return pieces.map((piece) => {
+    const edgeTypes = presetEdgeTypes(piece.name, params);
+    const paths = piece.paths.map((path, index) => {
+      const sourcePath = piece.sourcePaths?.[index];
+      if (!sourcePath || sourcePath.closed === false || path.closed === false) return clonePath(path);
+      const joinedPath = fingerJointPolygonPath(path, edgeTypes, params, sourcePath);
+      joinedPath.closed = true;
+      return joinedPath;
+    });
+    return { ...piece, paths };
+  });
+}
+
+function presetEdgeTypes(name, params) {
+  if (["top", "bottom"].includes(name)) return "ffff";
+  if (["front", "back"].includes(name)) return "FFFF";
+  if (["left", "right"].includes(name)) return "FfFf";
+  if (name === "floor") return "ffff";
+  if (["left_wall", "right_wall"].includes(name)) return "FfFf";
+  if (name === "roof_left") return "ffff";
+  if (name === "roof_right") return "Ffff";
+  if (["front_gable", "back_gable"].includes(name)) return "FFFFF";
+  return "eeee";
 }
 
 function validateParams(params) {
@@ -549,12 +643,185 @@ function gablePiece(name, width, wallHeight, roofHeight, params) {
 }
 
 function rectPath(x, y, width, height) {
-  return [
+  const path = [
     { x, y },
     { x: x + width, y },
     { x: x + width, y: y + height },
     { x, y: y + height }
   ];
+  path.closed = true;
+  return path;
+}
+
+function offsetImportedPiecesForMaterial(pieces, params, warnings = []) {
+  if (params.dimensionMode !== "inner") return pieces;
+
+  const thickness = params.materialThickness;
+  return pieces.map((piece) => {
+    const nextPaths = [];
+    const sourcePaths = [];
+    let usedOffset = false;
+
+    for (const path of piece.paths) {
+      const source = clonePath(path);
+      sourcePaths.push(source);
+
+      const offsetPath = offsetClosedPath(path, thickness);
+      if (offsetPath) {
+        nextPaths.push(offsetPath);
+        usedOffset = true;
+      } else {
+        nextPaths.push(clonePath(path));
+      }
+    }
+
+    if (!usedOffset && piece.paths.some(path => path.closed !== false)) {
+      warnings.push(`${piece.name}: imported outline could not be offset automatically.`);
+    }
+
+    const bounds = getBoundsFromPaths([{ ...piece, x: 0, y: 0, paths: nextPaths }]);
+    return {
+      ...piece,
+      originalName: piece.originalName || piece.name,
+      width: bounds.width,
+      height: bounds.height,
+      paths: nextPaths,
+      offsetReferencePaths: nextPaths.map(clonePath),
+      sourcePaths
+    };
+  });
+}
+
+function normalizeGeneratedPieces(pieces) {
+  return pieces.map((piece) => {
+    const bounds = getBoundsFromPaths([{ ...piece, x: 0, y: 0 }]);
+    const paths = piece.paths.map(path => translatePath(path, -bounds.minX, -bounds.minY));
+    const sourcePaths = (piece.sourcePaths || piece.paths).map(path => translatePath(path, -bounds.minX, -bounds.minY));
+    const offsetReferencePaths = (piece.offsetReferencePaths || piece.paths).map(path => translatePath(path, -bounds.minX, -bounds.minY));
+    return {
+      ...piece,
+      x: 0,
+      y: 0,
+      width: bounds.width,
+      height: bounds.height,
+      paths,
+      offsetReferencePaths,
+      sourcePaths
+    };
+  });
+}
+
+function translatePath(path, dx, dy) {
+  const copy = path.map(point => ({ x: point.x + dx, y: point.y + dy }));
+  copy.closed = path.closed !== false;
+  return copy;
+}
+
+function clonePath(path) {
+  const copy = path.map(point => ({ x: point.x, y: point.y }));
+  copy.closed = path.closed !== false;
+  return copy;
+}
+
+function offsetClosedPath(path, amount) {
+  if (path.closed === false || path.length < 3) return null;
+
+  if (path.length === 4) {
+    const rect = offsetRectangularPath(path, amount);
+    if (rect) return rect;
+  }
+
+  return offsetPolygonPath(path, amount);
+}
+
+function offsetRectangularPath(path, amount) {
+  const bounds = getPathBounds(path);
+  const corners = [
+    { x: bounds.minX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.maxY },
+    { x: bounds.minX, y: bounds.maxY }
+  ];
+  const matches = path.every(point => corners.some(corner => samePoint(point, corner)));
+  if (!matches) return null;
+
+  const expanded = [
+    { x: bounds.minX - amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.minY - amount },
+    { x: bounds.maxX + amount, y: bounds.maxY + amount },
+    { x: bounds.minX - amount, y: bounds.maxY + amount }
+  ];
+  expanded.closed = true;
+  return expanded;
+}
+
+function offsetPolygonPath(path, amount) {
+  const area = signedPolygonArea(path);
+  if (Math.abs(area) < 0.0001) return null;
+
+  const offsetEdges = path.map((start, index) => {
+    const end = path[(index + 1) % path.length];
+    const normal = edgeOutwardNormal(start, end, area);
+    return {
+      start: offsetBy(start, normal, amount),
+      end: offsetBy(end, normal, amount)
+    };
+  });
+
+  const expanded = path.map((_, index) => {
+    const previous = offsetEdges[(index - 1 + offsetEdges.length) % offsetEdges.length];
+    const current = offsetEdges[index];
+    return lineIntersection(previous.start, previous.end, current.start, current.end);
+  });
+
+  if (expanded.some(point => !point)) return null;
+  expanded.closed = true;
+  return expanded;
+}
+
+function lineIntersection(a1, a2, b1, b2) {
+  const dax = a2.x - a1.x;
+  const day = a2.y - a1.y;
+  const dbx = b2.x - b1.x;
+  const dby = b2.y - b1.y;
+  const denominator = dax * dby - day * dbx;
+  if (Math.abs(denominator) < 0.0001) return null;
+
+  const bax = b1.x - a1.x;
+  const bay = b1.y - a1.y;
+  const t = (bax * dby - bay * dbx) / denominator;
+  return {
+    x: a1.x + dax * t,
+    y: a1.y + day * t
+  };
+}
+
+function samePoint(a, b, tolerance = 0.0001) {
+  return Math.abs(a.x - b.x) < tolerance && Math.abs(a.y - b.y) < tolerance;
+}
+
+function getPathBounds(path) {
+  const xs = path.map(point => point.x);
+  const ys = path.map(point => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+function getBoundsFromPaths(pieces) {
+  const points = [];
+  for (const piece of pieces) {
+    for (const path of piece.paths || []) {
+      for (const point of path) {
+        points.push({ x: (piece.x || 0) + point.x, y: (piece.y || 0) + point.y });
+      }
+    }
+  }
+  if (!points.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+  const bounds = getPathBounds(points);
+  return bounds.width || bounds.height ? bounds : { ...bounds, width: 1, height: 1 };
 }
 
 function circularSlotPaths(radius, params) {
@@ -742,17 +1009,42 @@ function fingerJointRectPath(x, y, width, height, edges, params, edgeGuides = nu
   return points;
 }
 
-function fingerJointPolygonPath(vertices, edgeTypes, params) {
+function fingerJointPolygonPath(vertices, edgeTypes, params, innerVertices = null, edgeLayouts = null) {
   const points = [];
   const area = signedPolygonArea(vertices);
+  const hasInnerGuide = innerVertices
+    && innerVertices.length === vertices.length
+    && innerVertices.closed !== false;
 
   for (let i = 0; i < vertices.length; i += 1) {
     const start = vertices[i];
     const end = vertices[(i + 1) % vertices.length];
-    const outward = edgeOutwardNormal(start, end, area);
-    addFingerEdge(points, start, end, outward, edgeTypes[i] || "e", params);
+    const type = edgeTypes[i] || "e";
+    if (hasInnerGuide && (type === "f" || type === "F")) {
+      const edgePoints = guidedFingerEdgePoints(
+        innerVertices[i],
+        innerVertices[(i + 1) % innerVertices.length],
+        start,
+        end,
+        type,
+        params,
+        edgeLayouts?.[i]
+      );
+      appendEdgePoints(points, edgePoints, params);
+    } else {
+      const outward = edgeOutwardNormal(start, end, area);
+      const beforeLength = points.length;
+      addFingerEdge(points, start, end, outward, type, params);
+      if (beforeLength > 0) {
+        const added = points.splice(beforeLength);
+        appendEdgePoints(points, added, params);
+      }
+    }
   }
 
+  if (points.length > 1) appendCornerBridge(points, points[0], params);
+  if (points.length > 1 && samePoint(points[0], points[points.length - 1])) points.pop();
+  points.closed = true;
   return points;
 }
 
@@ -825,10 +1117,172 @@ function addFingerEdge(points, start, end, outward, type, params, guide = null) 
   pushPoint(points, end);
 }
 
+function guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride = null) {
+  const length = Math.hypot(innerEnd.x - innerStart.x, innerEnd.y - innerStart.y);
+  if (!length) return [];
+
+  const dx = (innerEnd.x - innerStart.x) / length;
+  const dy = (innerEnd.y - innerStart.y) / length;
+  const outward = guidedEdgeOutwardNormal(dx, dy, innerStart, innerEnd, outerStart, outerEnd);
+  const offsetDistance = params.materialThickness || Math.hypot(outerStart.x - innerStart.x, outerStart.y - innerStart.y) || 1;
+  const grayStart = offsetBy(innerStart, outward, offsetDistance);
+  const grayEnd = offsetBy(innerEnd, outward, offsetDistance);
+  const baseStart = type === "f" ? innerStart : grayStart;
+  const baseEnd = type === "f" ? innerEnd : grayEnd;
+  const jointStart = type === "f" ? grayStart : innerStart;
+  const edgeStart = type === "f" ? innerStart : grayStart;
+  const edgeEnd = type === "f" ? innerEnd : grayEnd;
+  const layout = layoutOverride || buildSharedLayoutsForLength(length, params)[type];
+  const count = layout.count;
+  const firstRun = layout.runs[0];
+  const lastRun = layout.runs[layout.runs.length - 1];
+  const guideStart = firstRun?.start ?? layout.endMargin;
+  const guideEnd = lastRun?.end ?? Math.max(0, length - layout.endMargin);
+
+  const points = [];
+  pushPoint(points, edgeStart);
+  if (type === "f") pushPoint(points, along(baseStart, dx, dy, guideStart));
+
+  if (count <= 0) {
+    if (type === "f") pushPoint(points, along(baseStart, dx, dy, guideEnd));
+    pushPoint(points, edgeEnd);
+    return points;
+  }
+
+  for (const run of layout.runs) {
+    const a = along(baseStart, dx, dy, run.start);
+    const b = along(baseStart, dx, dy, run.end);
+    const aj = along(jointStart, dx, dy, run.start);
+    const bj = along(jointStart, dx, dy, run.end);
+    pushPoint(points, a);
+    pushPoint(points, aj);
+    pushPoint(points, bj);
+    pushPoint(points, b);
+  }
+
+  if (type === "f") {
+    pushPoint(points, along(baseStart, dx, dy, guideEnd));
+  }
+  pushPoint(points, edgeEnd);
+  return points;
+}
+
+function guidedEdgeOutwardNormal(dx, dy, innerStart, innerEnd, outerStart, outerEnd) {
+  const candidateA = { x: dy, y: -dx };
+  const candidateB = { x: -dy, y: dx };
+  const offsetHint = {
+    x: ((outerStart.x - innerStart.x) + (outerEnd.x - innerEnd.x)) / 2,
+    y: ((outerStart.y - innerStart.y) + (outerEnd.y - innerEnd.y)) / 2
+  };
+  const scoreA = candidateA.x * offsetHint.x + candidateA.y * offsetHint.y;
+  const scoreB = candidateB.x * offsetHint.x + candidateB.y * offsetHint.y;
+  return scoreA >= scoreB ? candidateA : candidateB;
+}
+
+function appendEdgePoints(points, edgePoints, params) {
+  if (!edgePoints.length) return;
+  if (points.length) appendCornerBridge(points, edgePoints[0], params);
+  for (const point of edgePoints) pushPoint(points, point);
+}
+
+function appendCornerBridge(points, nextPoint, params) {
+  const previous = points[points.length - 1];
+  if (!previous || !nextPoint || samePoint(previous, nextPoint)) return;
+  const dx = Math.abs(previous.x - nextPoint.x);
+  const dy = Math.abs(previous.y - nextPoint.y);
+  const materialThickness = params.materialThickness || 3;
+  const cornerTolerance = materialThickness * 1.5 + 0.01;
+  if (dx > 0.0001 && dy > 0.0001 && dx <= cornerTolerance && dy <= cornerTolerance) {
+    pushPoint(points, { x: nextPoint.x, y: previous.y });
+  }
+}
+
+function buildSharedLayoutsForLength(length, params) {
+  const base = buildBoxesFingerLayout(length, "f", params);
+  return {
+    f: {
+      ...base,
+      runs: base.runs.map(run => ({ ...run }))
+    },
+    F: {
+      ...base,
+      runs: base.runs.map(run => expandRunForPlay(run, length, params.play || params.kerfWidth || 0))
+    }
+  };
+}
+
+function expandRunForPlay(run, length, play) {
+  const halfPlay = Math.max(0, play) / 2;
+  const start = Math.max(0, run.start - halfPlay);
+  const end = Math.min(length, run.end + halfPlay);
+  return {
+    start,
+    end,
+    center: run.center,
+    length: end - start
+  };
+}
+
+function buildBoxesFingerLayout(length, type, params, fingerWidth = params.tabWidth) {
+  const materialThickness = params.materialThickness || 3;
+  const finger = Math.max(0, params.tabWidth || materialThickness * 2);
+  const space = Math.max(0, params.tabSpacing || finger);
+  const play = type === "F" ? (params.play || params.kerfWidth || 0) : 0;
+  const effectiveFinger = type === "F" ? fingerWidth + play : fingerWidth;
+  const effectiveSpace = Math.max(0, type === "F" ? space - play : space);
+  const count = calcFingerCount(length, params);
+  const runs = [];
+
+  if (count <= 0 || length <= 0 || effectiveFinger <= 0) {
+    return { count: 0, runs, endMargin: length / 2, internalSpace: 0 };
+  }
+
+  const nonFingerLength = Math.max(0, length - count * effectiveFinger);
+  const mode = params.endMarginMode || "boxes";
+  let endMargin = 0;
+  let internalSpace = effectiveSpace;
+
+  if (mode === "minimized" && count > 1) {
+    endMargin = Math.min(materialThickness, nonFingerLength / 2);
+    internalSpace = Math.max(0, (nonFingerLength - endMargin * 2) / (count - 1));
+  } else if (mode === "distributed") {
+    const gap = nonFingerLength / (count + 1);
+    endMargin = gap;
+    internalSpace = gap;
+  } else {
+    endMargin = Math.max(0, (nonFingerLength - Math.max(0, count - 1) * effectiveSpace) / 2);
+    internalSpace = effectiveSpace;
+  }
+
+  if (count === 1) {
+    endMargin = nonFingerLength / 2;
+    internalSpace = 0;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const start = endMargin + i * (effectiveFinger + internalSpace);
+    const end = Math.min(start + effectiveFinger, length);
+    if (end <= start || start >= length) continue;
+    runs.push({
+      start,
+      end,
+      center: start + (end - start) / 2,
+      length: end - start
+    });
+  }
+
+  return { count, runs, endMargin, internalSpace };
+}
+
 function calcFingerCount(length, params) {
-  const pitch = params.tabWidth + params.tabSpacing;
-  if (pitch <= 0 || length < params.tabWidth + params.materialThickness * 2) return 0;
-  return Math.max(1, Math.floor((length - params.tabSpacing) / pitch));
+  const tabWidth = params.tabWidth || params.materialThickness * 2 || 0;
+  const tabSpacing = params.tabSpacing || tabWidth;
+  const surroundingSpaces = params.surroundingSpaces || params.surroundingspaces || 2;
+  const pitch = tabWidth + tabSpacing;
+  if (pitch <= 0 || tabWidth <= 0) return 0;
+  let count = Math.floor((length - (surroundingSpaces - 1) * tabSpacing) / pitch);
+  if (count === 0 && length > tabWidth + params.materialThickness) count = 1;
+  return Math.max(0, count);
 }
 
 function along(start, dx, dy, distanceMm) {
@@ -1014,9 +1468,12 @@ function render(result) {
   const showCutPaths = result.params.generateJoinery || result.params.dimensionMode !== "inner" || !canUseInnerGuides;
   const showAsOffsetPreview = result.params.dimensionMode !== "inner" || !canUseInnerGuides;
   setLayerLegendVisibility({
-    offset: !result.params.generateJoinery,
+    offset: result.params.dimensionMode === "inner" && canUseInnerGuides,
     cut: result.params.generateJoinery
   });
+
+  renderInnerDimensionGuides(result);
+  renderOffsetReferenceGuides(result);
 
   if (showCutPaths) {
     const cutGroup = createSvgElement("g", {
@@ -1039,8 +1496,6 @@ function render(result) {
     }
   }
   renderPieceLabels(result.pieces);
-  renderOffsetReferenceGuides(result);
-  renderInnerDimensionGuides(result);
 
   els.widthMetric.textContent = formatNumber(result.bounds.width);
   els.heightMetric.textContent = formatNumber(result.bounds.height);
@@ -1137,18 +1592,16 @@ function addSvgStyles() {
 }
 
 function renderOffsetReferenceGuides(result) {
-  if (result.params.generateJoinery) return;
   if (result.params.dimensionMode !== "inner") return;
   if (!["cube", "cuboid", "gable_house"].includes(result.params.modelType)) return;
 
   const group = createSvgElement("g", { class: "offset-dimension-guides" });
   let guideCount = 0;
   for (const piece of result.pieces) {
-    const guide = innerGuideForPiece(piece, result.params);
-    if (!guide) continue;
-    const offset = result.params.materialThickness;
-    for (const pathD of guidePathDs(piece, guide, offset)) {
-      group.appendChild(createSvgElement("path", { d: pathD }));
+    for (const path of piece.offsetReferencePaths || piece.paths || []) {
+      group.appendChild(createSvgElement("path", {
+        d: pathToD(path, piece.x, piece.y)
+      }));
       guideCount += 1;
     }
   }
@@ -1161,6 +1614,21 @@ function renderInnerDimensionGuides(result) {
   const group = createSvgElement("g", { class: "inner-dimension-guides" });
   let guideCount = 0;
   for (const piece of result.pieces) {
+    if (piece.sourcePaths?.length) {
+      for (const path of piece.sourcePaths) {
+        group.appendChild(createSvgElement("path", {
+          d: pathToD(path, piece.x, piece.y)
+        }));
+      }
+      const bounds = getBoundsFromPaths([{ ...piece, paths: piece.sourcePaths }]);
+      group.appendChild(createSvgElement("text", {
+        x: svgNum(piece.x + bounds.minX + bounds.width / 2),
+        y: svgNum(piece.y + bounds.minY + bounds.height / 2 + Math.min(18, Math.max(12, bounds.height * 0.24)))
+      })).textContent = sourceDimensionLabel(piece, result.params);
+      guideCount += 1;
+      continue;
+    }
+
     const guide = innerGuideForPiece(piece, result.params);
     if (!guide) continue;
     for (const pathD of guidePathDs(piece, guide, 0)) {
@@ -1173,6 +1641,25 @@ function renderInnerDimensionGuides(result) {
     guideCount += 1;
   }
   if (guideCount) els.previewSvg.appendChild(group);
+}
+
+function sourceDimensionLabel(piece, params) {
+  const labels = {
+    top: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
+    bottom: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
+    floor: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.width)}`,
+    front: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.height)}`,
+    back: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.height)}`,
+    left: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.height)}`,
+    right: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.height)}`,
+    left_wall: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.wallHeight)}`,
+    right_wall: `${formatGuideNumber(params.length)} x ${formatGuideNumber(params.wallHeight)}`,
+    roof_left: `${formatGuideNumber(params.length)} x ${formatGuideNumber(Math.hypot(params.width / 2, params.roofHeight))}`,
+    roof_right: `${formatGuideNumber(params.length)} x ${formatGuideNumber(Math.hypot(params.width / 2, params.roofHeight))}`,
+    front_gable: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.wallHeight)}`,
+    back_gable: `${formatGuideNumber(params.width)} x ${formatGuideNumber(params.wallHeight)}`
+  };
+  return labels[piece.name] || "";
 }
 
 function dimensionTextOffset(guide) {
