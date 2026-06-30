@@ -1,38 +1,62 @@
-# Interlock Joinery Notes
+# Interlock 接榫演算法說明 / Joinery Algorithm Notes
 
-This document records the Boxes.py-style finger layout used by `interlock/` and the main execution points of the standalone Interlock web app.
+本文件說明 `interlock/` 使用的 Boxes.py 風格凹凸接榫配置，以及 Interlock webapp 的主要執行流程。
 
-## Core Goal
+This document explains the Boxes.py-style convex/concave finger layout used by `interlock/`, plus the main execution flow of the Interlock web app.
 
-`interlock/` treats the imported SVG as an inner-dimension drawing:
+## 1. 核心目標 / Core Goal
 
-1. The original SVG outline is the black inner-size geometry.
-2. The app offsets that geometry outward by material thickness to create the gray reference outline.
-3. A selected edge pair is generated from the same inner edge layout.
-4. Convex `f` grows from black to gray.
-5. Concave `F` cuts from gray back to black.
-6. The red production cutline must never move inward past the black inner-size line.
+`interlock/` 將匯入的 SVG 視為「內尺寸」幾何圖。黑線是不可破壞的內尺寸邊界，灰線是依材料厚度向外 offset 的參考線，紅線是最後輸出的切割線。
 
-This keeps the requested inner volume intact.
+`interlock/` treats the imported SVG as inner-dimension geometry. The black line is the protected inner boundary, the gray line is the outward material-thickness offset reference, and the red line is the final production cutline.
 
-## Boxes.py-Style Finger Layout
+基本規則：
 
-The current layout is implemented in `buildBoxesFingerLayout(length, type, params)`.
+Basic rules:
 
-Parameters:
+- 黑線：原始 SVG 內尺寸輪廓。
+- Black line: original inner-size SVG outline.
+- 灰線：黑線向外 offset `materialThickness`。
+- Gray line: black outline offset outward by `materialThickness`.
+- 凸榫 `f`：從黑線往灰線畫出。
+- Convex `f`: drawn from the black line toward the gray line.
+- 凹榫 `F`：從灰線往黑線畫入。
+- Concave `F`: drawn from the gray line back toward the black line.
+- 紅色切割線不可切入黑線內側，避免破壞內尺寸容積。
+- The red cutline must not move inward past the black line, preserving the requested inner volume.
 
-- `length`: usable inner edge length.
-- `tabWidth`: nominal finger width.
+## 2. Boxes.py 風格接榫配置 / Boxes.py-Style Finger Layout
+
+接榫配置主要在 `buildBoxesFingerLayout(length, type, params)` 中完成。
+
+Finger layout is mainly implemented in `buildBoxesFingerLayout(length, type, params)`.
+
+主要參數：
+
+Main parameters:
+
+- `length`：內尺寸邊的可用長度。
+- `length`: usable length of the inner edge.
+- `tabWidth`：凸榫名義寬度。
+- `tabWidth`: nominal convex finger width.
+- `tabSpacing`：接榫之間的名義間距。
 - `tabSpacing`: nominal space between fingers.
+- `materialThickness`：材料厚度。
 - `materialThickness`: board thickness.
+- `kerfWidth` / `play`：只用於凹榫 `F` 的放寬量。
 - `kerfWidth` / `play`: extra clearance used only for concave `F`.
-- `endMarginMode`: spacing strategy. Default is `boxes`.
+- `endMarginMode`：端距配置模式，預設為 `boxes`。
+- `endMarginMode`: end-margin mode, defaulting to `boxes`.
 
-The default finger pitch is:
+節距公式：
+
+Pitch formula:
 
 ```text
 pitch = tabWidth + tabSpacing
 ```
+
+接榫數量由 `calcFingerCount(length, params)` 計算：
 
 Finger count is calculated by `calcFingerCount(length, params)`:
 
@@ -40,45 +64,68 @@ Finger count is calculated by `calcFingerCount(length, params)`:
 count = floor((length - (surroundingSpaces - 1) * tabSpacing) / pitch)
 ```
 
-If `count` is `0` but the edge can still fit one finger:
+若計算結果為 `0`，但邊長仍可容納一個接榫，則至少配置一個：
+
+If the result is `0` but the edge can still fit one finger, one finger is allowed:
 
 ```text
 if length > tabWidth + materialThickness:
   count = 1
 ```
 
-For convex `f`:
+凸榫 `f` 使用原始寬度與間距：
+
+Convex `f` uses the original width and spacing:
 
 ```text
 effectiveFinger = tabWidth
 effectiveSpace = tabSpacing
 ```
 
-For concave `F`:
+凹榫 `F` 只在槽寬加入 kerf/play 補償：
+
+Concave `F` only widens the slot by kerf/play:
 
 ```text
 effectiveFinger = tabWidth + play
 effectiveSpace = max(0, tabSpacing - play)
 ```
 
-This makes the recess slightly wider without changing the intended finger centers.
+重點：`F` 可以變寬，但中心位置不可漂移。
 
-Default Boxes.py-style end margin:
+Important: `F` may become wider, but its center must not drift.
+
+## 3. Boxes.py 端距公式 / Boxes.py End-Margin Formula
+
+預設 `boxes` 模式會先計算非接榫長度：
+
+The default `boxes` mode first computes the non-finger length:
 
 ```text
 nonFingerLength = length - count * effectiveFinger
+```
+
+端距與內部間距：
+
+End margin and internal spacing:
+
+```text
 endMargin = max(0, (nonFingerLength - (count - 1) * effectiveSpace) / 2)
 internalSpace = effectiveSpace
 ```
 
-For one finger:
+若只有一個接榫：
+
+If there is only one finger:
 
 ```text
 endMargin = nonFingerLength / 2
 internalSpace = 0
 ```
 
-Each run is then:
+每個接榫 run 的位置：
+
+Each finger run is placed as:
 
 ```text
 start = endMargin + i * (effectiveFinger + internalSpace)
@@ -86,175 +133,253 @@ end = min(start + effectiveFinger, length)
 center = (start + end) / 2
 ```
 
-## Shared Pair Layout
+## 4. 成對邊共用配置 / Shared Pair Layout
 
-Matched convex and concave edges must share one layout basis. This is handled by:
+一對凹凸邊必須使用同一組基準配置，避免「數量相同但位置不密合」。
+
+A paired convex/concave edge must use the same base layout to avoid matching counts with mismatched positions.
+
+相關函式：
+
+Related functions:
 
 - `buildSharedPairLayouts(first, second, params)`
 - `buildSharedLayoutsForLength(length, params)`
 - `centerSharedLayoutOnEdge(layout, edgeLength, sharedLength)`
 
-The shared span is:
+共用長度：
+
+Shared length:
 
 ```text
 sharedLength = min(firstInnerEdgeLength, secondInnerEdgeLength)
 ```
 
-Both sides use the same base runs. The concave `F` runs are expanded by kerf/play around the same center:
+凸榫 `f` 使用 base runs；凹榫 `F` 以同一中心放大：
+
+Convex `f` uses the base runs; concave `F` expands around the same centers:
 
 ```text
 F.start = max(0, f.start - play / 2)
 F.end = min(length, f.end + play / 2)
 ```
 
-Important rule:
+若兩邊長度不同，共用配置會置中到各自邊上。
 
-```text
-kerf may widen F, but it must not shift the pair center.
-```
+If paired edge lengths differ, the shared layout is centered on each edge separately.
 
-If two paired edges have different lengths, the shared layout is centered on each edge separately. This prevents the finger count from matching while the physical positions drift apart.
+## 5. 直角接榫幾何 / Orthogonal Guided Geometry
 
-## Guided Edge Geometry
+直角接榫由 `guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride)` 產生。
 
-The guided edge path is generated by `guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride)`.
+Orthogonal guided fingers are generated by `guidedFingerEdgePoints(innerStart, innerEnd, outerStart, outerEnd, type, params, layoutOverride)`.
 
-The tangent is always the black inner edge:
+切線永遠使用黑色內尺寸邊：
+
+The tangent always comes from the black inner edge:
 
 ```text
 dx = (innerEnd.x - innerStart.x) / innerLength
 dy = (innerEnd.y - innerStart.y) / innerLength
 ```
 
-The outward normal is always perpendicular to that tangent:
+法線永遠是黑線切線的垂直方向：
+
+The normal is always perpendicular to the black-line tangent:
 
 ```text
 candidateA = (dy, -dx)
 candidateB = (-dy, dx)
 ```
 
-The gray offset edge is used only to choose which normal points outward. It is not used as the tangent basis.
+灰線只用來判斷哪一個法線方向是 outward，不作為接榫切線基準。
 
-This matters for gable roofs and other polygon corners. Offset polygons can have mitered gray endpoints, and those endpoints include tangent-direction movement. If the app derives the normal from gray endpoint deltas, roof-side fingers become slanted. The current rule avoids that:
+The gray line is used only to choose which normal points outward. It is not used as the tangent basis.
+
+這對斜頂房屋特別重要：polygon offset 會在屋脊、屋簷與牆角產生 miter 斜角。如果直接用灰線端點推法線，會把 miter 的切向位移算進去，導致接榫側邊歪斜。
+
+This is critical for gable-roof houses. Polygon offsets create mitered gray endpoints at roof peaks, eaves, and wall corners. If the normal is derived from gray endpoint deltas, the miter tangent movement tilts the finger sidewalls.
+
+目前規則：
+
+Current rule:
 
 ```text
-edge sidewalls are always perpendicular to the black inner edge.
+every guided finger sidewall is perpendicular to the black inner edge
 ```
+
+## 6. 凸榫與凹榫路徑 / Convex And Concave Paths
+
+凸榫 `f`：
 
 Convex `f`:
 
 ```text
 base edge = black inner line
 joint edge = gray offset line
-red path moves black -> gray -> gray -> black
+red path = black -> gray -> gray -> black
 ```
+
+凹榫 `F`：
 
 Concave `F`:
 
 ```text
 base edge = gray offset line
 joint edge = black inner line
-red path moves gray -> black -> black -> gray
+red path = gray -> black -> black -> gray
 ```
 
-## Import And Offset Flow
+未產生凸榫的區段保持在黑色內尺寸邊上；未切入凹槽的區段保持在灰色外側參考邊上。
 
-Main entry:
+Non-finger sections on convex edges stay on the black inner line. Non-slot sections on concave edges stay on the gray outer reference line.
+
+## 7. SVG 匯入與 Offset 流程 / SVG Import And Offset Flow
+
+入口函式：
+
+Entry function:
 
 ```text
 loadImportedPieces(pieces, warnings, options)
 ```
 
-In inner-dimension mode:
+內尺寸模式會呼叫：
+
+Inner-dimension mode calls:
 
 ```text
 offsetImportedPiecesForMaterial(pieces, params, warnings)
 ```
 
-creates:
+這個流程會建立：
 
-- `sourcePaths`: cloned original imported paths, displayed as black inner-size geometry.
-- `paths`: outward-offset paths, displayed as gray reference geometry before final joinery.
+This flow creates:
 
-Rectangles use a rectangular expansion. Other closed polygons use an edge-offset plus line-intersection method:
+- `sourcePaths`：原始匯入路徑，顯示為黑線。
+- `sourcePaths`: original imported paths, shown as black lines.
+- `paths`：向外 offset 後的路徑，顯示為灰線或後續紅色切割基準。
+- `paths`: outward-offset paths, shown as gray references or used as the later red cut basis.
 
-1. Compute signed polygon area.
-2. Offset each polygon edge along its outward normal.
-3. Intersect adjacent offset lines to form the gray reference polygon.
+矩形使用矩形外擴；一般閉合 polygon 使用邊 offset 與相鄰 offset 線交點。
 
-Built-in samples use clean inner-size geometry:
+Rectangles use rectangular expansion. General closed polygons use edge offsets and adjacent offset-line intersections.
+
+## 8. 內建樣本 / Built-In Samples
+
+內建樣本使用乾淨的內尺寸輪廓：
+
+Built-in samples use clean inner-size outlines:
 
 - `buildCubeNetPieces(params)`
 - `buildCuboidSamplePieces(params)`
 - `buildHouseSamplePieces(params)`
 
-The cuboid and gable-house sample buttons intentionally do not use the production box/house generators as imported source data. They first create plain inner outlines, then let the import offset pipeline generate the gray reference lines.
+長方盒與斜頂屋形樣本不直接使用 production box/house 產生器作為匯入來源，因為 production 產生器可能已包含接榫或外擴尺寸。樣本會先建立純內尺寸輪廓，再走與上傳 SVG 相同的 offset pipeline。
 
-## Selection And Preview Flow
+Cuboid and gable-house samples do not use the production box/house generators as imported source data, because those generators may already contain joinery or outer dimensions. Samples first create plain inner outlines, then use the same offset pipeline as uploaded SVGs.
 
-The edge workflow is:
+## 9. 選邊與確認流程 / Edge Selection And Confirmation Flow
 
-1. User clicks `選取接榫邊`.
-2. First selected edge becomes pending convex `f`.
-3. Second selected edge becomes matched concave `F`.
-4. `validateEdgePair()` checks count, length tolerance, duplicate edges, and parameter issues.
-5. Before confirmation, only selected joinery segments are previewed in red while the black/gray references remain visible.
-6. After `確認產生接榫`, `state.appliedJoinery = true`, and full production cutlines are generated.
+操作流程：
 
-Preview-only red selected segments are built by:
+Workflow:
+
+1. 按「選取接榫邊」。
+2. Click `選取接榫邊`.
+3. 第一條邊成為 pending 凸榫 `f`。
+4. The first edge becomes pending convex `f`.
+5. 第二條邊成為配對凹榫 `F`。
+6. The second edge becomes paired concave `F`.
+7. `validateEdgePair()` 檢查長度、數量、重複邊與參數警告。
+8. `validateEdgePair()` checks length, count, duplicate edges, and parameter warnings.
+9. 按「確認產生接榫」後，`state.appliedJoinery = true`。
+10. After `確認產生接榫`, `state.appliedJoinery = true`.
+
+選取中的紅色預覽段由以下流程建立：
+
+Preview red selected segments are built by:
 
 ```text
 buildSelectedJoineryPieces(params)
 fingerJointEdgePath(...)
 ```
 
-Final production closed outlines are built through:
+確認後的封閉切割輪廓由以下流程建立：
+
+Confirmed closed production outlines are built by:
 
 ```text
 fingerJointPolygonPath(path, edgeTypes, params, sourcePath, edgeLayouts)
 ```
 
-## Rendering Rules
+## 10. 渲染層順序 / Rendering Order
 
-The preview is layered in this order:
+預覽 SVG 的層級順序：
 
-1. Black source overlay: original inner-size SVG paths.
-2. Gray offset reference overlay: material-thickness reference paths.
-3. Red cut paths: selected preview segments or final production outlines.
-4. Labels and edge interaction overlays.
+Preview SVG layer order:
 
-Important rendering states:
+1. 黑色來源線：原始內尺寸 SVG。
+2. Black source overlay: original inner-size SVG.
+3. 灰色參考線：材料厚度 offset。
+4. Gray reference overlay: material-thickness offset.
+5. 紅色切割線：選取中預覽段或確認後完整切割輪廓。
+6. Red cutlines: selected preview segments or confirmed production outlines.
+7. 標籤與選邊互動層。
+8. Labels and edge-interaction overlays.
 
-- Before any edge is selected, the app shows black inner outlines and gray offset references.
-- During selection, selected `f/F` segments are red, while unselected references remain visible.
-- After confirmation, red closed cutlines are the production output.
-- Export removes temporary source overlays, edge overlays, labels, and preview-only markers.
+狀態規則：
 
-## 3D And Report Timing
+State rules:
 
-The 3D preview and final report are intentionally delayed until confirmation:
+- 尚未選邊：黑線與灰線同時顯示。
+- Before edge selection: black and gray lines are both visible.
+- 選邊中：紅色只顯示已選接榫段，未選邊仍保留參考線。
+- During edge selection: red shows selected joinery segments only, while unselected references remain visible.
+- 確認後：紅線成為完整封閉 production cutline。
+- After confirmation: red lines become full closed production cutlines.
+
+## 11. 3D 與檢測報告時機 / 3D And Report Timing
+
+3D 預覽與最終檢測報告只在確認後顯示：
+
+The 3D preview and final check report are shown only after confirmation:
 
 ```text
 shouldShow3dPreviewAfterConfirm() => state.appliedJoinery
 ```
 
-This prevents the app from showing a 3D assembly or passing report before the user has accepted the generated joinery.
+這可避免尚未接受接榫配置時，就出現看似完成的 3D 組裝或通過報告。
 
-Known sample presets can render assembled previews after confirmation:
+This prevents the app from showing a completed-looking 3D assembly or pass report before the user accepts the joinery layout.
+
+可組裝預覽的已知樣本：
+
+Known presets that can render assembled previews:
 
 - `cube_net`
 - `cuboid_net`
 - `house_net`
 
-## Maintenance Rules
+## 12. 維護規則 / Maintenance Rules
 
-Do not break these constraints:
+不可破壞的規則：
 
-- Black paths are the inner dimension and must not be cut inward.
-- Gray paths are material-thickness references, not a replacement tangent basis.
+Rules that must not be broken:
+
+- 黑線是內尺寸，紅線不可切入黑線內側。
+- The black line is the inner dimension; red cutlines must not cut inward past it.
+- 灰線是材料厚度參考線，不是接榫切線基準。
+- The gray line is a material-thickness reference, not the finger tangent basis.
+- `f` 與 `F` 必須共用同一組 run centers。
 - `f` and `F` must share the same run centers.
-- Kerf/play may enlarge `F`, but must not shift its center.
-- Sidewalls of every guided finger must be perpendicular to the black inner edge.
-- Polygon miter corners must not tilt the finger normal.
-- Built-in samples should load clean inner outlines, then use the same offset pipeline as uploaded SVGs.
-- Final SVG/DXF should export full closed red cutlines, not temporary selected-edge preview segments.
+- kerf/play 只能放大 `F`，不可移動中心。
+- kerf/play may widen `F`, but must not shift its center.
+- guided 接榫側邊必須垂直於黑線內尺寸邊。
+- guided finger sidewalls must be perpendicular to the black inner edge.
+- polygon miter 角不可影響接榫法線。
+- polygon miter corners must not tilt the finger normal.
+- 內建樣本應先載入純內尺寸輪廓，再走 offset pipeline。
+- built-in samples should load plain inner outlines before using the offset pipeline.
+- 最終 SVG/DXF 應輸出完整封閉紅色切割線，不輸出暫時選邊預覽線。
+- final SVG/DXF should export full closed red cutlines, not temporary edge-preview segments.
