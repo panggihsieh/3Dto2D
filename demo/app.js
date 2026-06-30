@@ -1575,6 +1575,9 @@ function addSvgStyles() {
       dominant-baseline: middle;
       pointer-events: none;
     }
+    .piece-label-overlay.cut-only-labels text {
+      fill: #111827;
+    }
     .inner-dimension-guides path,
     .inner-dimension-guides line {
       fill: none;
@@ -1798,6 +1801,7 @@ function setPreviewZoom(nextZoom) {
 
 function renderPieceLabels(pieces) {
   const group = createSvgElement("g", { class: "piece-label-overlay" });
+  if (state.cutOnlyView) group.classList.add("cut-only-labels");
   let labelCount = 0;
   for (const piece of pieces) {
     const label = pieceLabel(piece.name);
